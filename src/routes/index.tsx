@@ -195,7 +195,6 @@ const GRADE_NAMES: Record<string, { en: string; zh: string }> = {
   大二: { en: "Year 2", zh: "大二" },
   大三: { en: "Year 3", zh: "大三" },
   大四: { en: "Year 4", zh: "大四" },
-  延畢: { en: "Extended study", zh: "延畢" },
   碩士班: { en: "Master's", zh: "碩士班" },
   博士班: { en: "Doctoral", zh: "博士班" },
   其他: { en: "Other", zh: "其他" },

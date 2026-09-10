@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   COMBO_BONUS_AT,
   GAME_DURATION,
+  GRADE_LIST,
   GUEST_PLAYER,
   HIT_SCORE,
   COMBO_SCORE,
@@ -108,6 +109,9 @@ describe("timer and mode", () => {
 });
 
 describe("titles validation leaderboard", () => {
+  it("keeps the supported grade options", () => {
+    assert.deepEqual(GRADE_LIST, ["大一", "大二", "大三", "大四", "碩士班", "博士班", "其他"]);
+  });
   it("thresholds", () => {
     assert.match(titleForScore(0), /心靈修煉者/);
     assert.match(titleForScore(1500), /潛力領袖/);

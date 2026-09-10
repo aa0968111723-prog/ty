@@ -92,7 +92,7 @@ export const COLORS = [
   { id: "yellow", label: "黃", hex: "#CA8A04", key: ["4", "y"] },
 ];
 
-export const GRADE_LIST = ["大一", "大二", "大三", "大四", "延畢", "碩士班", "博士班", "其他"];
+export const GRADE_LIST = ["大一", "大二", "大三", "大四", "碩士班", "博士班", "其他"];
 
 export const DEPARTMENT_GROUPS = [
   {
