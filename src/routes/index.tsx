@@ -1331,7 +1331,7 @@ function ResultScreen({
         </div>
         <p className="save-note" data-save={save}>{saveText(save, language)}</p>
         <p className="join-copy">
-          {language === "en" ? ui.joinCopy.replace("the Tamkang University Zen Club", "the Tamkang University Zen Club") : ui.joinCopy.replace("淡江大學禪學社", displayClub)}
+          {language === "en" ? ui.joinCopy : ui.joinCopy.replace("淡江大學禪學社", displayClub)}
           <ZhHelper language={language}>{TEXT.zh.joinCopy}</ZhHelper>
         </p>
         <button type="button" className="cta" onClick={onAgain}>{ui.tryAgain}</button>
