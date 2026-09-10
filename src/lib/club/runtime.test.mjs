@@ -21,6 +21,7 @@ import {
   createLiveGame,
   maybeTimedSwitch,
   clampSettings,
+  correctId,
 } from "./runtime.mjs";
 
 describe("stroop question", () => {
@@ -57,7 +58,7 @@ describe("judgeAnswer", () => {
     assert.equal(g.score, 600);
     assert.equal(g.combo, 5);
     const missSnap = { mode: g.mode, seq: g.questionSeq };
-    const wrong = g.question.meaning.id === "red" ? "blue" : "red";
+    const wrong = ["red", "blue", "green", "yellow"].find((id) => id !== correctId(g));
     const miss = judgeAnswer(g, wrong, missSnap, t + 80);
     assert.equal(g.combo, 0);
     assert.equal(miss.delta, -50);
@@ -149,7 +150,12 @@ describe("titles validation leaderboard", () => {
     g.correct = 12;
     g.wrong = 2;
     g.maxCombo = 6;
-    const p = publicResult(g, { name: "小華", department: "歷史學系", grade: "大一", phone: "0912345678" });
+    const p = publicResult(g, {
+      name: "小華",
+      department: "歷史學系",
+      grade: "大一",
+      phone: "0912345678",
+    });
     assert.equal(p.title.includes("潛力領袖"), true);
     assert.equal(p.total, 14);
     assert.ok(p.accuracy > 0);

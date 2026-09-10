@@ -61,6 +61,78 @@ describe("api", () => {
     assert.deepEqual(board.rows, []);
   });
 
+  it("sends official results to the server-side sheet connector", async () => {
+    const previousUrl = process.env.GOOGLE_SCRIPT_URL;
+    const previousFetch = globalThis.fetch;
+    const calls = [];
+    process.env.GOOGLE_SCRIPT_URL = "https://example.test/sheet";
+    globalThis.fetch = async (url, options) => {
+      calls.push({ url, options });
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    try {
+      const res = await handleResult(
+        jsonReq("http://x/api/result", {
+          name: "小華",
+          department: "歷史學系",
+          grade: "大一",
+          phone: "0968111723",
+          score: 1600,
+          correct: 12,
+          wrong: 1,
+          maxCombo: 6,
+          submissionId: "sheet-sub-1",
+        }),
+      );
+      const data = await res.json();
+      assert.equal(data.sheetsConfigured, true);
+      assert.equal(data.sheetsOk, true);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, "https://example.test/sheet");
+      const sent = JSON.parse(calls[0].options.body);
+      assert.equal(sent.phone, "0968111723");
+      assert.equal(sent.submissionId, "sheet-sub-1");
+    } finally {
+      globalThis.fetch = previousFetch;
+      if (previousUrl === undefined) delete process.env.GOOGLE_SCRIPT_URL;
+      else process.env.GOOGLE_SCRIPT_URL = previousUrl;
+    }
+  });
+
+  it("reports a sheet failure without exposing connector details", async () => {
+    const previousUrl = process.env.GOOGLE_SCRIPT_URL;
+    const previousFetch = globalThis.fetch;
+    process.env.GOOGLE_SCRIPT_URL = "https://example.test/sheet";
+    globalThis.fetch = async () => new Response("bad gateway", { status: 502 });
+    try {
+      const res = await handleResult(
+        jsonReq("http://x/api/result", {
+          name: "小華",
+          department: "歷史學系",
+          grade: "大一",
+          phone: "0968111723",
+          score: 1600,
+          correct: 12,
+          wrong: 1,
+          maxCombo: 6,
+          submissionId: "sheet-sub-2",
+        }),
+      );
+      const data = await res.json();
+      assert.equal(data.sheetsConfigured, true);
+      assert.equal(data.sheetsOk, false);
+      assert.equal(data.googleScriptUrl, undefined);
+      assert.equal(data.phone, undefined);
+    } finally {
+      globalThis.fetch = previousFetch;
+      if (previousUrl === undefined) delete process.env.GOOGLE_SCRIPT_URL;
+      else process.env.GOOGLE_SCRIPT_URL = previousUrl;
+    }
+  });
+
   it("rejects impossible score", async () => {
     const res = await handleResult(
       jsonReq("http://x/api/result", {

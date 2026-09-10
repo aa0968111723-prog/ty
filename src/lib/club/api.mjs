@@ -26,6 +26,7 @@ export const SECURITY_HEADERS = {
 const buckets = new Map();
 const seenIds = new Map();
 const board = [];
+const SHEET_TIMEOUT_MS = 8_000;
 
 function rateOk(ip, key, limit, windowMs = 60_000) {
   const id = `${key}:${ip}`;
@@ -80,6 +81,48 @@ export async function handleRegister(request) {
   return json({ ok: true, clubName: CLUB_NAME, player: parsed.data });
 }
 
+function sheetUrl() {
+  const value = String(process.env.GOOGLE_SCRIPT_URL ?? "").trim();
+  return value || null;
+}
+
+async function appendOfficialResult(row) {
+  const url = sheetUrl();
+  if (!url) return false;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SHEET_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: row.name,
+        department: row.department,
+        grade: row.grade,
+        phone: row.phone,
+        score: row.score,
+        correct: row.correct,
+        wrong: row.wrong,
+        accuracy: row.accuracy,
+        maxCombo: row.maxCombo,
+        title: row.title,
+        duration: row.duration,
+        submissionId: row.submissionId,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) return false;
+    const result = await response.json().catch(() => ({}));
+    return result?.ok !== false;
+  } catch (error) {
+    console.error("[sheets] failed to append official result", error);
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function validResultBody(body) {
   const player = validatePlayer(body);
   if (!player.ok) return { ok: false, error: "請檢查欄位", errors: player.errors };
@@ -117,13 +160,21 @@ function validResultBody(body) {
   };
 }
 
-function rememberId(id) {
-  if (!id) return false;
+function sweepSeenIds() {
   const now = Date.now();
   for (const [k, t] of seenIds) if (now - t > 30 * 60_000) seenIds.delete(k);
-  if (seenIds.has(id)) return true;
-  seenIds.set(id, now);
-  return false;
+}
+
+function wasSeen(id) {
+  if (!id) return false;
+  sweepSeenIds();
+  return seenIds.has(id);
+}
+
+function rememberId(id) {
+  if (!id) return;
+  sweepSeenIds();
+  seenIds.set(id, Date.now());
 }
 
 export async function handleResult(request) {
@@ -138,21 +189,28 @@ export async function handleResult(request) {
   const parsed = validResultBody(body);
   if (!parsed.ok) return json({ error: parsed.error, errors: parsed.errors }, 400);
   const row = parsed.data;
-  const duplicate = rememberId(row.submissionId);
+  const duplicate = wasSeen(row.submissionId);
+  let sheetsOk = false;
   if (!row.skipSave && !duplicate) {
-    board.push({
-      name: row.name,
-      department: row.department,
-      score: row.score,
-      at: Date.now(),
-    });
+    sheetsOk = await appendOfficialResult(row);
+    if (sheetsOk) {
+      rememberId(row.submissionId);
+      board.push({
+        name: row.name,
+        department: row.department,
+        score: row.score,
+        at: Date.now(),
+      });
+    }
+  } else if (!row.skipSave && duplicate) {
+    sheetsOk = true;
   }
   return json({
     ok: true,
     saved: !row.skipSave,
     duplicate: duplicate && !row.skipSave,
-    sheetsConfigured: Boolean(process.env.GOOGLE_SCRIPT_URL),
-    sheetsOk: false,
+    sheetsConfigured: Boolean(sheetUrl()),
+    sheetsOk,
     smtpConfigured: Boolean(process.env.SMTP_HOST),
     emailSent: false,
     clubName: CLUB_NAME,
