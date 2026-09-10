@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "專注力挑戰賽",
+      "hasCanvas": false,
+      "bodyTextLen": 605,
+      "bodyTextHash": "31b990edd2c472d7657aae5c70f0bd48e922c126cc7bf0662b8eb36fb458d82e",
+      "bodyTextPrefix": "淡江大學禪學社 · 社團博覽會 專注力挑戰賽 60 秒 看指令選顏色 前 5 名手搖杯 正式參賽 填資料，開始 60 秒。成績才",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "專注力挑戰賽",
+      "hasCanvas": false,
+      "bodyTextLen": 605,
+      "bodyTextHash": "31b990edd2c472d7657aae5c70f0bd48e922c126cc7bf0662b8eb36fb458d82e",
+      "bodyTextPrefix": "淡江大學禪學社 · 社團博覽會 專注力挑戰賽 60 秒 看指令選顏色 前 5 名手搖杯 正式參賽 填資料，開始 60 秒。成績才",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
