@@ -26,6 +26,13 @@
 
 稱號只描述這次 60 秒的專注表現，不是人格測驗。
 
+## 語言與中文輔助
+
+- The default interface language is English.
+- An `EN / 中文` switcher is available on the registration, settings, game, and result screens.
+- English mode keeps concise Traditional Chinese helper text beside key instructions and fields.
+- Department, grade, and registration values continue to use the existing internal format so the booth registration and prize-draw workflow remain compatible.
+
 ## API
 
 `/api/health` `GET`、`/api/register` `POST`、`/api/result` `POST`、`/api/leaderboard` `GET`
