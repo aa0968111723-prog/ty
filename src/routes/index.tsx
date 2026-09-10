@@ -978,6 +978,7 @@ function RegisterScreen({
                 onClick={() => onChange("grade", g)}
               >
                 {gradeName(g, language)}
+                <ZhHelper language={language}>{gradeName(g, "zh")}</ZhHelper>
               </button>
             ))}
           </div>
@@ -1137,7 +1138,12 @@ function SettingsSheet({
           onChange={(e) => onSettings({ speed: SPEED_PRESETS[Number(e.target.value)]?.id })}
         />
         <div className="slider-ends">
-          {SPEED_PRESETS.map((p) => <span key={p.id}>{speedName(p.id, language)}</span>)}
+          {SPEED_PRESETS.map((p) => (
+            <span key={p.id}>
+              {speedName(p.id, language)}
+              <ZhHelper language={language}>{speedName(p.id, "zh")}</ZhHelper>
+            </span>
+          ))}
         </div>
         <p className="settings-label">
           {ui.startRule}
@@ -1154,6 +1160,7 @@ function SettingsSheet({
               onClick={() => onSettings({ startMode: s.id })}
             >
               {startModeName(s.id, language)}
+              <ZhHelper language={language}>{startModeName(s.id, "zh")}</ZhHelper>
             </button>
           ))}
         </div>
