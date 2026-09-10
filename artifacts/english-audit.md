@@ -6,7 +6,7 @@ Do not convert this product.
 
 ## Loop state
 
-- Status: **round 1 complete — wait for next run**
+- Status: **round 2 complete — still deployment lag; wait for next run**
 - Stop requested: no
 - MARKETING_COPY_INPUT: waiting for user-provided English promotional copy
 
@@ -116,3 +116,17 @@ None. Rule: do not invent diffs when the confirmed issue is deployment lag.
 2. Re-open the live URL.
 3. If live still shows FOCUS QUEST / 關主欄位, keep status = deployment lag and do not revert source.
 4. If live shows Focus Challenge + EN/中文, continue string and flow QA.
+
+## Round 2 — 2026-09-11 (same session)
+
+| Item | Value |
+| --- | --- |
+| Commit SHA | `7392d9b75e11e17624bb07b54ac2dabb8169fb2e` |
+| Latest commit | `docs: record round-1 English and live-site audit` |
+| Live URL | https://focus-quest-2026.tcgs910338.chatgpt.site/ |
+
+Live site still FOCUS QUEST / 專注力冒險挑戰 / 關主欄位. No EN switcher. **deployment lag unchanged.**
+
+No source edits. No build. Did not revert main.
+
+Next blocker: official host must serve this repo before English QA of the live UI can continue.
