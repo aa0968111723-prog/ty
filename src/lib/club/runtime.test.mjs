@@ -19,7 +19,6 @@ import {
   titleForScore,
   validatePlayer,
   createLiveGame,
-  maybeTimedSwitch,
   clampSettings,
   correctId,
 } from "./runtime.mjs";
@@ -79,25 +78,41 @@ describe("judgeAnswer", () => {
   });
 });
 
-describe("timer and mode", () => {
-  it("ends at 60s and switches around 3s", () => {
+describe("timer and answer mode", () => {
+  it("ends at 60s without a time-based rule switch", () => {
     const g = createLiveGame(0);
     const mid = tickGame(g, 2_900);
     assert.equal(mid.expired, false);
-    const sw = maybeTimedSwitch(g, 3_000);
-    assert.equal(sw, true);
+    assert.equal(g.mode, "meaning");
     const end = tickGame(g, GAME_DURATION * 1000);
     assert.equal(end.expired, true);
     assert.equal(g.ended, true);
   });
-  it("honors custom duration and faster switch", () => {
+
+  it("switches exactly once after each answered question", () => {
+    const g = createLiveGame(0);
+    const firstMode = g.mode;
+    const firstId = correctId(g);
+    const first = judgeAnswer(g, firstId, { mode: firstMode, seq: g.questionSeq }, 100);
+    assert.equal(first.ok, true);
+    assert.equal(first.switched, true);
+    assert.notEqual(g.mode, firstMode);
+
+    const secondMode = g.mode;
+    const secondId = ["red", "blue", "green", "yellow"].find((id) => id !== correctId(g));
+    const second = judgeAnswer(g, secondId, { mode: secondMode, seq: g.questionSeq }, 200);
+    assert.equal(second.ok, true);
+    assert.equal(second.hit, false);
+    assert.equal(second.switched, true);
+    assert.notEqual(g.mode, secondMode);
+  });
+
+  it("honors custom duration and tap settings", () => {
     const g = createLiveGame(0, { settings: { duration: 30, speed: "rush" } });
     assert.equal(g.duration, 30);
     assert.equal(g.modeSwitchMs, 1400);
     assert.equal(g.comboEvery, 2);
     assert.equal(g.skipSave, true);
-    const sw = maybeTimedSwitch(g, 1400);
-    assert.equal(sw, true);
     const end = tickGame(g, 30_000);
     assert.equal(end.expired, true);
   });

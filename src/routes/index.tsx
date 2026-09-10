@@ -57,8 +57,7 @@ const TEXT = {
     officialEntry: "Official Entry",
     officialDescription:
       "Enter your details to play for 60 seconds. Winners are announced at the booth; scores are not published online.",
-    practiceDescription:
-      "Practice mode is active. This score is not entered into the prize draw.",
+    practiceDescription: "Practice mode is active. This score is not entered into the prize draw.",
     name: "Name",
     department: "Department",
     year: "Year",
@@ -90,15 +89,15 @@ const TEXT = {
     seconds: "seconds",
     restoreOfficial: "Restore official rules",
     officialRules:
-      "Official club rules: 60 seconds, normal speed, +100 for a correct answer / +200 for a combo / −50 for a mistake.",
+      "Official club rules: 60 seconds, the rule changes once after each answer, +100 for a correct answer / +200 for a combo / −50 for a mistake.",
     slow: "Slow",
     normal: "Normal",
     fast: "Fast",
     rush: "Rush",
-    slowHint: "Changes every 4.5 seconds",
-    normalHint: "Changes every 3 seconds",
-    fastHint: "Changes every 2 seconds",
-    rushHint: "Changes every 1.4 seconds",
+    slowHint: "Changes after each answer",
+    normalHint: "Changes after each answer",
+    fastHint: "Changes after each answer",
+    rushHint: "Changes after each answer",
     timeLeft: "Time left",
     score: "Score",
     combo: "Combo",
@@ -155,15 +154,16 @@ const TEXT = {
     official: "正式",
     seconds: "秒",
     restoreOfficial: "恢復正式規則",
-    officialRules: "目前是社博正式規則：60 秒、一般速度、答對 +100／連擊 +200／答錯 −50。",
+    officialRules:
+      "目前是社博正式規則：60 秒，每答完一題只換一次規則，答對 +100／連擊 +200／答錯 −50。",
     slow: "慢",
     normal: "一般",
     fast: "快",
     rush: "極快",
-    slowHint: "4.5 秒換規則",
-    normalHint: "3 秒換規則",
-    fastHint: "2 秒換規則",
-    rushHint: "1.4 秒換規則",
+    slowHint: "每答一題換規則",
+    normalHint: "每答一題換規則",
+    fastHint: "每答一題換規則",
+    rushHint: "每答一題換規則",
     timeLeft: "剩餘",
     score: "分數",
     combo: "連擊",
@@ -179,7 +179,8 @@ const TEXT = {
     saving: "成績傳送中…",
     tryAgain: "重新挑戰",
     home: "回首頁",
-    joinCopy: "想更認識自己、練習專注與表達，歡迎來淡江大學禪學社坐坐。手搖杯得獎現場公布，網站不公開成績。",
+    joinCopy:
+      "想更認識自己、練習專注與表達，歡迎來淡江大學禪學社坐坐。手搖杯得獎現場公布，網站不公開成績。",
   },
 } as const;
 
@@ -227,20 +228,24 @@ const DEPARTMENT_NAMES: Record<string, string> = {
   西班牙語文學系: "Department of Spanish",
   俄國語文學系: "Department of Russian",
   國際企業學系: "Department of International Business",
-  國際企業學系全英語學士班: "English-taught Bachelor's Program, Department of International Business",
+  國際企業學系全英語學士班:
+    "English-taught Bachelor's Program, Department of International Business",
   經濟學系: "Department of Economics",
   產業經濟學系: "Department of Industrial Economics",
   會計學系: "Department of Accounting",
   企業管理學系: "Department of Business Administration",
-  企業管理學系全英語學士班: "English-taught Bachelor's Program, Department of Business Administration",
+  企業管理學系全英語學士班:
+    "English-taught Bachelor's Program, Department of Business Administration",
   財務金融學系: "Department of Banking and Finance",
   風險管理與保險學系: "Department of Risk Management and Insurance",
   統計學系: "Department of Statistics",
   資訊管理學系: "Department of Information Management",
   公共行政學系: "Department of Public Administration",
   運輸管理學系: "Department of Transportation Management",
-  國際觀光管理學系全英語學士班: "English-taught Bachelor's Program, Department of International Tourism Management",
-  全球政治經濟學系全英語學士班: "English-taught Bachelor's Program, Department of Global Political Economy",
+  國際觀光管理學系全英語學士班:
+    "English-taught Bachelor's Program, Department of International Tourism Management",
+  全球政治經濟學系全英語學士班:
+    "English-taught Bachelor's Program, Department of Global Political Economy",
   數學學系資訊與數據科學組: "Department of Mathematics — Information and Data Science",
   數學學系應數統計組: "Department of Mathematics — Applied Mathematics and Statistics",
   物理學系: "Department of Physics",
@@ -257,10 +262,15 @@ const DEPARTMENT_NAMES: Record<string, string> = {
 };
 
 const SPEED_COPY: Record<string, { en: string; zh: string; hintEn: string; hintZh: string }> = {
-  slow: { en: "Slow", zh: "慢", hintEn: "Changes every 4.5 seconds", hintZh: "4.5 秒換規則" },
-  normal: { en: "Normal", zh: "一般", hintEn: "Changes every 3 seconds", hintZh: "3 秒換規則" },
-  fast: { en: "Fast", zh: "快", hintEn: "Changes every 2 seconds", hintZh: "2 秒換規則" },
-  rush: { en: "Rush", zh: "極快", hintEn: "Changes every 1.4 seconds", hintZh: "1.4 秒換規則" },
+  slow: { en: "Slow", zh: "慢", hintEn: "Changes after each answer", hintZh: "每答一題換規則" },
+  normal: {
+    en: "Normal",
+    zh: "一般",
+    hintEn: "Changes after each answer",
+    hintZh: "每答一題換規則",
+  },
+  fast: { en: "Fast", zh: "快", hintEn: "Changes after each answer", hintZh: "每答一題換規則" },
+  rush: { en: "Rush", zh: "極快", hintEn: "Changes after each answer", hintZh: "每答一題換規則" },
 };
 
 const TITLE_NAMES: Record<string, string> = {
@@ -271,10 +281,13 @@ const TITLE_NAMES: Record<string, string> = {
 };
 
 const BLURBS_EN: Record<string, string> = {
-  "Lv.4 卓越領袖": "In these 60 seconds, you kept your eyes on the rule and rarely let the color lead you.",
+  "Lv.4 卓越領袖":
+    "In these 60 seconds, you kept your eyes on the rule and rarely let the color lead you.",
   "Lv.3 穩定領航者": "You quickly found your rhythm again whenever the rule changed.",
-  "Lv.2 潛力領袖": "Your focus is already taking shape. A little more rhythm will make it steadier.",
-  "Lv.1 心靈修煉者": "This is a starting point. Play again and your eyes will catch the rule more easily.",
+  "Lv.2 潛力領袖":
+    "Your focus is already taking shape. A little more rhythm will make it steadier.",
+  "Lv.1 心靈修煉者":
+    "This is a starting point. Play again and your eyes will catch the rule more easily.",
 };
 
 const VALIDATION_EN: Record<string, string> = {
@@ -318,11 +331,15 @@ function startModeName(id: string, language: Language) {
   if (language === "zh") {
     return START_MODE_OPTIONS.find((item) => item.id === id)?.label ?? id;
   }
-  return { meaning: "Word meaning", visual: "Ink color", random: "Random" }[id as "meaning" | "visual" | "random"] ?? id;
+  return (
+    { meaning: "Word meaning", visual: "Ink color", random: "Random" }[
+      id as "meaning" | "visual" | "random"
+    ] ?? id
+  );
 }
 
 function resultTitle(title: string, language: Language) {
-  return language === "en" ? TITLE_NAMES[title] ?? title : title;
+  return language === "en" ? (TITLE_NAMES[title] ?? title) : title;
 }
 
 function resultBlurb(title: string, language: Language, duration: number, fallback: string) {
@@ -358,7 +375,7 @@ function saveText(kind: SaveKind, language: Language) {
 
 function validationText(message: string | undefined, language: Language) {
   if (!message) return "";
-  return language === "zh" ? message : VALIDATION_EN[message] ?? message;
+  return language === "zh" ? message : (VALIDATION_EN[message] ?? message);
 }
 
 function ZhHelper({ language, children }: { language: Language; children: ReactNode }) {
@@ -559,7 +576,10 @@ function BoothApp() {
       if (judged.hit) {
         const combo = judged.combo >= 5;
         const text = combo ? "COMBO +" + judged.delta : "+" + judged.delta;
-        setPops((xs) => [...xs.slice(-3), { id: ++popId.current, text, kind: combo ? "combo" : "good" }]);
+        setPops((xs) => [
+          ...xs.slice(-3),
+          { id: ++popId.current, text, kind: combo ? "combo" : "good" },
+        ]);
         bumpMood(combo ? "cheer" : "happy");
         cue(true, g.settings);
       } else {
@@ -568,6 +588,7 @@ function BoothApp() {
         bumpMood("surprise");
         cue(false, g.settings);
       }
+      if (judged.switched) setModePulse((n) => n + 1);
       setTick((n) => n + 1);
     },
     [bumpMood, endGame, cue],
@@ -582,9 +603,9 @@ function BoothApp() {
       setRemaining(tick.remaining);
       if (timeNumRef.current) timeNumRef.current.textContent = String(Math.ceil(tick.remaining));
       if (timeRailRef.current) {
-        timeRailRef.current.style.transform = "scaleX(" + Math.max(0, tick.remaining / (g.duration || 60)) + ")";
+        timeRailRef.current.style.transform =
+          "scaleX(" + Math.max(0, tick.remaining / (g.duration || 60)) + ")";
       }
-      if (tick.switched) setModePulse((n) => n + 1);
       if (tick.expired) {
         endGame();
         return;
@@ -660,7 +681,9 @@ function BoothApp() {
     setSave("idle");
     setModePulse(0);
     try {
-      const C = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const C =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (C) {
         audioRef.current ??= new C();
         if (audioRef.current.state === "suspended") void audioRef.current.resume();
@@ -747,7 +770,14 @@ function BoothApp() {
                 aria-label={language === "en" ? "Time left" : "剩餘秒數"}
               >
                 <span>{TEXT[language].timeLeft}</span>
-                <strong data-time ref={(el) => { timeNumRef.current = el; }}>{timeShow}</strong>
+                <strong
+                  data-time
+                  ref={(el) => {
+                    timeNumRef.current = el;
+                  }}
+                >
+                  {timeShow}
+                </strong>
               </div>
               <div className="game-stats">
                 <div>
@@ -761,7 +791,12 @@ function BoothApp() {
               </div>
             </div>
             <div className={"time-rail" + (timeShow <= 10 ? " is-warn" : "")} aria-hidden="true">
-              <i ref={(el) => { timeRailRef.current = el; }} style={{ transform: "scaleX(" + timeRatio + ")" }} />
+              <i
+                ref={(el) => {
+                  timeRailRef.current = el;
+                }}
+                style={{ transform: "scaleX(" + timeRatio + ")" }}
+              />
             </div>
             <div
               className={"mode-card mode-" + g.mode + (modePulse ? " switch" : "")}
@@ -770,21 +805,31 @@ function BoothApp() {
             >
               <LanguageToggle language={language} onChange={setLanguage} compact />
               <div className="flash" />
-              <small>{g.mode === "meaning" ? TEXT[language].meaningInstruction : TEXT[language].visualInstruction}</small>
+              <small>
+                {g.mode === "meaning"
+                  ? TEXT[language].meaningInstruction
+                  : TEXT[language].visualInstruction}
+              </small>
               <ZhHelper language={language}>
                 {g.mode === "meaning" ? TEXT.zh.meaningInstruction : TEXT.zh.visualInstruction}
               </ZhHelper>
-              <strong>{g.mode === "meaning" ? TEXT[language].meaningMode : TEXT[language].visualMode}</strong>
+              <strong>
+                {g.mode === "meaning" ? TEXT[language].meaningMode : TEXT[language].visualMode}
+              </strong>
               <ZhHelper language={language}>
                 {g.mode === "meaning" ? TEXT.zh.meaningMode : TEXT.zh.visualMode}
               </ZhHelper>
             </div>
             <div className="play-area">
               {pops.map((p) => (
-                <div key={p.id} className={"float-pop " + p.kind}>{p.text}</div>
+                <div key={p.id} className={"float-pop " + p.kind}>
+                  {p.text}
+                </div>
               ))}
               <div className="stroop-card" data-seq={g.questionSeq}>
-                <div className="stroop" style={{ color: q.visual.hex }}>{colorName(q.meaning.id as ColorId, language)}</div>
+                <div className="stroop" style={{ color: q.visual.hex }}>
+                  {colorName(q.meaning.id as ColorId, language)}
+                </div>
               </div>
               <Turtle mood={mood} size={52} />
             </div>
@@ -808,7 +853,9 @@ function BoothApp() {
                       if (!press || press.id !== c.id) return;
                       answer(c.id as ColorId, { mode: press.mode, seq: press.seq });
                     }}
-                    onPointerCancel={() => { pressRef.current = null; }}
+                    onPointerCancel={() => {
+                      pressRef.current = null;
+                    }}
                   >
                     {colorName(c.id as ColorId, language)}
                   </button>
@@ -868,12 +915,19 @@ function RegisterScreen({
       data-register="official"
       noValidate
       autoComplete="on"
-      onSubmit={(e) => { e.preventDefault(); onStart(); }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onStart();
+      }}
     >
       <figure className="scene-hero">
         <img
           src="/scene-hero.jpg"
-          alt={language === "en" ? "Tamkang University Zen Club: turtle and students" : "淡江禪學社：龜龜與同學"}
+          alt={
+            language === "en"
+              ? "Tamkang University Zen Club: turtle and students"
+              : "淡江禪學社：龜龜與同學"
+          }
           width="880"
           height="400"
           fetchPriority="high"
@@ -945,7 +999,9 @@ function RegisterScreen({
             {DEPARTMENT_GROUPS.map((g) => (
               <optgroup key={g.college} label={collegeName(g.college, language)}>
                 {g.items.map((d) => (
-                  <option key={d} value={d}>{departmentName(d, language)}</option>
+                  <option key={d} value={d}>
+                    {departmentName(d, language)}
+                  </option>
                 ))}
               </optgroup>
             ))}
@@ -964,7 +1020,11 @@ function RegisterScreen({
             onChange={(e) => onChange("grade", e.target.value)}
           >
             <option value="">{ui.selectYear}</option>
-            {GRADE_LIST.map((g) => <option key={g} value={g}>{gradeName(g, language)}</option>)}
+            {GRADE_LIST.map((g) => (
+              <option key={g} value={g}>
+                {gradeName(g, language)}
+              </option>
+            ))}
           </select>
           <div className="grade-picks" role="radiogroup" aria-labelledby="grade-label">
             {GRADE_LIST.map((g) => (
@@ -1010,9 +1070,7 @@ function RegisterScreen({
               ? ui.officialStart
               : ui.practiceStartPrefix + settings.duration + ui.practiceStartSuffix}
         </button>
-        <p className="privacy">
-          {official ? ui.privacyOfficial : ui.privacyPractice}
-        </p>
+        <p className="privacy">{official ? ui.privacyOfficial : ui.privacyPractice}</p>
         <ZhHelper language={language}>
           {official ? TEXT.zh.privacyOfficial : TEXT.zh.privacyPractice}
         </ZhHelper>
@@ -1097,7 +1155,8 @@ function SettingsSheet({
             <ZhHelper language={language}>時間</ZhHelper>
           </span>
           <strong data-duration-value>
-            {settings.duration} {ui.seconds}{settings.duration === 60 ? " · " + ui.official : ""}
+            {settings.duration} {ui.seconds}
+            {settings.duration === 60 ? " · " + ui.official : ""}
           </strong>
         </label>
         <input
@@ -1112,9 +1171,15 @@ function SettingsSheet({
           onChange={(e) => onSettings({ duration: Number(e.target.value) })}
         />
         <div className="slider-ends">
-          <span>{DURATION_MIN}{language === "en" ? "s" : "秒"}</span>
+          <span>
+            {DURATION_MIN}
+            {language === "en" ? "s" : "秒"}
+          </span>
           <span>60{language === "en" ? "s" : "秒"}</span>
-          <span>{DURATION_MAX}{language === "en" ? "s" : "秒"}</span>
+          <span>
+            {DURATION_MAX}
+            {language === "en" ? "s" : "秒"}
+          </span>
         </div>
         <label className="slider-row" htmlFor="set-speed">
           <span>
@@ -1132,7 +1197,10 @@ function SettingsSheet({
           min={0}
           max={SPEED_PRESETS.length - 1}
           step={1}
-          value={Math.max(0, SPEED_PRESETS.findIndex((p) => p.id === settings.speed))}
+          value={Math.max(
+            0,
+            SPEED_PRESETS.findIndex((p) => p.id === settings.speed),
+          )}
           data-speed-slider
           onChange={(e) => onSettings({ speed: SPEED_PRESETS[Number(e.target.value)]?.id })}
         />
@@ -1189,7 +1257,11 @@ function SettingsSheet({
             <ZhHelper language={language}>{TEXT.zh.officialRules}</ZhHelper>
           </p>
         ) : (
-          <button type="button" className="settings-reset" onClick={() => onSettings(DEFAULT_SETTINGS)}>
+          <button
+            type="button"
+            className="settings-reset"
+            onClick={() => onSettings(DEFAULT_SETTINGS)}
+          >
             {ui.restoreOfficial}
             <ZhHelper language={language}>恢復正式規則</ZhHelper>
           </button>
@@ -1201,23 +1273,21 @@ function SettingsSheet({
 
 function SettingsPreview({ language, settings }: { language: Language; settings: GameSettings }) {
   const [q, setQ] = useState(() => nextQuestion(null));
-  const [mode, setMode] = useState<"meaning" | "visual">(settings.startMode === "visual" ? "visual" : "meaning");
+  const [mode, setMode] = useState<"meaning" | "visual">(
+    settings.startMode === "visual" ? "visual" : "meaning",
+  );
   const [left, setLeft] = useState(settings.duration);
   const [pulse, setPulse] = useState(0);
   const startRef = useRef(Date.now());
-  const lastSwitch = useRef(Date.now());
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
   const ui = TEXT[language];
 
   useEffect(() => {
     startRef.current = Date.now();
-    lastSwitch.current = Date.now();
     setLeft(settings.duration);
     if (settings.startMode === "visual" || settings.startMode === "meaning") {
       setMode(settings.startMode);
     }
-  }, [settings.duration, settings.switchMs, settings.startMode]);
+  }, [settings.duration, settings.startMode]);
 
   useEffect(() => {
     let raf = 0;
@@ -1230,23 +1300,20 @@ function SettingsPreview({ language, settings }: { language: Language; settings:
         startRef.current = now;
         setQ(nextQuestion(null));
       }
-      if (now - lastSwitch.current >= settings.switchMs) {
-        lastSwitch.current = now;
-        setMode((m) => (m === "meaning" ? "visual" : "meaning"));
-        setQ((prev) => nextQuestion(prev));
-        setPulse((n) => n + 1);
-      }
       raf = window.requestAnimationFrame(loop);
     };
     raf = window.requestAnimationFrame(loop);
     return () => window.cancelAnimationFrame(raf);
-  }, [settings.duration, settings.switchMs]);
+  }, [settings.duration]);
 
   return (
     <div className="settings-preview" data-preview="1">
       <div className="preview-hud">
         <span>{ui.preview}</span>
-        <strong>{Math.ceil(left)}{language === "en" ? "s" : "秒"}</strong>
+        <strong>
+          {Math.ceil(left)}
+          {language === "en" ? "s" : "秒"}
+        </strong>
       </div>
       <div className={"preview-mode" + (pulse ? " switch" : "")} key={pulse}>
         {mode === "meaning" ? ui.meaningInstruction : ui.visualInstruction}
@@ -1265,9 +1332,9 @@ function SettingsPreview({ language, settings }: { language: Language; settings:
             className={"preview-dot ans-" + c.id}
             aria-label={colorName(c.id as ColorId, language)}
             onClick={() => {
-              const expected = modeRef.current === "meaning" ? q.meaning.id : q.visual.id;
               setQ(nextQuestion(q));
-              if (expected === c.id) setPulse((n) => n + 1);
+              setMode((m) => (m === "meaning" ? "visual" : "meaning"));
+              setPulse((n) => n + 1);
             }}
           >
             {colorName(c.id as ColorId, language)}
@@ -1312,36 +1379,56 @@ function ResultScreen({
           </div>
           <LanguageToggle language={language} onChange={onLanguage} />
         </div>
-        <div className="score-xl" data-result-score>{payload.score}</div>
+        <div className="score-xl" data-result-score>
+          {payload.score}
+        </div>
         <h2 className="result-title">{title}</h2>
         <ZhHelper language={language}>{payload.title}</ZhHelper>
         <p className="title-blurb">{blurb}</p>
         <ZhHelper language={language}>{zhBlurb}</ZhHelper>
         <div className="result-meta">
           <div>
-            <span>{ui.accuracy}<ZhHelper language={language}>正確率</ZhHelper></span>
+            <span>
+              {ui.accuracy}
+              <ZhHelper language={language}>正確率</ZhHelper>
+            </span>
             <strong>{payload.accuracy}%</strong>
           </div>
           <div>
-            <span>{ui.bestCombo}<ZhHelper language={language}>最高連擊</ZhHelper></span>
+            <span>
+              {ui.bestCombo}
+              <ZhHelper language={language}>最高連擊</ZhHelper>
+            </span>
             <strong>x{payload.maxCombo}</strong>
           </div>
           <div>
-            <span>{ui.correct}<ZhHelper language={language}>答對</ZhHelper></span>
+            <span>
+              {ui.correct}
+              <ZhHelper language={language}>答對</ZhHelper>
+            </span>
             <strong>{payload.correct}</strong>
           </div>
           <div>
-            <span>{ui.wrong}<ZhHelper language={language}>答錯</ZhHelper></span>
+            <span>
+              {ui.wrong}
+              <ZhHelper language={language}>答錯</ZhHelper>
+            </span>
             <strong>{payload.wrong}</strong>
           </div>
         </div>
-        <p className="save-note" data-save={save}>{saveText(save, language)}</p>
+        <p className="save-note" data-save={save}>
+          {saveText(save, language)}
+        </p>
         <p className="join-copy">
           {language === "en" ? ui.joinCopy : ui.joinCopy.replace("淡江大學禪學社", displayClub)}
           <ZhHelper language={language}>{TEXT.zh.joinCopy}</ZhHelper>
         </p>
-        <button type="button" className="cta" onClick={onAgain}>{ui.tryAgain}</button>
-        <button type="button" className="cta secondary" onClick={onAgain}>{ui.home}</button>
+        <button type="button" className="cta" onClick={onAgain}>
+          {ui.tryAgain}
+        </button>
+        <button type="button" className="cta secondary" onClick={onAgain}>
+          {ui.home}
+        </button>
       </div>
     </section>
   );

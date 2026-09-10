@@ -16,10 +16,24 @@ export const SWITCH_MIN = 1400;
 export const SWITCH_MAX = 4500;
 
 export const SPEED_PRESETS = [
-  { id: "slow", label: "慢", hint: "4.5 秒換規則", switchMs: 4500, comboEvery: 5, tapLockMs: 90 },
-  { id: "normal", label: "一般", hint: "3 秒換規則", switchMs: 3000, comboEvery: 3, tapLockMs: 64 },
-  { id: "fast", label: "快", hint: "2 秒換規則", switchMs: 2000, comboEvery: 3, tapLockMs: 55 },
-  { id: "rush", label: "極快", hint: "1.4 秒換規則", switchMs: 1400, comboEvery: 2, tapLockMs: 48 },
+  { id: "slow", label: "慢", hint: "每答一題換規則", switchMs: 4500, comboEvery: 5, tapLockMs: 90 },
+  {
+    id: "normal",
+    label: "一般",
+    hint: "每答一題換規則",
+    switchMs: 3000,
+    comboEvery: 3,
+    tapLockMs: 64,
+  },
+  { id: "fast", label: "快", hint: "每答一題換規則", switchMs: 2000, comboEvery: 3, tapLockMs: 55 },
+  {
+    id: "rush",
+    label: "極快",
+    hint: "每答一題換規則",
+    switchMs: 1400,
+    comboEvery: 2,
+    tapLockMs: 48,
+  },
 ];
 export const SPEED_OPTIONS = SPEED_PRESETS;
 export const START_MODE_OPTIONS = [
@@ -135,10 +149,7 @@ export const DEPARTMENT_GROUPS = [
   },
   {
     college: "國際學院",
-    items: [
-      "國際觀光管理學系全英語學士班",
-      "全球政治經濟學系全英語學士班",
-    ],
+    items: ["國際觀光管理學系全英語學士班", "全球政治經濟學系全英語學士班"],
   },
   {
     college: "理學院",
@@ -267,18 +278,8 @@ export function createLiveGame(now = Date.now(), opts = {}) {
   };
 }
 
-export function maybeTimedSwitch(game, now = Date.now()) {
+function switchModeAfterAnswer(game, now) {
   if (game.ended) return false;
-  const wait = Number(game.modeSwitchMs) > 0 ? Number(game.modeSwitchMs) : MODE_SWITCH_MS;
-  if (now - game.lastModeSwitch < wait) return false;
-  game.mode = game.mode === "meaning" ? "visual" : "meaning";
-  game.lastModeSwitch = now;
-  return true;
-}
-
-export function trySwitchMode(game, now = Date.now(), { force = false } = {}) {
-  if (game.ended) return false;
-  if (!force && game.combo < 3) return false;
   game.mode = game.mode === "meaning" ? "visual" : "meaning";
   game.lastModeSwitch = now;
   return true;
@@ -315,19 +316,15 @@ export function judgeAnswer(game, chosen, snapshot, now = Date.now()) {
   }
   game.questionSeq += 1;
   game.question = nextQuestion(game.question);
-  const every = Number(game.comboEvery) > 0 ? Number(game.comboEvery) : 3;
-  if (hit && game.combo > 0 && game.combo % every === 0) {
-    trySwitchMode(game, now, { force: true });
-  }
-  return { ok: true, hit, expected, score: game.score, combo: game.combo, delta };
+  const switched = switchModeAfterAnswer(game, now);
+  return { ok: true, hit, expected, score: game.score, combo: game.combo, delta, switched };
 }
 
 export function tickGame(game, now = Date.now()) {
   const remaining = remainingSeconds(game, now);
-  const switched = remaining > 0 ? maybeTimedSwitch(game, now) : false;
   const expired = remaining <= 0;
   if (expired) game.ended = true;
-  return { remaining, switched, expired };
+  return { remaining, switched: false, expired };
 }
 
 export function emptyPlayer() {
@@ -353,7 +350,8 @@ export function validatePlayer(player) {
   if (!name) errors.name = "請填寫姓名";
   else if (!NAME_RE.test(name)) errors.name = "請填 1–20 字的真實姓名";
   if (!department) errors.department = "請選擇淡江科系";
-  else if (!DEPARTMENT_LIST.includes(department) && department !== "現場試玩") errors.department = "請從名單選擇淡江科系";
+  else if (!DEPARTMENT_LIST.includes(department) && department !== "現場試玩")
+    errors.department = "請從名單選擇淡江科系";
   if (!grade) errors.grade = "請選擇年級";
   else if (!GRADE_LIST.includes(grade)) errors.grade = "請選擇年級";
   if (!phone) errors.phone = "請填寫手機";
