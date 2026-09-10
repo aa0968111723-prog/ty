@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   COMBO_BONUS_AT,
   GAME_DURATION,
+  GRADE_LIST,
   GUEST_PLAYER,
   HIT_SCORE,
   COMBO_SCORE,
@@ -108,6 +109,10 @@ describe("timer and mode", () => {
 });
 
 describe("titles validation leaderboard", () => {
+  it("excludes the extended study grade", () => {
+    assert.equal(GRADE_LIST.includes("延畢"), false);
+    assert.equal(GRADE_LIST.includes("碩士班"), true);
+  });
   it("thresholds", () => {
     assert.match(titleForScore(0), /心靈修煉者/);
     assert.match(titleForScore(1500), /潛力領袖/);
