@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "專注力挑戰賽";
+const APP_NAME = "Focus Challenge";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -18,7 +18,7 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#8ec8f0" },
       {
         name: "description",
-        content: "淡江大學禪學社社團博覽會：60 秒看指令選顏色。成績不在網站公開。",
+        content: "Tamkang University Zen Club: a 60-second Stroop focus challenge. Scores are not published online.",
       },
     ],
     links: [
@@ -30,7 +30,7 @@ export const Route = createRootRoute({
     ],
   }),
   component: () => (
-    <html lang="zh-Hant" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
