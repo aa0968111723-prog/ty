@@ -84,7 +84,6 @@ No P0/P2 source copy bugs confirmed this round. Did **not** rewrite strings.
 Notes (watch next round, do not change yet):
 
 - Grade `博士班` English is `Doctoral` vs `Master's` for 碩士班 — slightly uneven, not broken.
-- `延畢` = `Extended study` is acceptable; official campus English sometimes uses “extended study year”.
 - `html lang` starts as `en` in `__root.tsx` and is updated in an effect. Correct for default English.
 - `joinCopy` is in-app booth copy, not new marketing slogans. MARKETING_COPY_INPUT still waiting.
 
