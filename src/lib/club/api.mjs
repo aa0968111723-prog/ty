@@ -81,35 +81,60 @@ export async function handleRegister(request) {
   return json({ ok: true, clubName: CLUB_NAME, player: parsed.data });
 }
 
-function sheetUrl() {
-  const value = String(process.env.GOOGLE_SCRIPT_URL ?? "").trim();
+function configuredValue(name) {
+  const value = String(process.env[name] ?? "").trim();
   return value || null;
 }
 
+function normalizeScriptUrl(value) {
+  if (!value) return null;
+  const markdown = value.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
+  if (markdown && markdown[1] === markdown[2]) return markdown[2];
+  return value;
+}
+
+function sheetConfig() {
+  return {
+    url: normalizeScriptUrl(configuredValue("GOOGLE_SCRIPT_URL")),
+    password: configuredValue("PASSWORD"),
+    sheetId: configuredValue("GOOGLE_SHEET_ID"),
+    sheetTab: configuredValue("GOOGLE_SHEET_TAB"),
+  };
+}
+
+function sheetUrl() {
+  return sheetConfig().url;
+}
+
 async function appendOfficialResult(row) {
-  const url = sheetUrl();
-  if (!url) return false;
+  const config = sheetConfig();
+  if (!config.url) return false;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SHEET_TIMEOUT_MS);
   try {
-    const response = await fetch(url, {
+    const payload = {
+      name: row.name,
+      department: row.department,
+      grade: row.grade,
+      phone: row.phone,
+      score: row.score,
+      correct: row.correct,
+      wrong: row.wrong,
+      accuracy: row.accuracy,
+      maxCombo: row.maxCombo,
+      title: row.title,
+      duration: row.duration,
+      submissionId: row.submissionId,
+    };
+    if (config.password) payload.password = config.password;
+    if (config.sheetId) payload.sheetId = config.sheetId;
+    if (config.sheetTab) payload.sheetTab = config.sheetTab;
+
+    const response = await fetch(config.url, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name: row.name,
-        department: row.department,
-        grade: row.grade,
-        phone: row.phone,
-        score: row.score,
-        correct: row.correct,
-        wrong: row.wrong,
-        accuracy: row.accuracy,
-        maxCombo: row.maxCombo,
-        title: row.title,
-        duration: row.duration,
-        submissionId: row.submissionId,
-      }),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
     if (!response.ok) return false;

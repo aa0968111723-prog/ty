@@ -63,9 +63,15 @@ describe("api", () => {
 
   it("sends official results to the server-side sheet connector", async () => {
     const previousUrl = process.env.GOOGLE_SCRIPT_URL;
+    const previousSheetId = process.env.GOOGLE_SHEET_ID;
+    const previousSheetTab = process.env.GOOGLE_SHEET_TAB;
+    const previousPassword = process.env.PASSWORD;
     const previousFetch = globalThis.fetch;
     const calls = [];
-    process.env.GOOGLE_SCRIPT_URL = "https://example.test/sheet";
+    process.env.GOOGLE_SCRIPT_URL = "[https://example.test/sheet](https://example.test/sheet)";
+    process.env.GOOGLE_SHEET_ID = "sheet-id";
+    process.env.GOOGLE_SHEET_TAB = "國際生專區";
+    process.env.PASSWORD = "sheet-password";
     globalThis.fetch = async (url, options) => {
       calls.push({ url, options });
       return new Response(JSON.stringify({ ok: true }), {
@@ -91,14 +97,23 @@ describe("api", () => {
       assert.equal(data.sheetsConfigured, true);
       assert.equal(data.sheetsOk, true);
       assert.equal(calls.length, 1);
-      assert.equal(calls[0].url, "https://example.test/sheet");
       const sent = JSON.parse(calls[0].options.body);
+      assert.equal(calls[0].url, "https://example.test/sheet");
       assert.equal(sent.phone, "0968111723");
       assert.equal(sent.submissionId, "sheet-sub-1");
+      assert.equal(sent.password, "sheet-password");
+      assert.equal(sent.sheetId, "sheet-id");
+      assert.equal(sent.sheetTab, "國際生專區");
     } finally {
       globalThis.fetch = previousFetch;
       if (previousUrl === undefined) delete process.env.GOOGLE_SCRIPT_URL;
       else process.env.GOOGLE_SCRIPT_URL = previousUrl;
+      if (previousSheetId === undefined) delete process.env.GOOGLE_SHEET_ID;
+      else process.env.GOOGLE_SHEET_ID = previousSheetId;
+      if (previousSheetTab === undefined) delete process.env.GOOGLE_SHEET_TAB;
+      else process.env.GOOGLE_SHEET_TAB = previousSheetTab;
+      if (previousPassword === undefined) delete process.env.PASSWORD;
+      else process.env.PASSWORD = previousPassword;
     }
   });
 
