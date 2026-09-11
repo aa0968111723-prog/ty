@@ -99,8 +99,8 @@ describe("api", () => {
       assert.equal(calls.length, 1);
       const sent = JSON.parse(calls[0].options.body);
       assert.equal(calls[0].url, "https://example.test/sheet");
-      assert.equal(sent.phone, "0968111723");
-      assert.equal(sent.submissionId, "sheet-sub-1");
+      assert.equal(sent.row.phone, "0968111723");
+      assert.equal(sent.row.submissionId, "sheet-sub-1");
       assert.equal(sent.password, "sheet-password");
       assert.equal(sent.sheetId, "sheet-id");
       assert.equal(sent.sheetTab, "國際生專區");

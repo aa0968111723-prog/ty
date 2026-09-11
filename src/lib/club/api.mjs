@@ -113,7 +113,7 @@ async function appendOfficialResult(row) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SHEET_TIMEOUT_MS);
   try {
-    const payload = {
+    const rowPayload = {
       name: row.name,
       department: row.department,
       grade: row.grade,
@@ -127,6 +127,7 @@ async function appendOfficialResult(row) {
       duration: row.duration,
       submissionId: row.submissionId,
     };
+    const payload = { row: rowPayload };
     if (config.password) payload.password = config.password;
     if (config.sheetId) payload.sheetId = config.sheetId;
     if (config.sheetTab) payload.sheetTab = config.sheetTab;
