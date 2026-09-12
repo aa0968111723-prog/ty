@@ -758,7 +758,6 @@ function BoothApp() {
                 setErrors((e) => ({ ...e, [key]: undefined }));
               }}
               onStart={startChallenge}
-              onTryPlay={startGuest}
             />
           </section>
         ) : null}
@@ -869,7 +868,6 @@ function RegisterScreen({
   settings,
   onChange,
   onStart,
-  onTryPlay,
 }: {
   language: Language;
   onLanguage: (language: Language) => void;
@@ -879,7 +877,6 @@ function RegisterScreen({
   settings: GameSettings;
   onChange: (key: keyof Player, value: string) => void;
   onStart: () => void;
-  onTryPlay: () => void;
 }) {
   const ui = TEXT[language];
   const official = isOfficialSettings(settings);
