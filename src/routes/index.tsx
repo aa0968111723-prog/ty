@@ -60,7 +60,12 @@ function BoothApp() {
   const gameRef = useRef(createLiveGame(0, { skipSave: true }));
   const playerRef = useRef(player);
   const startingRef = useRef(false);
-  const pressRef = useRef<{ id: ColorId; mode: string; seq: number } | null>(null);
+  const pressRef = useRef<{
+    id: ColorId;
+    mode: string;
+    seq: number;
+    pointerId: number;
+  } | null>(null);
   const moodTimer = useRef(0);
   const audioRef = useRef<AudioContext | null>(null);
   const popId = useRef(0);
@@ -459,27 +464,30 @@ function BoothApp() {
                     data-color={c.id}
                     disabled={g.ended}
                     onPointerDown={(event) => {
-                      if (event.button !== 0 || !event.isPrimary) {
-                        pressRef.current = null;
-                        return;
-                      }
-                      pressRef.current = { id: c.id as ColorId, mode: g.mode, seq: g.questionSeq };
+                      if (event.button !== 0 || !event.isPrimary) return;
+                      pressRef.current = {
+                        id: c.id as ColorId,
+                        mode: g.mode,
+                        seq: g.questionSeq,
+                        pointerId: event.pointerId,
+                      };
                     }}
                     onPointerUp={(event) => {
                       const press = pressRef.current;
-                      pressRef.current = null;
                       if (
                         event.button !== 0 ||
                         !event.isPrimary ||
                         !press ||
+                        press.pointerId !== event.pointerId ||
                         press.id !== c.id
                       )
                         return;
+                      pressRef.current = null;
                       event.preventDefault();
                       answer(c.id as ColorId, { mode: press.mode, seq: press.seq });
                     }}
-                    onPointerCancel={() => {
-                      pressRef.current = null;
+                    onPointerCancel={(event) => {
+                      if (pressRef.current?.pointerId === event.pointerId) pressRef.current = null;
                     }}
                   >
                     {colorName(c.id as ColorId, language)}

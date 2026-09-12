@@ -264,17 +264,50 @@ test(
         await page.locator(".ans").first().focus();
         await page.keyboard.press("Enter");
         assert.deepEqual(await state(), initial, "button keys must not answer");
-        await page.locator(`.ans[data-color="${colors[correctLabel]}"]`).tap();
+        const correctAnswer = page.locator(`.ans[data-color="${colors[correctLabel]}"]`);
+        await correctAnswer.dispatchEvent("pointerdown", {
+          button: 0,
+          isPrimary: true,
+          pointerId: 41,
+          pointerType: "touch",
+        });
+        await page.locator(".ans").first().dispatchEvent("pointerdown", {
+          button: 0,
+          isPrimary: false,
+          pointerId: 42,
+          pointerType: "touch",
+        });
+        await page.locator(".ans").first().dispatchEvent("pointerup", {
+          button: 0,
+          isPrimary: false,
+          pointerId: 42,
+          pointerType: "touch",
+        });
+        await correctAnswer.dispatchEvent("pointerup", {
+          button: 0,
+          isPrimary: true,
+          pointerId: 41,
+          pointerType: "touch",
+        });
         assert.equal((await state()).score, 100);
+        await page.clock.runFor(100);
+        const touchLabel = await page.locator(".stroop").innerText();
+        const beforeTouch = await state();
+        await page.locator(`.ans[data-color="${colors[touchLabel]}"]`).tap();
+        const afterTouch = await state();
+        assert.equal(afterTouch.seq, beforeTouch.seq + 1, "touch must answer");
         await page.clock.runFor(100);
         const beforeClick = await state();
         await page.locator(".ans").first().click();
         assert.equal((await state()).seq, beforeClick.seq + 1, "primary mouse click must answer");
         await page.clock.runFor(100);
         const before = await state();
-        await page.locator(".ans").first().dblclick({ delay: 0 });
+        const box = await page.locator(".ans").first().boundingBox();
+        assert.ok(box);
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
         const after = await state();
-        assert.equal(after.seq, before.seq + 1, "double event cannot score a second time");
+        assert.equal(after.seq, before.seq + 1, "double tap cannot score a second time");
         await page.clock.fastForward(60000);
         await page.locator("[data-screen=result]").waitFor();
         await capture(page, "result-mobile");
