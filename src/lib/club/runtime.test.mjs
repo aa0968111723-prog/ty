@@ -4,6 +4,8 @@ import { describe, it } from "node:test";
 import {
   COMBO_BONUS_AT,
   GAME_DURATION,
+  WARMUP_DURATION,
+  DEFAULT_SETTINGS,
   GRADE_LIST,
   GUEST_PLAYER,
   HIT_SCORE,
@@ -19,6 +21,7 @@ import {
   titleForScore,
   validatePlayer,
   createLiveGame,
+  createWarmupGame,
   clampSettings,
   correctId,
 } from "./runtime.mjs";
@@ -30,6 +33,74 @@ describe("stroop question", () => {
       const q = nextQuestion(prev);
       assert.notEqual(q.meaning.id, q.visual.id);
       prev = q;
+    }
+  });
+});
+
+describe("pre-official warm-up", () => {
+  it("uses exactly 15 seconds and official rules without changing saved settings", () => {
+    const settings = { ...DEFAULT_SETTINGS, duration: 90, speed: "rush", sound: false };
+    const g = createWarmupGame(1_000, settings);
+    assert.equal(g.kind, "warmup");
+    assert.equal(g.skipSave, true);
+    assert.equal(g.duration, WARMUP_DURATION);
+    assert.equal(g.settings.speed, "normal");
+    assert.equal(g.mode, "meaning");
+    assert.equal(g.settings.sound, false);
+    assert.equal(settings.duration, 90);
+    assert.equal(tickGame(g, 15_999).expired, false);
+    assert.equal(tickGame(g, 16_000).expired, true);
+    assert.equal(judgeAnswer(g, correctId(g), undefined, 16_001).ok, false);
+    assert.equal(publicResult(g, GUEST_PLAYER).skipSave, true);
+  });
+
+  it("rejects answers at the warm-up deadline even before the next timer tick", () => {
+    const g = createWarmupGame(1_000);
+    assert.equal(judgeAnswer(g, correctId(g), undefined, 16_000).reason, "expired");
+    assert.equal(g.score, 0);
+  });
+
+  it("keeps scores, combos, timers and submission IDs isolated on retry and official start", () => {
+    const warmup = createWarmupGame(1_000);
+    for (let i = 1; i <= 5; i += 1) {
+      judgeAnswer(warmup, correctId(warmup), undefined, 1_000 + i * 100);
+    }
+    assert.equal(warmup.score, 600);
+    assert.equal(warmup.combo, 5);
+    tickGame(warmup, 16_000);
+    warmup.resultSubmitted = true;
+    const retry = createWarmupGame(20_000);
+    const official = createLiveGame(40_000);
+    assert.equal(new Set([warmup.submissionId, retry.submissionId, official.submissionId]).size, 3);
+    for (const g of [retry, official]) {
+      assert.equal(g.score, 0);
+      assert.equal(g.combo, 0);
+      assert.equal(g.maxCombo, 0);
+      assert.equal(g.correct, 0);
+      assert.equal(g.wrong, 0);
+      assert.equal(g.questionSeq, 1);
+      assert.equal(g.lastAnswerAt, 0);
+      assert.equal(g.mode, "meaning");
+      assert.equal(g.ended, false);
+      assert.equal(g.resultSubmitted, false);
+    }
+    assert.equal(official.kind, "official");
+    assert.equal(official.skipSave, false);
+    assert.equal(official.duration, GAME_DURATION);
+    assert.equal(tickGame(official, 99_999).expired, false);
+    assert.equal(tickGame(official, 100_000).expired, true);
+    assert.equal(warmup.score, 600);
+  });
+
+  it("keeps guest and custom-settings practice separate from pre-official warm-up", () => {
+    for (const opts of [
+      { skipSave: true },
+      { settings: { duration: 30 } },
+      { settings: { speed: "rush" } },
+    ]) {
+      const g = createLiveGame(0, opts);
+      assert.equal(g.kind, "practice");
+      assert.equal(g.skipSave, true);
     }
   });
 });

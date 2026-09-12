@@ -5,3 +5,6 @@ node_modules/
 .github_repo
 .env
 .env.*
+.grok/preview.log
+.grok/preview.pid
+npm-ci.log

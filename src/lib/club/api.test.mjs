@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { handleHealth, handleLeaderboard, handleRegister, handleResult } from "./api.mjs";
+import { createLiveGame, createWarmupGame, GUEST_PLAYER, publicResult } from "./runtime.mjs";
 
 const jsonReq = (url, body) =>
   new Request(url, {
@@ -169,5 +170,37 @@ describe("api", () => {
       }),
     );
     assert.equal(res.status, 400);
+  });
+
+  it("never forwards warm-up, guest or custom practice results to the sheet connector", async () => {
+    const previousUrl = process.env.GOOGLE_SCRIPT_URL;
+    const previousFetch = globalThis.fetch;
+    const calls = [];
+    process.env.GOOGLE_SCRIPT_URL = "https://example.test/sheet";
+    globalThis.fetch = async (...args) => {
+      calls.push(args);
+      return new Response(JSON.stringify({ ok: true }));
+    };
+    try {
+      for (const game of [
+        createWarmupGame(0),
+        createLiveGame(0, { skipSave: true }),
+        createLiveGame(0, { settings: { duration: 30 } }),
+        createLiveGame(0, { settings: { speed: "rush" } }),
+      ]) {
+        const response = await handleResult(
+          jsonReq("http://x/api/result", publicResult(game, GUEST_PLAYER)),
+        );
+        assert.equal(response.status, 200);
+        const data = await response.json();
+        assert.equal(data.saved, false);
+        assert.equal(data.sheetsOk, false);
+      }
+      assert.equal(calls.length, 0);
+    } finally {
+      globalThis.fetch = previousFetch;
+      if (previousUrl === undefined) delete process.env.GOOGLE_SCRIPT_URL;
+      else process.env.GOOGLE_SCRIPT_URL = previousUrl;
+    }
   });
 });
