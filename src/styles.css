@@ -616,12 +616,6 @@
   background: var(--answer-yellow);
   color: var(--text-primary);
 }
-.keys-hint {
-  text-align: center;
-  color: var(--text-muted);
-  font-size: var(--text-caption);
-  margin-top: var(--space-4);
-}
 .result-content {
   max-width: 600px;
   margin: auto;
@@ -785,9 +779,6 @@
   }
   .mode-card small {
     font-size: var(--text-small);
-  }
-  .keys-hint {
-    display: none;
   }
   .ans {
     min-height: 72px;

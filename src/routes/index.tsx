@@ -10,7 +10,6 @@ import {
 import {
   COLORS,
   DEFAULT_SETTINGS,
-  colorByKey,
   correctId,
   createLiveGame,
   createWarmupGame,
@@ -225,22 +224,6 @@ function BoothApp() {
     },
     [bumpMood, endGame, cue],
   );
-
-  useEffect(() => {
-    if (screen !== "game") return undefined;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) {
-        if (e.key === "Enter" || e.key === " " || colorByKey(e.key)) e.preventDefault();
-        return;
-      }
-      const id = colorByKey(e.key) as ColorId | null;
-      if (!id) return;
-      e.preventDefault();
-      answer(id);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [screen, answer]);
 
   const playAgain = useCallback(() => {
     startingRef.current = false;
@@ -488,15 +471,11 @@ function BoothApp() {
                     onPointerCancel={() => {
                       pressRef.current = null;
                     }}
-                    onClick={(event) => {
-                      if (event.detail === 0) answer(c.id as ColorId);
-                    }}
                   >
                     {colorName(c.id as ColorId, language)}
                   </button>
                 ))}
               </div>
-              <p className="keys-hint">{TEXT[language].keyHint}</p>
             </div>
           </section>
         ) : null}

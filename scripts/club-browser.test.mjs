@@ -212,9 +212,13 @@ test(
       await context.close();
     });
     await t.test(
-      "warmup, keyboard/pointer scoring, expiry, retry and reload keep a single entry ID",
+      "warmup, pointer-only scoring, expiry, retry and reload keep a single entry ID",
       async () => {
-        const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+        const context = await browser.newContext({
+          viewport: { width: 390, height: 844 },
+          isMobile: true,
+          hasTouch: true,
+        });
         const page = await context.newPage();
         await page.route("**/*", (route) =>
           new URL(route.request().url()).origin !== origin
@@ -249,22 +253,17 @@ test(
             score: Number(document.querySelector("[data-score]").textContent),
             seq: Number(document.querySelector("[data-seq]").getAttribute("data-seq")),
           }));
-        const correctKey = await page.locator(".stroop").innerText();
+        const correctLabel = await page.locator(".stroop").innerText();
+        const colors = { 紅: "red", 藍: "blue", 綠: "green", 黃: "yellow" };
         const keys = { 紅: "1", 藍: "2", 綠: "3", 黃: "4" };
-        await page.keyboard.press(keys[correctKey]);
-        assert.equal((await state()).score, 100);
-        await page.clock.runFor(100);
+        const initial = await state();
+        await page.keyboard.press(keys[correctLabel]);
+        assert.deepEqual(await state(), initial, "number keys must not answer");
         await page.locator(".ans").first().focus();
-        await page.keyboard.down("Enter");
-        const entered = await state();
-        await page.clock.runFor(100);
-        await page.keyboard.down("Enter");
-        assert.equal(
-          (await state()).seq,
-          entered.seq,
-          "holding Enter must not activate subsequent answers",
-        );
-        await page.keyboard.up("Enter");
+        await page.keyboard.press("Enter");
+        assert.deepEqual(await state(), initial, "button keys must not answer");
+        await page.locator(`.ans[data-color="${colors[correctLabel]}"]`).tap();
+        assert.equal((await state()).score, 100);
         await page.clock.runFor(100);
         const before = await state();
         await page.locator(".ans").first().dblclick({ delay: 0 });
