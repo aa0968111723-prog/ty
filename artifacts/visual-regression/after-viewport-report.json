@@ -1,0 +1,132 @@
+{
+  "origin": "http://127.0.0.1:8080",
+  "label": "after",
+  "widths": {
+    "360": {
+      "register": {
+        "overflow": false,
+        "title": "淡江大學禪學社｜專注力挑戰賽",
+        "screenshot": null
+      },
+      "adminPinned": {
+        "overflow": false,
+        "widgets": 4,
+        "screenshot": null
+      },
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    "375": {
+      "register": {
+        "overflow": false,
+        "title": "淡江大學禪學社｜專注力挑戰賽",
+        "screenshot": null
+      },
+      "adminPinned": {
+        "overflow": false,
+        "widgets": 4,
+        "screenshot": null
+      },
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    "390": {
+      "register": {
+        "overflow": false,
+        "title": "淡江大學禪學社｜專注力挑戰賽",
+        "screenshot": "/home/runner/work/ty/ty/artifacts/visual-regression/after-register-390.png"
+      },
+      "adminPinned": {
+        "overflow": false,
+        "widgets": 4,
+        "screenshot": "/home/runner/work/ty/ty/artifacts/visual-regression/after-admin-pinned-390.png"
+      },
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    "412": {
+      "register": {
+        "overflow": false,
+        "title": "淡江大學禪學社｜專注力挑戰賽",
+        "screenshot": null
+      },
+      "adminPinned": {
+        "overflow": false,
+        "widgets": 4,
+        "screenshot": null
+      },
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    "430": {
+      "register": {
+        "overflow": false,
+        "title": "淡江大學禪學社｜專注力挑戰賽",
+        "screenshot": null
+      },
+      "adminPinned": {
+        "overflow": false,
+        "widgets": 4,
+        "screenshot": null
+      },
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    "768": {
+      "register": {
+        "overflow": false,
+        "title": "淡江大學禪學社｜專注力挑戰賽",
+        "screenshot": null
+      },
+      "adminPinned": {
+        "overflow": false,
+        "widgets": 4,
+        "screenshot": null
+      },
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    "1024": {
+      "register": {
+        "overflow": false,
+        "title": "淡江大學禪學社｜專注力挑戰賽",
+        "screenshot": null
+      },
+      "adminPinned": {
+        "overflow": false,
+        "widgets": 4,
+        "screenshot": null
+      },
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    "1280": {
+      "register": {
+        "overflow": false,
+        "title": "淡江大學禪學社｜專注力挑戰賽",
+        "screenshot": "/home/runner/work/ty/ty/artifacts/visual-regression/after-register-1280.png"
+      },
+      "adminPinned": {
+        "overflow": false,
+        "widgets": 4,
+        "screenshot": "/home/runner/work/ty/ty/artifacts/visual-regression/after-admin-pinned-1280.png"
+      },
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    "1440": {
+      "register": {
+        "overflow": false,
+        "title": "淡江大學禪學社｜專注力挑戰賽",
+        "screenshot": null
+      },
+      "adminPinned": {
+        "overflow": false,
+        "widgets": 4,
+        "screenshot": null
+      },
+      "consoleErrors": [],
+      "pageErrors": []
+    }
+  }
+}
