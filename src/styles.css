@@ -188,7 +188,7 @@
 }
 
 .settings-mask {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 30;
   background: rgba(44, 36, 22, 0.42);
@@ -198,7 +198,7 @@
 }
 .settings-sheet {
   width: 100%;
-  max-height: min(92%, 740px);
+  max-height: min(92dvh, 740px);
   overflow: auto;
   overscroll-behavior: contain;
   background: var(--color-paper);
