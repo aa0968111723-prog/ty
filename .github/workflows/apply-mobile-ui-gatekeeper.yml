@@ -24,7 +24,7 @@ jobs:
       - run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
       - run: npx prettier --write src/routes/index.tsx src/styles.css src/lib/club/runtime.mjs src/lib/club/runtime.d.ts src/lib/club/api.mjs src/lib/club/api.test.mjs src/lib/club/runtime.test.mjs
       - run: npm run typecheck
-      - run: npm test
+      - run: node --test src/lib/club/runtime.test.mjs src/lib/club/api.test.mjs
       - run: npm run build:dev
       - name: Commit applied patch
         run: |
