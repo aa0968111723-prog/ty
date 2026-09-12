@@ -5,7 +5,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 16px;
+  padding: 12px 16px;
   background: var(--color-paper);
 }
 .club-brand { display: flex; align-items: center; gap: 8px; color: var(--color-ink); text-decoration: none; font-weight: 800; }
@@ -17,12 +17,12 @@
 .club-header .language-toggle button { min-height: 44px; padding: 4px 8px; }
 .club-header .language-toggle button.is-active { background: var(--color-moss); color: var(--color-paper); }
 .hero-subtitle { font-size: 13px; margin: 0; }
-.challenge-rules { padding: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.rule-chip { display: flex; align-items: center; gap: 8px; padding: 12px 8px; border: 1px solid var(--color-wood); border-radius: 12px; color: var(--color-moss); }
+.challenge-rules { padding: 12px 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; background: #fbf2e0; border-block: 1px solid rgba(44, 36, 22, 0.07); }
+.rule-chip { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid rgba(44, 36, 22, 0.1); border-radius: 14px; background: #fffdf8; color: var(--color-moss); box-shadow: 0 1px 2px rgba(44, 36, 22, 0.05); }
 .rule-chip svg { flex-shrink: 0; }
-.rule-chip span { font-size: 11px; color: var(--color-muted); }
+.rule-chip span { font-size: 11px; font-weight: 600; color: var(--color-muted); }
 .rule-chip strong { display: block; color: var(--color-ink); font-size: 13px; }
-.rule-score { grid-column: 1 / -1; margin: 4px 0 0; font-size: 12px; color: var(--color-muted); text-align: center; }
+.rule-score { grid-column: 1 / -1; margin: 2px 0 0; font-size: 12px; font-weight: 600; color: var(--color-muted); text-align: center; }
 .form-kicker h2 span { display: block; font: 12px var(--font-sans); color: var(--color-moss); margin: 4px 0; }
 .pending-result { padding: 16px; background: var(--color-paper); color: var(--color-ink); border-bottom: 2px solid var(--color-wood); flex-shrink: 0; }
 .pending-result p { font-size: 13px; margin: 8px 0; }
@@ -117,7 +117,7 @@
 .scene-hero {
   position: relative;
   margin: 0;
-  height: clamp(120px, 20svh, 176px);
+  height: clamp(160px, 26svh, 224px);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -125,7 +125,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 18%;
+  object-position: 50% 30%;
   display: block;
 }
 .scene-hero-overlay {
@@ -136,8 +136,9 @@
   justify-content: flex-end;
   gap: 4px;
   padding: max(10px, env(safe-area-inset-top)) 16px 12px;
-  background: linear-gradient(180deg, rgba(44, 36, 22, 0.05) 8%, rgba(44, 36, 22, 0.72) 100%);
+  background: linear-gradient(180deg, rgba(44, 36, 22, 0) 38%, rgba(44, 36, 22, 0.42) 72%, rgba(44, 36, 22, 0.66) 100%);
   color: #fffdf8;
+  text-shadow: 0 1px 12px rgba(44, 36, 22, 0.35);
 }
 .eyebrow {
   margin: 0;
@@ -178,7 +179,7 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 14px 16px 12px;
+  padding: 16px 16px 12px;
 }
 .form-kicker {
   display: flex;
@@ -451,7 +452,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px 16px calc(88px + env(safe-area-inset-bottom));
+  padding: 10px 16px calc(24px + env(safe-area-inset-bottom));
   background: var(--color-paper);
   box-shadow: 0 -8px 18px rgba(44, 36, 22, 0.06);
 }
@@ -701,8 +702,24 @@ html.is-keyboard .cta-dock {
 .turtle-cheer {
   animation: wiggle 420ms ease;
 }
+.turtle-wave .turtle-hand {
+  animation: turtleWave 560ms ease-in-out;
+  transform-origin: 24px 13px;
+}
 .turtle-surprise {
   animation: recoil 280ms ease;
+}
+@keyframes turtleWave {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30% {
+    transform: rotate(-22deg);
+  }
+  65% {
+    transform: rotate(12deg);
+  }
 }
 @keyframes breathe {
   0%,
@@ -1065,13 +1082,13 @@ html.is-keyboard .cta-dock {
 :root {
   --responsive-gutter: clamp(16px, 3vw, 32px);
   --shell-max-tablet: 720px;
-  --shell-max-desktop: 1040px;
+  --shell-max-desktop: 1120px;
   --result-max: 680px;
 }
 
 @media (max-width: 359px) {
   .scene-hero {
-    height: 136px;
+    height: 160px;
   }
 
   .scene-hero-overlay {
@@ -1125,6 +1142,10 @@ html.is-keyboard .cta-dock {
 
   .scene-hero {
     height: clamp(180px, 24svh, 240px);
+  }
+
+  .scene-hero img {
+    object-position: 50% 26%;
   }
 
   .sheet-register {
@@ -1235,27 +1256,42 @@ html.is-keyboard .cta-dock {
 
   .register-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.12fr) minmax(360px, 0.88fr);
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     min-height: 0;
+  }
+
+  .club-header {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .scene-hero {
     grid-column: 1;
-    grid-row: 1 / span 2;
+    grid-row: 1 / -1;
     height: auto;
     min-height: 100%;
   }
 
+  .scene-hero img {
+    object-position: 50% 26%;
+  }
+
+  .challenge-rules {
+    grid-column: 2;
+    grid-row: 2;
+    padding: 12px 36px;
+  }
+
   .sheet-register {
     grid-column: 2;
-    grid-row: 1;
-    padding: 32px 36px 16px;
+    grid-row: 3;
+    padding: 20px 36px 16px;
   }
 
   .cta-dock {
     grid-column: 2;
-    grid-row: 2;
+    grid-row: 4;
     padding: 12px 36px calc(24px + env(safe-area-inset-bottom));
     box-shadow: none;
   }
@@ -1447,7 +1483,7 @@ html.is-keyboard .cta-dock {
     min-height: var(--app-h, 100dvh);
   }
   .scene-hero {
-    height: 184px;
+    height: 200px;
   }
   .scene-hero-overlay {
     gap: 3px;
