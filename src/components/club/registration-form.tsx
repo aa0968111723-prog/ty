@@ -193,22 +193,6 @@ export function RegisterScreen({
                 : "Your details are only used for this event. Scores stay private."}
             </p>
           </div>
-          <details className="activity-details">
-            <summary>
-              {language === "zh" ? "115-1 期初茶會 · 活動文宣" : "Welcome gathering · Event poster"}
-            </summary>
-            <a href="/club-event-115-1.png" target="_blank" rel="noreferrer">
-              <img
-                src="/club-event-115-1.png"
-                alt={
-                  language === "zh"
-                    ? "115-1 禪學社期初茶會：9/30 19:00–21:30，工學大樓 E305"
-                    : "Zen Club gathering: September 30, 19:00–21:30, Engineering Building E305"
-                }
-                loading="lazy"
-              />
-            </a>
-          </details>
         </div>
       </form>
       {openAdmin ? (
