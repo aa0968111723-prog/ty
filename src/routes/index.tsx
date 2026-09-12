@@ -7,7 +7,6 @@ import { Settings, ShieldCheck, Timer, ArrowRightLeft } from "lucide-react";
 import { clearPendingResult, readPendingResult, storePendingResult } from "@/lib/club/pending-result.mjs";
 import {
   COLORS,
-  CLUB_NAME,
   DEFAULT_SETTINGS,
   DEPARTMENT_GROUPS,
   GRADE_LIST,
@@ -53,7 +52,6 @@ type SaveKind = "idle" | "ok" | "guest" | "local" | "fail";
 
 const TEXT = {
   en: {
-    expo: "Tamkang University Zen Club · Club Expo",
     title: "Focus Challenge",
     factSeconds: "60 seconds",
     factInstruction: "Read the rule · tap the color",
@@ -122,11 +120,8 @@ const TEXT = {
     saving: "Saving your score…",
     tryAgain: "Try again",
     home: "Back to start",
-    joinCopy:
-      "Want to build focus and self-awareness? Come visit the Tamkang University Zen Club. Bubble-tea winners are announced on site; scores are not published online.",
   },
   zh: {
-    expo: "淡江大學禪學社 · 社團博覽會",
     title: "專注力挑戰賽",
     factSeconds: "60 秒",
     factInstruction: "看指令選顏色",
@@ -195,8 +190,6 @@ const TEXT = {
     saving: "成績傳送中…",
     tryAgain: "重新挑戰",
     home: "回首頁",
-    joinCopy:
-      "想更認識自己、練習專注與表達，歡迎來淡江大學禪學社坐坐。手搖杯得獎現場公布，網站不公開成績。",
   },
 } as const;
 
@@ -334,10 +327,6 @@ function resultBlurb(title: string, language: Language, duration: number, fallba
   return (BLURBS_EN[title] ?? fallback).replace("60 seconds", String(duration) + " seconds");
 }
 
-function clubName(club: string, language: Language) {
-  return language === "zh" ? club : "Tamkang University Zen Club";
-}
-
 function saveText(kind: SaveKind, language: Language) {
   if (kind === "idle") return TEXT[language].saving;
   if (kind === "guest") {
@@ -414,7 +403,6 @@ function BoothApp() {
   const [pending, setPending] = useState<ReturnType<typeof publicResult> | null>(null);
   const [retrying, setRetrying] = useState(false);
   const sendingRef = useRef(false);
-  const [club, setClub] = useState(CLUB_NAME);
   const settings = DEFAULT_SETTINGS;
   const [, setTick] = useState(0);
 
@@ -511,7 +499,6 @@ function BoothApp() {
       });
       const body = await response.json();
       if (!response.ok) throw new Error("Save failed");
-      if (body.clubName) setClub(body.clubName);
       if (body.sheetsOk === true) {
         try { clearPendingResult(sessionStorage, payload.submissionId); } catch { /* Storage unavailable. */ }
         setPending((current) => current?.submissionId === payload.submissionId ? null : current);
@@ -706,7 +693,6 @@ function BoothApp() {
     })
       .then(async (r) => {
         const d = await r.json().catch(() => ({}));
-        if (d.clubName) setClub(d.clubName);
       })
       .catch(() => {})
       .finally(() => {
@@ -839,7 +825,6 @@ function BoothApp() {
             player={player}
             game={g}
             save={save}
-            club={club}
             onAgain={playAgain}
             onContinue={continueOfficial}
             onPracticeAgain={retryWarmup}
@@ -893,9 +878,8 @@ function RegisterScreen({
       }}
     >
       <header className="club-header">
-        <a className="club-brand" href="/" aria-label={language === "zh" ? "禪學社首頁" : "Zen Club home"}>
+        <a className="club-brand" href="/" aria-label={language === "zh" ? "首頁" : "Home"}>
           <img src="/club-mark.svg" alt="" width="38" height="38" />
-          <span>{language === "zh" ? "淡江禪學社" : "TKU Zen Club"}<small>ZEN CLUB</small></span>
         </a>
         <div className="header-actions">
           <LanguageToggle language={language} onChange={onLanguage} />
@@ -915,8 +899,8 @@ function RegisterScreen({
           src="/scene-hero.jpg"
           alt={
             language === "en"
-              ? "Tamkang University Zen Club: turtle and students"
-              : "淡江禪學社：龜龜與同學"
+              ? "Turtle and students"
+              : "龜龜與同學"
           }
           width="880"
           height="400"
@@ -924,7 +908,6 @@ function RegisterScreen({
           decoding="async"
         />
         <figcaption className="scene-hero-overlay">
-          <p className="eyebrow">{ui.expo}</p>
           <h1 className="hero-title">{ui.title}</h1>
           <p className="hero-subtitle">{language === "zh" ? "讓心安定，讓專注發光。" : "A calm mind. A sharper focus."}</p>
         </figcaption>
@@ -1107,7 +1090,6 @@ function ResultScreen({
   player,
   game,
   save,
-  club,
   onAgain,
   onContinue,
   onPracticeAgain,
@@ -1117,7 +1099,6 @@ function ResultScreen({
   player: Player;
   game: ReturnType<typeof createLiveGame>;
   save: SaveKind;
-  club: string;
   onAgain: () => void;
   onContinue: () => void;
   onPracticeAgain: () => void;
@@ -1126,16 +1107,13 @@ function ResultScreen({
   const payload = publicResult(game, player);
   const title = resultTitle(payload.title, language);
   const blurb = resultBlurb(payload.title, language, payload.duration, payload.blurb);
-  const displayClub = clubName(club, language);
   const warmup = game.kind === "warmup";
 
   return (
     <section className="screen screen-result active">
       <div className="result-sheet" data-result="1">
         <div className="result-toolbar">
-          <div>
-            <p className="eyebrow">{displayClub}</p>
-          </div>
+          <div />
           <LanguageToggle language={language} onChange={onLanguage} />
         </div>
         <div className="score-xl" data-result-score>
@@ -1173,9 +1151,6 @@ function ResultScreen({
           <>
             <p className="save-note" data-save={save}>
               {saveText(save, language)}
-            </p>
-            <p className="join-copy">
-              {language === "en" ? ui.joinCopy : ui.joinCopy.replace("淡江大學禪學社", displayClub)}
             </p>
           </>
         ) : null}
