@@ -430,23 +430,6 @@
   flex-shrink: 0;
   margin-top: 2px;
 }
-.activity-details {
-  margin-top: var(--space-8);
-  border-top: 1px solid var(--border);
-  color: var(--text-secondary);
-  font-size: var(--text-small);
-}
-.activity-details summary {
-  padding: var(--space-4) 0;
-  min-height: 48px;
-}
-.activity-details img {
-  display: block;
-  max-width: 100%;
-  max-height: 560px;
-  margin: auto;
-  border-radius: var(--radius-sm);
-}
 .pending-result {
   padding: var(--space-5);
   background: var(--warning-soft);
