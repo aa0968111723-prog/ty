@@ -458,10 +458,6 @@
 html.is-keyboard .cta-dock {
   padding-bottom: 8px;
 }
-html.is-keyboard .cta-dock .privacy,
-html.is-keyboard .cta-dock .guest-link {
-  display: none;
-}
 .cta {
   height: 54px;
   border: 0;
@@ -473,20 +469,6 @@ html.is-keyboard .cta-dock .guest-link {
 }
 .cta:disabled {
   opacity: 0.6;
-}
-.privacy {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-muted);
-}
-.guest-link {
-  border: 0;
-  background: transparent;
-  color: var(--color-muted);
-  text-decoration: underline;
-  font-size: 13px;
-  min-height: 40px;
 }
 
 .lb {
@@ -1515,8 +1497,8 @@ html.is-keyboard .cta-dock .guest-link {
   .cta-dock {
     position: sticky;
     bottom: 0;
-    gap: 4px;
-    padding: 9px 16px calc(12px + env(safe-area-inset-bottom));
+    gap: 0;
+    padding: 9px 16px calc(24px + env(safe-area-inset-bottom));
     background: rgba(255, 248, 236, 0.96);
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
@@ -1526,14 +1508,6 @@ html.is-keyboard .cta-dock .guest-link {
     height: 52px;
     min-height: 52px;
   }
-  .privacy {
-    font-size: 11px;
-    line-height: 1.4;
-  }
-  .guest-link {
-    min-height: 36px;
-  }
-
   html.is-keyboard .scene-hero {
     display: none;
   }

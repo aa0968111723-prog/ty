@@ -85,11 +85,6 @@ const TEXT = {
     officialContinue: "Continue · Start official 60 seconds →",
     practiceStartPrefix: "Start ",
     practiceStartSuffix: "-second practice →",
-    privacyOfficial:
-      "Scores and prizes are never published online. Your phone number is used only to contact prize winners. Your information is used only for this event. Practice runs are not entered into the draw.",
-    privacyPractice:
-      "These practice settings are not eligible for the prize draw. Restore the official rules to enter.",
-    guest: "Try without registering (no prize draw)",
     settings: "Challenge settings",
     done: "Done",
     preview: "Preview",
@@ -163,10 +158,6 @@ const TEXT = {
     officialContinue: "繼續，開始正式 60 秒 →",
     practiceStartPrefix: "開始 ",
     practiceStartSuffix: " 秒練習 →",
-    privacyOfficial:
-      "成績與得獎都不會在網站公開。電話只用來聯絡得獎。資料只用於本次活動。試玩不登記、不抽獎。",
-    privacyPractice: "這次用的是練習設定，成績不會登記抽獎。要抽獎請先恢復正式規則。",
-    guest: "只想試玩，不登記也不抽獎",
     settings: "挑戰設定",
     done: "完成",
     preview: "預覽",
@@ -1114,10 +1105,6 @@ function RegisterScreen({
             : official
               ? ui.officialStart
               : ui.practiceStartPrefix + settings.duration + ui.practiceStartSuffix}
-        </button>
-        <p className="privacy">{official ? ui.privacyOfficial : ui.privacyPractice}</p>
-        <button type="button" className="guest-link" data-cta="guest" onClick={onTryPlay}>
-          {ui.guest}
         </button>
       </div>
     </form>
