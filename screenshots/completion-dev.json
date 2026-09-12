@@ -1,0 +1,40 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Focus Challenge",
+      "hasCanvas": false,
+      "bodyTextLen": 0,
+      "bodyTextHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bodyTextPrefix": "",
+      "horizontalOverflow": false,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+      ],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/completion-dev.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Focus Challenge",
+      "hasCanvas": false,
+      "bodyTextLen": 2656,
+      "bodyTextHash": "24e70c7b65e6abe0a6360fa25ee1f32db8f821d2f9015e4e55aa232a076d3cc5",
+      "bodyTextPrefix": "Tamkang University Zen Club · Club Expo 淡江大學禪學社 · 社團博覽會 Focus Ch",
+      "horizontalOverflow": false,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+      ],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/completion-dev-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/completion-dev.json"
+}
