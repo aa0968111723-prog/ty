@@ -51,8 +51,9 @@ Canonical：TanStack Start，`npm run dev` 綁定 0.0.0.0:8080。正式站用同
 - Cookie 使用 `__Host-`、HttpOnly、Secure、SameSite=Strict、Path=/，8 小時到期；正式部署必須 HTTPS。更換密碼或 session secret 會使既有 session 失效。登出清除瀏覽器 cookie。
 - 所有 `/api/admin/*` 資料端點要求有效 session，回應 private/no-store；登入、登出要求同源 Origin。個資與前三名不會出現在公開排行榜。
 - 統計使用 Asia/Taipei 日期；Google Form 與有效正式遊戲紀錄合併，姓名經 NFKC、移除空白與大小寫正規化後去重。重複姓名保留當日最新紀錄及其關主；試玩、練習、無效成績不計入。前三名是當日有效正式成績排序。
-- 伺服器設定 `GOOGLE_SCRIPT_URL`（HTTPS Apps Script web app URL）、`PASSWORD`（獨立連接器密碼）、`GOOGLE_SHEET_ID`、`GOOGLE_SHEET_TAB`（正式成績分頁）、`GOOGLE_FORM_SHEET_TAB`（表單回覆分頁）。所有變數均不可使用 `VITE_` 前綴。
-- 部署 `scripts/club-google-apps-script.gs`，以試算表擁有者身分執行。Script Properties 的 `PASSWORD`、`GOOGLE_SHEET_ID`、`GOOGLE_SHEET_TAB`、`GOOGLE_FORM_SHEET_TAB` 必須與伺服器設定一致；Google Form 的回覆目的地需連至該試算表的表單回覆分頁。
+- 伺服器設定 `GOOGLE_SERVICE_ACCOUNT_JSON`（完整的 Service Account JSON 字串）、`GOOGLE_SHEET_ID`、`GOOGLE_SHEET_TAB`（正式成績分頁）、`GOOGLE_FORM_SHEET_TAB`（表單回覆分頁）。程式會解析 JSON 並還原 `private_key` 內以 `\n` 表示的換行，使用 `https://www.googleapis.com/auth/spreadsheets` scope；所有變數均不可使用 `VITE_` 前綴。
+- Service Account 必須能編輯指定試算表；伺服器直接使用 Sheets API 的 `values.get`、`values.update` 與 `values.batchUpdate`。Google Form 的回覆目的地需連至同一試算表的表單回覆分頁。
+- `GOOGLE_SCRIPT_URL`、`PASSWORD` 與 `scripts/club-google-apps-script.gs` 保留作為快速回退用途，目前執行路徑不會呼叫 Apps Script。
 - 表單支援姓名、手機／手機號碼／電話、科系／系所、年級、關主／關主姓名、時間戳記等欄位。不要刪除成績分頁的 submissionId 欄或修改既有紀錄。
 - Google 資料來源失敗時，後台顯示部分資料與同步異常；不把失敗當作完整零人數，也不洩漏連接器密碼或上游錯誤內容。
-- 自動測試使用 mock Google／Apps Script 合約，不需要真實 Google 登入。DOM 手機測試以 `CLUB_BROWSER_URL` 指定已啟動的站點後執行 `node --test scripts/club-browser.test.mjs`，可用 `CHROMIUM_PATH` 指定既有瀏覽器；不讀取或產生截圖。
+- 自動測試使用 mock Google Sheets API／舊版 Apps Script 合約，不需要真實 Google 登入。DOM 手機測試以 `CLUB_BROWSER_URL` 指定已啟動的站點後執行 `node --test scripts/club-browser.test.mjs`，可用 `CHROMIUM_PATH` 指定既有瀏覽器；不讀取或產生截圖。

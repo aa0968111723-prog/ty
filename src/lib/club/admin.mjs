@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
+import { readSheetRows } from "./sheets.mjs";
 
 /** @typedef {import("./admin").AdminContact} AdminContact */
 /** @typedef {import("./admin").OfficialResult} OfficialResult */
@@ -9,7 +10,6 @@ import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 
 const COOKIE = "__Host-club_admin";
 const SESSION_SECONDS = 8 * 60 * 60;
-const SHEET_TIMEOUT_MS = 8_000;
 /** @type {Map<string, {count: number, expires: number}>} */
 const limits = new Map();
 /** @type {{ password: string, secret: string, key: Buffer } | undefined} */
@@ -419,43 +419,12 @@ function queryDate(request) {
 
 /** @param {"formResponses" | "results"} action @returns {Promise<unknown[]>} */
 async function readSheet(action) {
-  const configured = text(process.env.GOOGLE_SCRIPT_URL);
-  const markdown = configured.match(/^\[(https?:\/\/[^\]]+)\]\(\1\)$/);
-  const url = markdown?.[1] || configured;
-  if (!url) throw new Error("資料來源尚未設定");
   try {
-    if (new URL(url).protocol !== "https:") throw new Error();
-  } catch { throw new Error("資料來源尚未設定"); }
-  const controller = new AbortController();
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => { controller.abort(); reject(new Error("讀取資料逾時，請重試")); }, SHEET_TIMEOUT_MS);
-  });
-  try {
-    const task = async () => {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          action,
-          password: text(process.env.PASSWORD),
-          sheetId: text(process.env.GOOGLE_SHEET_ID),
-          sheetTab: text(process.env.GOOGLE_SHEET_TAB),
-          formSheetTab: text(process.env.GOOGLE_FORM_SHEET_TAB),
-        }),
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error();
-      const data = await response.json();
-      if (data?.ok !== true || !Array.isArray(data.rows)) throw new Error();
-      return data.rows;
-    };
-    return /** @type {unknown[]} */ (await Promise.race([task(), timeout]));
+    return await readSheetRows(action);
   } catch {
-    // Never reflect connector URLs, passwords, response bodies or upstream exception text.
-    throw new Error(controller.signal.aborted ? "讀取資料逾時，請重試" : "無法讀取資料，請稍後重試");
-  } finally { clearTimeout(timer); }
+    // Never reflect credentials, response bodies or upstream exception text.
+    throw new Error("無法讀取資料，請稍後重試");
+  }
 }
 
 /** @param {PromiseSettledResult<unknown[]>} result @returns {SyncStatus} */

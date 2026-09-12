@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { test } from "node:test";
+import { google } from "googleapis";
 import { handleResult } from "../src/lib/club/api.mjs";
 import { createLiveGame, publicResult, GUEST_PLAYER, tickGame } from "../src/lib/club/runtime.mjs";
 
@@ -76,19 +77,44 @@ test("Apps Script ledger survives new deployments and rejects conflicting entry 
   assert.equal(deployment(tabs, props, false)(body).error, "busy");
 });
 
-test("result HTTP contract confirms durable duplicate and conflict via mocked Apps Script", async (t) => {
-  const props = { PASSWORD: randomBytes(24).toString("hex"), GOOGLE_SHEET_ID: "fixture",
-    GOOGLE_SHEET_TAB: "results", GOOGLE_FORM_SHEET_TAB: "forms", GOOGLE_SCRIPT_URL: "https://example.test/mock" };
+test("result HTTP contract confirms durable duplicate and conflict via mocked Sheets API", async (t) => {
+  const props = {
+    GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+      client_email: "ledger@example.test",
+      private_key: "test\\nkey",
+    }),
+    GOOGLE_SHEET_ID: "fixture",
+    GOOGLE_SHEET_TAB: "results",
+    GOOGLE_FORM_SHEET_TAB: "forms",
+    GOOGLE_SCRIPT_URL: "https://example.test/legacy-rollback",
+  };
   const previous = Object.fromEntries(Object.keys(props).map((key) => [key, process.env[key]]));
   Object.assign(process.env, props);
   t.after(() => Object.keys(props).forEach((key) => {
     if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key];
   }));
-  const tabs = new Map();
-  t.mock.method(globalThis, "fetch", async (_url, options) => {
-    const post = deployment(tabs, props);
-    return Response.json(post(JSON.parse(options.body)));
+  const values = [];
+  let legacyCalls = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    legacyCalls += 1;
+    throw new Error("legacy connector must not be called");
   });
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth(options) {
+    return { options };
+  });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: { values: {
+      get: async () => ({ data: { values } }),
+      update: async (params) => {
+        values[0] = [...params.requestBody.values[0]];
+        return { data: {} };
+      },
+      batchUpdate: async (params) => {
+        values.push([...params.requestBody.data[0].values[0]]);
+        return { data: {} };
+      },
+    } },
+  }));
   const game = createLiveGame(0);
   tickGame(game, 60000);
   const row = publicResult(game, GUEST_PLAYER);
@@ -103,5 +129,6 @@ test("result HTTP contract confirms durable duplicate and conflict via mocked Ap
   assert.equal((await submit({ ...row, submissionId: "bad-id" })).status, 400);
   assert.equal((await submit({ ...row, kind: "practice", skipSave: false })).status, 400);
   assert.equal((await submit({ ...row, completedAt: null })).status, 400);
-  assert.equal(tabs.get("results").rows.length, 2);
+  assert.equal(values.length, 2);
+  assert.equal(legacyCalls, 0);
 });

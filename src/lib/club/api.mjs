@@ -14,6 +14,7 @@ import {
   titleForScore,
   validatePlayer,
 } from "./runtime.mjs";
+import { appendOfficialResult as appendResultToSheet, sheetsConfigured } from "./sheets.mjs";
 
 export const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
@@ -25,7 +26,6 @@ export const SECURITY_HEADERS = {
 };
 
 const buckets = new Map();
-const SHEET_TIMEOUT_MS = 8_000;
 
 function rateOk(ip, key, limit, windowMs = 60_000) {
   const id = `${key}:${ip}`;
@@ -61,7 +61,7 @@ export async function handleHealth() {
   return json({
     status: "ok",
     club: CLUB_NAME,
-    sheets: Boolean(process.env.GOOGLE_SCRIPT_URL),
+    sheets: sheetsConfigured(),
     smtp: Boolean(process.env.SMTP_HOST),
   });
 }
@@ -80,39 +80,9 @@ export async function handleRegister(request) {
   return json({ ok: true, clubName: CLUB_NAME, player: parsed.data });
 }
 
-function configuredValue(name) {
-  const value = String(process.env[name] ?? "").trim();
-  return value || null;
-}
-
-function normalizeScriptUrl(value) {
-  if (!value) return null;
-  const markdown = value.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
-  if (markdown && markdown[1] === markdown[2]) return markdown[2];
-  return value;
-}
-
-function sheetConfig() {
-  return {
-    url: normalizeScriptUrl(configuredValue("GOOGLE_SCRIPT_URL")),
-    password: configuredValue("PASSWORD"),
-    sheetId: configuredValue("GOOGLE_SHEET_ID"),
-    sheetTab: configuredValue("GOOGLE_SHEET_TAB"),
-  };
-}
-
-function sheetsConfigured() {
-  const config = sheetConfig();
-  return Boolean(config.url && config.password && config.sheetId && config.sheetTab);
-}
-
 async function appendOfficialResult(row) {
-  const config = sheetConfig();
   const failed = { saved: false, duplicate: false };
   if (!sheetsConfigured()) return failed;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SHEET_TIMEOUT_MS);
   try {
     const rowPayload = {
       name: row.name,
@@ -133,27 +103,10 @@ async function appendOfficialResult(row) {
       settings: row.settings,
       completedAt: row.completedAt,
     };
-    const payload = { row: rowPayload };
-    if (config.password) payload.password = config.password;
-    if (config.sheetId) payload.sheetId = config.sheetId;
-    if (config.sheetTab) payload.sheetTab = config.sheetTab;
-
-    const response = await fetch(config.url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    if (!response.ok) return failed;
-    const result = await response.json().catch(() => ({}));
-    if (result?.ok === false && result?.conflict === true) return { ...failed, conflict: true };
-    const saved = result?.ok === true && (result?.saved === true || result?.duplicate === true);
-    return { saved, duplicate: saved && result?.duplicate === true };
-  } catch (error) {
-    console.error("[sheets] failed to append official result", error);
+    return await appendResultToSheet(rowPayload);
+  } catch {
+    console.error("[sheets] failed to append official result");
     return failed;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
