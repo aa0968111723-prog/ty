@@ -692,7 +692,7 @@ function BoothApp() {
       signal: ctrl.signal,
     })
       .then(async (r) => {
-        const d = await r.json().catch(() => ({}));
+        await r.json().catch(() => ({}));
       })
       .catch(() => {})
       .finally(() => {
