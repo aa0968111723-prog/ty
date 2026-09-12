@@ -19,6 +19,7 @@ import { Route as ApiAdminDashboardRouteImport } from './routes/api/admin/dashbo
 import { Route as ApiAdminFormResponsesRouteImport } from './routes/api/admin/form-responses'
 import { Route as ApiAdminLoginRouteImport } from './routes/api/admin/login'
 import { Route as ApiAdminLogoutRouteImport } from './routes/api/admin/logout'
+import { Route as ApiAdminRecruitmentRouteImport } from './routes/api/admin/recruitment'
 import { Route as ApiAdminResultsRouteImport } from './routes/api/admin/results'
 import { Route as ApiAdminSessionRouteImport } from './routes/api/admin/session'
 
@@ -72,6 +73,11 @@ const ApiAdminLogoutRoute = ApiAdminLogoutRouteImport.update({
   path: '/api/admin/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminRecruitmentRoute = ApiAdminRecruitmentRouteImport.update({
+  id: '/api/admin/recruitment',
+  path: '/api/admin/recruitment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminResultsRoute = ApiAdminResultsRouteImport.update({
   id: '/api/admin/results',
   path: '/api/admin/results',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/form-responses': typeof ApiAdminFormResponsesRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/recruitment': typeof ApiAdminRecruitmentRoute
   '/api/admin/results': typeof ApiAdminResultsRoute
   '/api/admin/session': typeof ApiAdminSessionRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/api/admin/form-responses': typeof ApiAdminFormResponsesRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/recruitment': typeof ApiAdminRecruitmentRoute
   '/api/admin/results': typeof ApiAdminResultsRoute
   '/api/admin/session': typeof ApiAdminSessionRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/api/admin/form-responses': typeof ApiAdminFormResponsesRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/recruitment': typeof ApiAdminRecruitmentRoute
   '/api/admin/results': typeof ApiAdminResultsRoute
   '/api/admin/session': typeof ApiAdminSessionRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/api/admin/form-responses'
     | '/api/admin/login'
     | '/api/admin/logout'
+    | '/api/admin/recruitment'
     | '/api/admin/results'
     | '/api/admin/session'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/api/admin/form-responses'
     | '/api/admin/login'
     | '/api/admin/logout'
+    | '/api/admin/recruitment'
     | '/api/admin/results'
     | '/api/admin/session'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/api/admin/form-responses'
     | '/api/admin/login'
     | '/api/admin/logout'
+    | '/api/admin/recruitment'
     | '/api/admin/results'
     | '/api/admin/session'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   ApiAdminFormResponsesRoute: typeof ApiAdminFormResponsesRoute
   ApiAdminLoginRoute: typeof ApiAdminLoginRoute
   ApiAdminLogoutRoute: typeof ApiAdminLogoutRoute
+  ApiAdminRecruitmentRoute: typeof ApiAdminRecruitmentRoute
   ApiAdminResultsRoute: typeof ApiAdminResultsRoute
   ApiAdminSessionRoute: typeof ApiAdminSessionRoute
 }
@@ -258,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/recruitment': {
+      id: '/api/admin/recruitment'
+      path: '/api/admin/recruitment'
+      fullPath: '/api/admin/recruitment'
+      preLoaderRoute: typeof ApiAdminRecruitmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/results': {
       id: '/api/admin/results'
       path: '/api/admin/results'
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminFormResponsesRoute: ApiAdminFormResponsesRoute,
   ApiAdminLoginRoute: ApiAdminLoginRoute,
   ApiAdminLogoutRoute: ApiAdminLogoutRoute,
+  ApiAdminRecruitmentRoute: ApiAdminRecruitmentRoute,
   ApiAdminResultsRoute: ApiAdminResultsRoute,
   ApiAdminSessionRoute: ApiAdminSessionRoute,
 }

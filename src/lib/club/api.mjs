@@ -102,6 +102,9 @@ async function appendOfficialResult(row) {
       skipSave: row.skipSave,
       settings: row.settings,
       completedAt: row.completedAt,
+      answers: row.answers,
+      answerLog: row.answerLog,
+      avgReactionMs: row.avgReactionMs,
     };
     return await appendResultToSheet(rowPayload);
   } catch {
@@ -156,6 +159,9 @@ function validResultBody(body) {
       kind,
       settings: { ...settings },
       completedAt: completedAt ?? null,
+      answers: Array.isArray(body.answers) ? body.answers : [],
+      answerLog: typeof body.answerLog === "string" ? body.answerLog : "",
+      avgReactionMs: Number.isFinite(Number(body.avgReactionMs)) ? Number(body.avgReactionMs) : null,
     },
   };
 }
@@ -173,7 +179,9 @@ export async function handleResult(request) {
   if (!parsed.ok) return json({ error: parsed.error, errors: parsed.errors }, 400);
   const row = parsed.data;
   const result = row.skipSave ? { saved: false, duplicate: false } : await appendOfficialResult(row);
-  if (result.conflict) return json({ ok: false, saved: false, error: "這局資料與已儲存紀錄不一致" }, 409);
+  if (result.conflict) {
+    return json({ ok: false, saved: false, duplicate: false, error: "這局資料與已儲存紀錄不一致" }, 409);
+  }
   return json({
     ok: true,
     saved: result.saved,

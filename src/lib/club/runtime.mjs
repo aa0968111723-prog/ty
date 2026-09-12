@@ -289,6 +289,7 @@ export function createLiveGame(now = performance.now(), opts = {}) {
     tapLockMs: s.tapLockMs,
     settings: s,
     question,
+    answers: [],
   };
 }
 
@@ -335,6 +336,8 @@ export function judgeAnswer(game, chosen, snapshot, now = performance.now()) {
   }
   if (!COLORS.some((color) => color.id === chosen)) return { ok: false, reason: "invalid" };
   const expected = correctId(game);
+  const previousAt = game.lastAnswerAt || game.startTime;
+  const responseMs = Math.max(0, Math.round(now - previousAt));
   game.lastAnswerAt = now;
   const hit = chosen === expected;
   let delta = 0;
@@ -350,6 +353,19 @@ export function judgeAnswer(game, chosen, snapshot, now = performance.now()) {
     delta = game.score === 0 ? 0 : -Math.min(MISS_PENALTY, game.score);
     game.score += delta;
   }
+  const colorLabel = (id) => COLORS.find((color) => color.id === id)?.label ?? id;
+  if (!Array.isArray(game.answers)) game.answers = [];
+  game.answers.push({
+    sequence: game.correct + game.wrong,
+    mode: game.mode,
+    word: game.question.meaning.label,
+    wordColorLabel: game.question.meaning.label,
+    inkColorLabel: game.question.visual.label,
+    selectedLabel: colorLabel(chosen),
+    correct: hit,
+    responseMs,
+    elapsedMs: Math.max(0, Math.round(now - game.startTime)),
+  });
   game.questionSeq += 1;
   game.question = nextQuestion(game.question);
   const switched = switchModeAfterAnswer(game, now);
@@ -414,10 +430,25 @@ export function sanitizeLeaderboard(rows) {
     .slice(0, 5);
 }
 
+export function answerLogText(answers) {
+  return (Array.isArray(answers) ? answers : []).map((row) => {
+    const mode = row.mode === "visual" ? "判斷視覺顏色" : "判斷字面意思";
+    return `${row.sequence}. ${mode}｜題目「${row.word}」／顯示色 ${row.inkColorLabel}｜選擇 ${row.selectedLabel}｜${row.correct ? "答對" : "答錯"}｜${row.responseMs} ms`;
+  }).join("\n");
+}
+
+export function averageReactionMs(answers) {
+  const rows = (Array.isArray(answers) ? answers : []).map((row) => Number(row.responseMs));
+  const valid = rows.filter((value) => Number.isFinite(value) && value >= 0);
+  if (!valid.length) return null;
+  return Math.round(valid.reduce((sum, value) => sum + value, 0) / valid.length);
+}
+
 export function publicResult(game, player) {
   const total = game.correct + game.wrong;
   const duration = Number(game.duration) > 0 ? Number(game.duration) : GAME_DURATION;
   const title = titleForScore(game.score, duration);
+  const answers = Array.isArray(game.answers) ? game.answers.map((row) => ({ ...row })) : [];
   return {
     name: player.name,
     department: player.department,
@@ -438,6 +469,9 @@ export function publicResult(game, player) {
     settings: { ...game.settings },
     completedAt: game.completedAt,
     submissionId: game.submissionId,
+    answers,
+    answerLog: answerLogText(answers),
+    avgReactionMs: averageReactionMs(answers),
   };
 }
 

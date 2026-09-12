@@ -1,7 +1,8 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
-import { readSheetRows } from "./sheets.mjs";
+import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows } from "./sheets.mjs";
+import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
 
 /** @typedef {import("./admin").AdminContact} AdminContact */
 /** @typedef {import("./admin").OfficialResult} OfficialResult */
@@ -14,6 +15,9 @@ const SESSION_SECONDS = 8 * 60 * 60;
 const limits = new Map();
 /** @type {{ password: string, secret: string, key: Buffer } | undefined} */
 let signingConfig;
+/** @type {{ at: number, key: string, body: unknown } | undefined} */
+let recruitmentCache;
+const RECRUITMENT_CACHE_MS = 20_000;
 const taipei = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Taipei",
   year: "numeric",
@@ -479,4 +483,89 @@ export async function handleAdminFormResponses(request) {
 /** @param {Request} request */
 export async function handleAdminResults(request) {
   return handleRows(request, "results");
+}
+
+/** @type {Record<string, unknown[]>} */
+const lastSourceRows = {
+  gameResults: [],
+  recruitmentResponses: [],
+  recruitmentMaster: [],
+};
+
+/** @param {string} action @param {boolean} bypass */
+async function readSource(action, bypass) {
+  try {
+    const rows = await readSheetRows(action, { bypassCache: bypass });
+    lastSourceRows[action] = rows;
+    return { ok: true, rows, stale: false };
+  } catch {
+    return {
+      ok: false,
+      rows: lastSourceRows[action] || [],
+      stale: (lastSourceRows[action] || []).length > 0,
+      error: "無法讀取資料，請稍後重試",
+    };
+  }
+}
+
+function sourceSync(result) {
+  return result.ok
+    ? { ok: true, stale: false }
+    : { ok: false, stale: Boolean(result.stale), error: result.error };
+}
+
+/** @param {Request} request */
+export async function handleAdminRecruitment(request) {
+  const denied = protect(request);
+  if (denied) return denied;
+  const date = queryDate(request);
+  if (!date) return json({ error: "日期格式須為有效的 YYYY-MM-DD" }, 400);
+  const refresh = new URL(request.url).searchParams.get("refresh") === "1";
+  if (refresh) {
+    invalidateSheetCache();
+    recruitmentCache = undefined;
+  } else if (recruitmentCache && recruitmentCache.key === date && Date.now() - recruitmentCache.at < RECRUITMENT_CACHE_MS) {
+    return json(recruitmentCache.body);
+  }
+  const [game, recruitment, master] = await Promise.all([
+    readSource("gameResults", refresh),
+    readSource("recruitmentResponses", refresh),
+    readSource("recruitmentMaster", refresh),
+  ]);
+  const dashboard = buildRecruitmentDashboard({
+    date,
+    now: new Date(),
+    gameRows: game.rows,
+    recruitmentRows: recruitment.rows,
+    masterRows: master.rows,
+    sync: {
+      gameResults: sourceSync(game),
+      recruitmentResponses: sourceSync(recruitment),
+      recruitmentMaster: sourceSync(master),
+      form: sourceSync(recruitment),
+      updatedAt: new Date().toISOString(),
+    },
+  });
+  dashboard.pending = dashboard.pending.map((row) => ({
+    ...row,
+    prefillUrl: buildPrefilledFormUrl(row),
+  }));
+  dashboard.profiles = dashboard.profiles.map((row) => ({
+    ...row,
+    prefillUrl: row.pending ? buildPrefilledFormUrl(row) : "",
+  }));
+  try {
+    const diagnosis = await diagnoseSheetMappings();
+    dashboard.sync.tabs = diagnosis.ok
+      ? {
+        gameResults: diagnosis.resolved.gameResults.resolvedTab,
+        recruitmentResponses: diagnosis.resolved.recruitmentResponses.resolvedTab,
+        recruitmentMaster: diagnosis.resolved.recruitmentMaster.resolvedTab,
+      }
+      : undefined;
+  } catch {
+    /* Tab titles are optional diagnostics. */
+  }
+  recruitmentCache = { at: Date.now(), key: date, body: dashboard };
+  return json(dashboard);
 }

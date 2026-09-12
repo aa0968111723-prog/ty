@@ -11,13 +11,15 @@ import {
   Pin,
   MoreHorizontal,
   LogOut,
+  Radio,
   X,
 } from "lucide-react";
 
 export type AdminView =
-  "overview" | "contacts" | "results" | "podium" | "leaders" | "system" | "pinned";
+  "overview" | "recruitment" | "contacts" | "results" | "podium" | "leaders" | "system" | "pinned";
 const navigation = [
   { id: "overview", label: "總覽", mobile: "總覽", icon: BarChart3, shortcut: "today" },
+  { id: "recruitment", label: "招生戰情", mobile: "戰情", icon: Radio, shortcut: "recruitment" },
   { id: "contacts", label: "聯絡名單", mobile: "名單", icon: Users, shortcut: "contacts" },
   { id: "results", label: "比賽成績", mobile: "成績", icon: Trophy, shortcut: "results" },
   { id: "podium", label: "前三名", mobile: "排行", icon: Medal, shortcut: "ranking" },

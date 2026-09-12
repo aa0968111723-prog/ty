@@ -6,6 +6,7 @@ import {
   buildDashboard, normalizeFormResponse, rankOfficialResults,
   handleAdminLogin, handleAdminLogout, handleAdminSession,
   handleAdminDashboard, handleAdminFormResponses, handleAdminResults,
+  handleAdminRecruitment,
 } from "../src/lib/club/admin.mjs";
 import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
 
@@ -85,13 +86,15 @@ test("official ranking rejects invalid aggregates, practice settings, and repeat
 
 test("admin authentication and private read API contracts with mocked Google only", async (t) => {
   const names = ["ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "PUBLIC_ORIGIN", "GOOGLE_SERVICE_ACCOUNT_JSON",
-    "GOOGLE_SHEET_ID", "GOOGLE_SHEET_TAB", "GOOGLE_FORM_SHEET_TAB"];
+    "GOOGLE_SHEET_ID", "GOOGLE_SHEET_TAB", "GOOGLE_FORM_SHEET_TAB",
+    "GOOGLE_GAME_SHEET_TAB", "GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB", "GOOGLE_RECRUITMENT_MASTER_SHEET_TAB"];
   const before = names.map((name) => process.env[name]);
   t.after(() => names.forEach((name, i) => {
     if (before[i] === undefined) delete process.env[name]; else process.env[name] = before[i];
   }));
   delete process.env.ADMIN_PASSWORD;
   delete process.env.ADMIN_SESSION_SECRET;
+  delete process.env.PUBLIC_ORIGIN;
   assert.equal((await handleAdminLogin(request("login", {
     body: { password: "" }, headers: { origin: internalOrigin },
   }))).status, 503);
@@ -121,7 +124,7 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.deepEqual(await (await handleAdminSession(request("session", { cookie }))).json(), { authenticated: true });
   assert.deepEqual(await (await handleAdminSession(request("session", { cookie: `${cookie}x` }))).json(), { authenticated: false });
   assert.equal((await (await handleAdminSession(request("session", { cookie: `${cookie}; ${cookie}` }))).json()).authenticated, false);
-  for (const handler of [handleAdminDashboard, handleAdminResults, handleAdminFormResponses]) {
+  for (const handler of [handleAdminDashboard, handleAdminResults, handleAdminFormResponses, handleAdminRecruitment]) {
     assert.equal((await handler(request("dashboard"))).status, 401);
     assert.equal((await handler(request("dashboard?date=2026-02-30", { cookie }))).status, 400);
     assert.equal((await handler(request("dashboard?date=2026-09-12&date=2026-09-11", { cookie }))).status, 400);
@@ -174,7 +177,42 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.equal(partial.sync.results.ok, true);
   assert.equal(partial.results.length, 1);
   assert.ok(!JSON.stringify(partial).includes(process.env.GOOGLE_SERVICE_ACCOUNT_JSON));
+  const recruitmentRes = await handleAdminRecruitment(request("recruitment?date=2026-09-12", { cookie }));
+  const recruitment = await recruitmentRes.json();
+  assert.equal(recruitmentRes.status, 200);
+  assert.equal(recruitment.ok, true);
+  assert.ok("pending" in recruitment);
+  assert.ok("funnel" in recruitment);
+  assert.ok("summary" in recruitment);
+  assert.equal((await handleAdminRecruitment(request("recruitment"))).status, 401);
   assert.equal((await handleAdminFormResponses(request("form-responses", { cookie }))).status, 502);
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: { values: {
+      get: async ({ spreadsheetId, range }) => {
+        assert.equal(spreadsheetId, "fixture-sheet");
+        if (String(range).includes("總表")) {
+          throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
+        }
+        const action = range === "'results'" ? "results" : "formResponses";
+        const rows = action === "results" ? [result] : [
+          { 姓名: "小明", 時間戳記: "2026/9/12 10:00:00" },
+        ];
+        const headers = Object.keys(rows[0]);
+        return { data: { values: [
+          headers,
+          ...rows.map((row) => headers.map((header) =>
+            typeof row[header] === "object" ? JSON.stringify(row[header]) : row[header])),
+        ] } };
+      },
+    } },
+  }));
+  const partialRecruitment = await handleAdminRecruitment(request("recruitment?date=2026-09-12&refresh=1", { cookie }));
+  const partialBody = await partialRecruitment.json();
+  assert.equal(partialRecruitment.status, 200);
+  assert.equal(partialBody.sync.recruitmentMaster.ok, false);
+  assert.equal(partialBody.sync.gameResults.ok, true);
+  assert.equal(typeof partialBody.summary.playedToday, "number");
+  assert.ok(!JSON.stringify(partialBody).includes("private_key"));
   const logout = await handleAdminLogout(request("logout", { body: {}, cookie }));
   assert.match(logout.headers.get("set-cookie"), /Max-Age=0/);
   assert.equal((await handleAdminLogout(request("logout", { body: {}, headers: { origin: "https://evil.test" } }))).status, 403);

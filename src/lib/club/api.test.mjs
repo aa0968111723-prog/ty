@@ -18,7 +18,7 @@ const jsonReq = (url, body) =>
   });
 
 function configureSheets(t, suffix) {
-  const names = ["GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_SHEET_ID", "GOOGLE_SHEET_TAB"];
+  const names = ["GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_SHEET_ID", "GOOGLE_SHEET_TAB", "GOOGLE_GAME_SHEET_TAB"];
   const previous = names.map((name) => process.env[name]);
   t.after(() => names.forEach((name, index) => {
     if (previous[index] === undefined) delete process.env[name];
@@ -136,9 +136,9 @@ describe("api", () => {
     const headers = calls.update[0].requestBody.values[0];
     const cells = calls.batchUpdate[0].requestBody.data[0].values[0];
     const sent = Object.fromEntries(headers.map((header, index) => [header, cells[index]]));
-    assert.equal(sent.gatekeeper, "柏能");
-    assert.equal(sent.phone, "0968111723");
-    assert.equal(sent.submissionId, submissionId);
+    assert.equal(sent.遊戲關主 || sent.gatekeeper, "柏能");
+    assert.equal(sent.電話 || sent.phone, "0968111723");
+    assert.equal(sent._submissionId || sent.submissionId, submissionId);
   });
 
   it("reports a sheet failure without exposing connector details", async (t) => {
