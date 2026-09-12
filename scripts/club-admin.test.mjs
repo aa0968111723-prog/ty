@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { test } from "node:test";
+import { google } from "googleapis";
 import {
   buildDashboard, normalizeFormResponse, rankOfficialResults,
   handleAdminLogin, handleAdminLogout, handleAdminSession,
@@ -83,7 +84,7 @@ test("official ranking rejects invalid aggregates, practice settings, and repeat
 });
 
 test("admin authentication and private read API contracts with mocked Google only", async (t) => {
-  const names = ["ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "PUBLIC_ORIGIN", "GOOGLE_SCRIPT_URL", "PASSWORD",
+  const names = ["ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "PUBLIC_ORIGIN", "GOOGLE_SERVICE_ACCOUNT_JSON",
     "GOOGLE_SHEET_ID", "GOOGLE_SHEET_TAB", "GOOGLE_FORM_SHEET_TAB"];
   const before = names.map((name) => process.env[name]);
   t.after(() => names.forEach((name, i) => {
@@ -125,24 +126,40 @@ test("admin authentication and private read API contracts with mocked Google onl
     assert.equal((await handler(request("dashboard?date=2026-02-30", { cookie }))).status, 400);
     assert.equal((await handler(request("dashboard?date=2026-09-12&date=2026-09-11", { cookie }))).status, 400);
   }
-  process.env.GOOGLE_SCRIPT_URL = "https://example.test/mock-sheet";
-  process.env.PASSWORD = randomBytes(24).toString("hex");
+  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
+    client_email: "admin@example.test",
+    private_key: "test\\nkey",
+  });
   process.env.GOOGLE_SHEET_ID = "fixture-sheet";
   process.env.GOOGLE_SHEET_TAB = "results";
   process.env.GOOGLE_FORM_SHEET_TAB = "forms";
   const calls = [];
   const result = official();
-  t.mock.method(globalThis, "fetch", async (url, options) => {
-    assert.equal(url, process.env.GOOGLE_SCRIPT_URL);
-    assert.equal(options.method, "POST");
-    const body = JSON.parse(options.body);
-    calls.push(body.action);
-    assert.equal(body.password, process.env.PASSWORD);
-    assert.equal(body.formSheetTab, "forms");
-    return Response.json({ ok: true, rows: body.action === "results" ? [result] : [
-      { 姓名: "小明", 時間戳記: "2026/9/12 10:00:00" },
-    ] });
+  let failForms = false;
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth(options) {
+    return { options };
   });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: { values: {
+      get: async ({ spreadsheetId, range }) => {
+        assert.equal(spreadsheetId, "fixture-sheet");
+        const action = range === "'results'" ? "results" : "formResponses";
+        calls.push(action);
+        if (failForms && action === "formResponses") {
+          throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
+        }
+        const rows = action === "results" ? [result] : [
+          { 姓名: "小明", 時間戳記: "2026/9/12 10:00:00" },
+        ];
+        const headers = Object.keys(rows[0]);
+        return { data: { values: [
+          headers,
+          ...rows.map((row) => headers.map((header) =>
+            typeof row[header] === "object" ? JSON.stringify(row[header]) : row[header])),
+        ] } };
+      },
+    } },
+  }));
   const dashboard = await handleAdminDashboard(request("dashboard?date=2026-09-12", { cookie }));
   const data = await dashboard.json();
   assert.equal(data.kpis.contacts, 2);
@@ -151,15 +168,12 @@ test("admin authentication and private read API contracts with mocked Google onl
   const forms = await handleAdminFormResponses(request("form-responses?date=2026-09-12&q=小明", { cookie }));
   assert.equal((await forms.json()).rows.length, 1);
   assert.equal((await (await handleAdminResults(request("results?date=2026-09-12&q=nobody", { cookie }))).json()).rows.length, 0);
-  t.mock.method(globalThis, "fetch", async (_url, options) => {
-    if (JSON.parse(options.body).action === "results") return Response.json({ ok: true, rows: [result] });
-    throw new Error(`firewall blocked ${process.env.PASSWORD}`);
-  });
+  failForms = true;
   const partial = await (await handleAdminDashboard(request("dashboard?date=2026-09-12", { cookie }))).json();
   assert.equal(partial.sync.forms.ok, false);
   assert.equal(partial.sync.results.ok, true);
   assert.equal(partial.results.length, 1);
-  assert.ok(!JSON.stringify(partial).includes(process.env.PASSWORD));
+  assert.ok(!JSON.stringify(partial).includes(process.env.GOOGLE_SERVICE_ACCOUNT_JSON));
   assert.equal((await handleAdminFormResponses(request("form-responses", { cookie }))).status, 502);
   const logout = await handleAdminLogout(request("logout", { body: {}, cookie }));
   assert.match(logout.headers.get("set-cookie"), /Max-Age=0/);

@@ -1,6 +1,7 @@
 // @ts-nocheck -- Contract tests intentionally send malformed and incomplete JSON payloads.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { google } from "googleapis";
 import { handleHealth, handleLeaderboard, handleRegister, handleResult } from "./api.mjs";
 import { createLiveGame, createWarmupGame, GUEST_PLAYER, publicResult } from "./runtime.mjs";
 
@@ -15,6 +16,27 @@ const jsonReq = (url, body) =>
       ...body,
     } : body),
   });
+
+function configureSheets(t, suffix) {
+  const names = ["GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_SHEET_ID", "GOOGLE_SHEET_TAB"];
+  const previous = names.map((name) => process.env[name]);
+  t.after(() => names.forEach((name, index) => {
+    if (previous[index] === undefined) delete process.env[name];
+    else process.env[name] = previous[index];
+  }));
+  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
+    client_email: `${suffix}@example.test`,
+    private_key: "test\\nkey",
+  });
+  process.env.GOOGLE_SHEET_ID = "sheet-id";
+  process.env.GOOGLE_SHEET_TAB = "國際生專區";
+}
+
+function mockGoogleAuth(t) {
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth(options) {
+    return { options };
+  });
+}
 
 describe("api", () => {
   it("health ok", async () => {
@@ -69,101 +91,85 @@ describe("api", () => {
     assert.deepEqual(board.rows, []);
   });
 
-  it("sends official results to the server-side sheet connector", async () => {
-    const previousUrl = process.env.GOOGLE_SCRIPT_URL;
-    const previousSheetId = process.env.GOOGLE_SHEET_ID;
-    const previousSheetTab = process.env.GOOGLE_SHEET_TAB;
-    const previousPassword = process.env.PASSWORD;
-    const previousFetch = globalThis.fetch;
-    const calls = [];
-    process.env.GOOGLE_SCRIPT_URL = "[https://example.test/sheet](https://example.test/sheet)";
-    process.env.GOOGLE_SHEET_ID = "sheet-id";
-    process.env.GOOGLE_SHEET_TAB = "國際生專區";
-    process.env.PASSWORD = "sheet-password";
+  it("sends official results through the Sheets values API", async (t) => {
+    configureSheets(t, "write");
+    mockGoogleAuth(t);
+    const calls = { get: [], update: [], batchUpdate: [] };
+    t.mock.method(google, "sheets", () => ({
+      spreadsheets: { values: {
+        get: async (params) => {
+          calls.get.push(params);
+          return { data: { values: [] } };
+        },
+        update: async (params) => {
+          calls.update.push(params);
+          return { data: {} };
+        },
+        batchUpdate: async (params) => {
+          calls.batchUpdate.push(params);
+          return { data: {} };
+        },
+      } },
+    }));
     const submissionId = crypto.randomUUID();
-    globalThis.fetch = async (url, options) => {
-      calls.push({ url, options });
-      return new Response(JSON.stringify({ ok: true, saved: true }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    };
-    try {
-      const res = await handleResult(
-        jsonReq("http://x/api/result", {
-          name: "小華",
-          department: "歷史學系",
-          grade: "大一",
-          gatekeeper: "柏能",
-          phone: "0968111723",
-          score: 1550,
-          correct: 12,
-          wrong: 1,
-          maxCombo: 6,
-          submissionId,
-        }),
-      );
-      const data = await res.json();
-      assert.equal(data.sheetsConfigured, true);
-      assert.equal(data.sheetsOk, true);
-      assert.equal(calls.length, 1);
-      const sent = JSON.parse(calls[0].options.body);
-      assert.equal(calls[0].url, "https://example.test/sheet");
-      assert.equal(sent.row.gatekeeper, "柏能");
-      assert.equal(sent.row.phone, "0968111723");
-      assert.equal(sent.row.submissionId, submissionId);
-      assert.equal(sent.password, "sheet-password");
-      assert.equal(sent.sheetId, "sheet-id");
-      assert.equal(sent.sheetTab, "國際生專區");
-    } finally {
-      globalThis.fetch = previousFetch;
-      if (previousUrl === undefined) delete process.env.GOOGLE_SCRIPT_URL;
-      else process.env.GOOGLE_SCRIPT_URL = previousUrl;
-      if (previousSheetId === undefined) delete process.env.GOOGLE_SHEET_ID;
-      else process.env.GOOGLE_SHEET_ID = previousSheetId;
-      if (previousSheetTab === undefined) delete process.env.GOOGLE_SHEET_TAB;
-      else process.env.GOOGLE_SHEET_TAB = previousSheetTab;
-      if (previousPassword === undefined) delete process.env.PASSWORD;
-      else process.env.PASSWORD = previousPassword;
-    }
+    const res = await handleResult(
+      jsonReq("http://x/api/result", {
+        name: "小華",
+        department: "歷史學系",
+        grade: "大一",
+        gatekeeper: "柏能",
+        phone: "0968111723",
+        score: 1550,
+        correct: 12,
+        wrong: 1,
+        maxCombo: 6,
+        submissionId,
+      }),
+    );
+    const data = await res.json();
+    assert.equal(data.sheetsConfigured, true);
+    assert.equal(data.sheetsOk, true);
+    assert.equal(calls.get.length, 1);
+    assert.equal(calls.update.length, 1);
+    assert.equal(calls.batchUpdate.length, 1);
+    assert.equal(calls.get[0].spreadsheetId, "sheet-id");
+    const headers = calls.update[0].requestBody.values[0];
+    const cells = calls.batchUpdate[0].requestBody.data[0].values[0];
+    const sent = Object.fromEntries(headers.map((header, index) => [header, cells[index]]));
+    assert.equal(sent.gatekeeper, "柏能");
+    assert.equal(sent.phone, "0968111723");
+    assert.equal(sent.submissionId, submissionId);
   });
 
-  it("reports a sheet failure without exposing connector details", async () => {
-    const names = ["GOOGLE_SCRIPT_URL", "GOOGLE_SHEET_ID", "GOOGLE_SHEET_TAB", "PASSWORD"];
-    const previous = names.map((name) => process.env[name]);
-    const previousFetch = globalThis.fetch;
-    process.env.GOOGLE_SCRIPT_URL = "https://example.test/sheet";
-    process.env.GOOGLE_SHEET_ID = "sheet-id";
-    process.env.GOOGLE_SHEET_TAB = "results";
-    process.env.PASSWORD = "sheet-password";
-    globalThis.fetch = async () => new Response("bad gateway", { status: 502 });
-    try {
-      const res = await handleResult(
-        jsonReq("http://x/api/result", {
-          name: "小華",
-          department: "歷史學系",
-          grade: "大一",
-          gatekeeper: "柏能",
-          phone: "0968111723",
-          score: 1550,
-          correct: 12,
-          wrong: 1,
-          maxCombo: 6,
-          submissionId: crypto.randomUUID(),
-        }),
-      );
-      const data = await res.json();
-      assert.equal(data.sheetsConfigured, true);
-      assert.equal(data.sheetsOk, false);
-      assert.equal(data.googleScriptUrl, undefined);
-      assert.equal(data.phone, undefined);
-    } finally {
-      globalThis.fetch = previousFetch;
-      names.forEach((name, index) => {
-        if (previous[index] === undefined) delete process.env[name];
-        else process.env[name] = previous[index];
-      });
-    }
+  it("reports a sheet failure without exposing connector details", async (t) => {
+    configureSheets(t, "failure");
+    mockGoogleAuth(t);
+    t.mock.method(console, "error", () => {});
+    t.mock.method(google, "sheets", () => ({
+      spreadsheets: { values: {
+        get: async () => { throw new Error("upstream credential detail"); },
+      } },
+    }));
+    const res = await handleResult(
+      jsonReq("http://x/api/result", {
+        name: "小華",
+        department: "歷史學系",
+        grade: "大一",
+        gatekeeper: "柏能",
+        phone: "0968111723",
+        score: 1550,
+        correct: 12,
+        wrong: 1,
+        maxCombo: 6,
+        submissionId: crypto.randomUUID(),
+      }),
+    );
+    const data = await res.json();
+    assert.equal(data.sheetsConfigured, true);
+    assert.equal(data.sheetsOk, false);
+    assert.equal(data.googleScriptUrl, undefined);
+    assert.equal(data.phone, undefined);
+    assert.ok(!JSON.stringify(data).includes("credential"));
   });
 
   it("rejects impossible score", async () => {
@@ -184,35 +190,27 @@ describe("api", () => {
     assert.equal(res.status, 400);
   });
 
-  it("never forwards warm-up, guest or custom practice results to the sheet connector", async () => {
-    const previousUrl = process.env.GOOGLE_SCRIPT_URL;
-    const previousFetch = globalThis.fetch;
+  it("never forwards warm-up, guest or custom practice results to the sheet connector", async (t) => {
+    configureSheets(t, "practice");
     const calls = [];
-    process.env.GOOGLE_SCRIPT_URL = "https://example.test/sheet";
-    globalThis.fetch = async (...args) => {
+    t.mock.method(google, "sheets", (...args) => {
       calls.push(args);
-      return new Response(JSON.stringify({ ok: true }));
-    };
-    try {
-      for (const game of [
-        createWarmupGame(0),
-        createLiveGame(0, { skipSave: true }),
-        createLiveGame(0, { settings: { duration: 30 } }),
-        createLiveGame(0, { settings: { speed: "rush" } }),
-      ]) {
-        const response = await handleResult(
-          jsonReq("http://x/api/result", publicResult(game, GUEST_PLAYER)),
-        );
-        assert.equal(response.status, 200);
-        const data = await response.json();
-        assert.equal(data.saved, false);
-        assert.equal(data.sheetsOk, false);
-      }
-      assert.equal(calls.length, 0);
-    } finally {
-      globalThis.fetch = previousFetch;
-      if (previousUrl === undefined) delete process.env.GOOGLE_SCRIPT_URL;
-      else process.env.GOOGLE_SCRIPT_URL = previousUrl;
+      return { spreadsheets: { values: {} } };
+    });
+    for (const game of [
+      createWarmupGame(0),
+      createLiveGame(0, { skipSave: true }),
+      createLiveGame(0, { settings: { duration: 30 } }),
+      createLiveGame(0, { settings: { speed: "rush" } }),
+    ]) {
+      const response = await handleResult(
+        jsonReq("http://x/api/result", publicResult(game, GUEST_PLAYER)),
+      );
+      assert.equal(response.status, 200);
+      const data = await response.json();
+      assert.equal(data.saved, false);
+      assert.equal(data.sheetsOk, false);
     }
+    assert.equal(calls.length, 0);
   });
 });
