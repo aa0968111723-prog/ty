@@ -836,6 +836,19 @@
 }
 .recruitment-board .admin-summary {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: var(--space-4);
+}
+.recruitment-board .admin-widget-kpi {
+  padding: var(--space-3);
+  gap: 2px;
+}
+.recruitment-board .admin-widget-kpi strong {
+  font-size: var(--text-h2);
+}
+@media (max-width: 719px) {
+  .recruitment-board .admin-widget-kpi small {
+    display: none;
+  }
 }
 .recruitment-funnel ol {
   display: grid;
