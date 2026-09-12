@@ -11,7 +11,6 @@ import {
   DEFAULT_SETTINGS,
   DEPARTMENT_GROUPS,
   GRADE_LIST,
-  GUEST_PLAYER,
   colorByKey,
   correctId,
   createLiveGame,
@@ -715,14 +714,6 @@ function BoothApp() {
         startingRef.current = false;
         setBusy(false);
       });
-  }
-
-  function startGuest() {
-    if (startingRef.current || busy) return;
-    startingRef.current = true;
-    setErrors({});
-    launchGame(GUEST_PLAYER, "practice");
-    startingRef.current = false;
   }
 
   const g = gameRef.current;
