@@ -385,6 +385,7 @@ export function publicResult(game, player) {
     name: player.name,
     department: player.department,
     grade: player.grade,
+    phone: player.phone,
     gatekeeper: player.gatekeeper,
     score: game.score,
     correct: game.correct,

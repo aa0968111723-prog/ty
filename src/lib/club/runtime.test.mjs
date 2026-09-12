@@ -175,6 +175,8 @@ describe("titles validation leaderboard", () => {
     });
     assert.equal(p.title.includes("潛力領袖"), true);
     assert.equal(p.total, 14);
+    assert.equal(p.phone, "0912345678");
+    assert.equal(p.gatekeeper, "柏能");
     assert.ok(p.accuracy > 0);
   });
   it("max score bound", () => {
