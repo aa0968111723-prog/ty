@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- HTTP boundary accepts untrusted JSON, checked by runtime validators and contract tests.
 import {
   CLUB_NAME,
   GAME_DURATION,
@@ -8,7 +8,8 @@ import {
   MAX_ANSWERS,
   accuracyOf,
   publicResult,
-  sanitizeLeaderboard,
+  isOfficialSettings,
+  settingsAreValid,
   scoreIsConsistent,
   titleForScore,
   validatePlayer,
@@ -24,8 +25,6 @@ export const SECURITY_HEADERS = {
 };
 
 const buckets = new Map();
-const seenIds = new Map();
-const board = [];
 const SHEET_TIMEOUT_MS = 8_000;
 
 function rateOk(ip, key, limit, windowMs = 60_000) {
@@ -102,13 +101,15 @@ function sheetConfig() {
   };
 }
 
-function sheetUrl() {
-  return sheetConfig().url;
+function sheetsConfigured() {
+  const config = sheetConfig();
+  return Boolean(config.url && config.password && config.sheetId && config.sheetTab);
 }
 
 async function appendOfficialResult(row) {
   const config = sheetConfig();
-  if (!config.url) return false;
+  const failed = { saved: false, duplicate: false };
+  if (!sheetsConfigured()) return failed;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SHEET_TIMEOUT_MS);
@@ -127,6 +128,10 @@ async function appendOfficialResult(row) {
       title: row.title,
       duration: row.duration,
       submissionId: row.submissionId,
+      kind: row.kind,
+      skipSave: row.skipSave,
+      settings: row.settings,
+      completedAt: row.completedAt,
     };
     const payload = { row: rowPayload };
     if (config.password) payload.password = config.password;
@@ -139,36 +144,48 @@ async function appendOfficialResult(row) {
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-    if (!response.ok) return false;
+    if (!response.ok) return failed;
     const result = await response.json().catch(() => ({}));
-    return result?.ok !== false;
+    if (result?.ok === false && result?.conflict === true) return { ...failed, conflict: true };
+    const saved = result?.ok === true && (result?.saved === true || result?.duplicate === true);
+    return { saved, duplicate: saved && result?.duplicate === true };
   } catch (error) {
     console.error("[sheets] failed to append official result", error);
-    return false;
+    return failed;
   } finally {
     clearTimeout(timer);
   }
 }
 
 function validResultBody(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return { ok: false, error: "格式不對" };
+  }
   const player = validatePlayer(body);
   if (!player.ok) return { ok: false, error: "請檢查欄位", errors: player.errors };
-  const correct = Math.max(0, Number(body.correct) || 0);
-  const wrong = Math.max(0, Number(body.wrong) || 0);
+  const { score, correct, wrong, maxCombo, duration, skipSave, submissionId, settings, kind, completedAt } = body;
   const total = correct + wrong;
-  if (total > MAX_ANSWERS) return { ok: false, error: "這局資料不合理" };
-  const score = Math.max(0, Number(body.score) || 0);
-  const maxCombo = Math.max(0, Math.min(total, Number(body.maxCombo) || 0));
   if (!scoreIsConsistent({ score, correct, wrong, maxCombo })) {
     return { ok: false, error: "分數與答題紀錄不一致" };
   }
-  const skipSave = Boolean(body.skipSave);
-  const submissionId = String(body.submissionId || "").slice(0, 80);
-  const durationRaw = Number(body.duration);
-  const duration = Number.isFinite(durationRaw)
-    ? Math.min(DURATION_MAX, Math.max(DURATION_MIN, Math.round(durationRaw)))
-    : GAME_DURATION;
-  const official = !skipSave && duration === GAME_DURATION;
+  if (
+    !Number.isSafeInteger(duration) || duration < DURATION_MIN || duration > DURATION_MAX ||
+    !settingsAreValid(settings) || settings.duration !== duration ||
+    total > Math.min(MAX_ANSWERS, Math.ceil(duration * 1000 / settings.tapLockMs)) ||
+    (body.total !== undefined && body.total !== total) ||
+    typeof skipSave !== "boolean" ||
+    typeof submissionId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(submissionId)
+  ) return { ok: false, error: "這局資料不合理" };
+  const official = kind === "official" && skipSave === false &&
+    duration === GAME_DURATION && isOfficialSettings(settings);
+  if (
+    (!skipSave && !official) ||
+    (skipSave && !["practice", "warmup"].includes(kind)) ||
+    (official && (typeof completedAt !== "string" ||
+      !Number.isFinite(Date.parse(completedAt)) ||
+      new Date(completedAt).toISOString() !== completedAt))
+  ) return { ok: false, error: "這局資料不合理" };
   return {
     ok: true,
     data: {
@@ -182,26 +199,12 @@ function validResultBody(body) {
       title: titleForScore(score, duration),
       duration,
       skipSave: !official,
-      submissionId,
+      submissionId: submissionId.toLowerCase(),
+      kind,
+      settings: { ...settings },
+      completedAt: completedAt ?? null,
     },
   };
-}
-
-function sweepSeenIds() {
-  const now = Date.now();
-  for (const [k, t] of seenIds) if (now - t > 30 * 60_000) seenIds.delete(k);
-}
-
-function wasSeen(id) {
-  if (!id) return false;
-  sweepSeenIds();
-  return seenIds.has(id);
-}
-
-function rememberId(id) {
-  if (!id) return;
-  sweepSeenIds();
-  seenIds.set(id, Date.now());
 }
 
 export async function handleResult(request) {
@@ -216,28 +219,14 @@ export async function handleResult(request) {
   const parsed = validResultBody(body);
   if (!parsed.ok) return json({ error: parsed.error, errors: parsed.errors }, 400);
   const row = parsed.data;
-  const duplicate = wasSeen(row.submissionId);
-  let sheetsOk = false;
-  if (!row.skipSave && !duplicate) {
-    sheetsOk = await appendOfficialResult(row);
-    if (sheetsOk) {
-      rememberId(row.submissionId);
-      board.push({
-        name: row.name,
-        department: row.department,
-        score: row.score,
-        at: Date.now(),
-      });
-    }
-  } else if (!row.skipSave && duplicate) {
-    sheetsOk = true;
-  }
+  const result = row.skipSave ? { saved: false, duplicate: false } : await appendOfficialResult(row);
+  if (result.conflict) return json({ ok: false, saved: false, error: "這局資料與已儲存紀錄不一致" }, 409);
   return json({
     ok: true,
-    saved: !row.skipSave,
-    duplicate: duplicate && !row.skipSave,
-    sheetsConfigured: Boolean(sheetUrl()),
-    sheetsOk,
+    saved: result.saved,
+    duplicate: result.duplicate,
+    sheetsConfigured: sheetsConfigured(),
+    sheetsOk: result.saved,
     smtpConfigured: Boolean(process.env.SMTP_HOST),
     emailSent: false,
     clubName: CLUB_NAME,

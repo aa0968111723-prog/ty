@@ -1,18 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Turtle, type TurtleMood } from "@/components/turtle";
+import { AdminLogin } from "@/components/admin-login";
+import { ScoreHUD } from "@/components/club/score-hud";
+import { Settings, ShieldCheck, Timer, ArrowRightLeft } from "lucide-react";
+import { clearPendingResult, readPendingResult, storePendingResult } from "@/lib/club/pending-result.mjs";
 import {
   COLORS,
   CLUB_NAME,
   DEFAULT_SETTINGS,
   DEPARTMENT_GROUPS,
-  DURATION_MAX,
-  DURATION_MIN,
   GRADE_LIST,
   GUEST_PLAYER,
-  START_MODE_OPTIONS,
-  SPEED_PRESETS,
-  clampSettings,
   colorByKey,
   correctId,
   createLiveGame,
@@ -20,7 +19,6 @@ import {
   emptyPlayer,
   isOfficialSettings,
   judgeAnswer,
-  nextQuestion,
   publicResult,
   remainingSeconds,
   tickGame,
@@ -291,18 +289,6 @@ const DEPARTMENT_NAMES: Record<string, string> = {
   人工智慧學系: "Department of Artificial Intelligence",
 };
 
-const SPEED_COPY: Record<string, { en: string; zh: string; hintEn: string; hintZh: string }> = {
-  slow: { en: "Slow", zh: "慢", hintEn: "Changes after each answer", hintZh: "每答一題換規則" },
-  normal: {
-    en: "Normal",
-    zh: "一般",
-    hintEn: "Changes after each answer",
-    hintZh: "每答一題換規則",
-  },
-  fast: { en: "Fast", zh: "快", hintEn: "Changes after each answer", hintZh: "每答一題換規則" },
-  rush: { en: "Rush", zh: "極快", hintEn: "Changes after each answer", hintZh: "每答一題換規則" },
-};
-
 const TITLE_NAMES: Record<string, string> = {
   "Lv.4 卓越領袖": "Lv.4 Outstanding Leader",
   "Lv.3 穩定領航者": "Lv.3 Steady Navigator",
@@ -349,27 +335,6 @@ function departmentName(department: string, language: Language) {
   return DEPARTMENT_NAMES[department] ?? department;
 }
 
-function speedName(speed: string, language: Language) {
-  const entry = SPEED_COPY[speed] ?? SPEED_COPY.normal;
-  return language === "zh" ? entry.zh : entry.en;
-}
-
-function speedHint(speed: string, language: Language) {
-  const entry = SPEED_COPY[speed] ?? SPEED_COPY.normal;
-  return language === "zh" ? entry.hintZh : entry.hintEn;
-}
-
-function startModeName(id: string, language: Language) {
-  if (language === "zh") {
-    return START_MODE_OPTIONS.find((item) => item.id === id)?.label ?? id;
-  }
-  return (
-    { meaning: "Word meaning", visual: "Ink color", random: "Random" }[
-      id as "meaning" | "visual" | "random"
-    ] ?? id
-  );
-}
-
 function resultTitle(title: string, language: Language) {
   return language === "en" ? (TITLE_NAMES[title] ?? title) : title;
 }
@@ -410,10 +375,6 @@ function validationText(message: string | undefined, language: Language) {
   return language === "zh" ? message : (VALIDATION_EN[message] ?? message);
 }
 
-function ZhHelper({ language, children }: { language: Language; children: ReactNode }) {
-  return language === "en" ? <span className="zh-helper">{children}</span> : null;
-}
-
 function LanguageToggle({
   language,
   onChange,
@@ -436,7 +397,7 @@ function LanguageToggle({
         aria-pressed={language === "en"}
         onClick={() => onChange("en")}
       >
-        EN
+        English
       </button>
       <button
         type="button"
@@ -452,17 +413,19 @@ function LanguageToggle({
 
 function BoothApp() {
   const [screen, setScreen] = useState<Screen>("register");
-  const [language, setLanguage] = useState<Language>("en");
+  const [language, setLanguage] = useState<Language>("zh");
   const [player, setPlayer] = useState<Player>(emptyPlayer);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [busy, setBusy] = useState(false);
-  const [remaining, setRemaining] = useState(DEFAULT_SETTINGS.duration);
   const [mood, setMood] = useState<TurtleMood>("idle");
   const [pops, setPops] = useState<{ id: number; text: string; kind: string }[]>([]);
   const [modePulse, setModePulse] = useState(0);
   const [save, setSave] = useState<SaveKind>("idle");
+  const [pending, setPending] = useState<ReturnType<typeof publicResult> | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const sendingRef = useRef(false);
   const [club, setClub] = useState(CLUB_NAME);
-  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const settings = DEFAULT_SETTINGS;
   const [, setTick] = useState(0);
 
   const gameRef = useRef(createLiveGame(0, { skipSave: true }));
@@ -470,8 +433,6 @@ function BoothApp() {
   const startingRef = useRef(false);
   const pressRef = useRef<{ id: ColorId; mode: string; seq: number } | null>(null);
   const moodTimer = useRef(0);
-  const timeNumRef = useRef<HTMLElement | null>(null);
-  const timeRailRef = useRef<HTMLElement | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const popId = useRef(0);
 
@@ -479,6 +440,7 @@ function BoothApp() {
 
   useEffect(() => {
     try {
+      setPending(readPendingResult(sessionStorage));
       const saved = localStorage.getItem("club-focus-language");
       if (saved === "en" || saved === "zh") setLanguage(saved);
     } catch {
@@ -494,26 +456,6 @@ function BoothApp() {
       /* ignore */
     }
   }, [language]);
-
-  useEffect(() => {
-    try {
-      setSettings(clampSettings(JSON.parse(localStorage.getItem("club-focus-settings") || "null")));
-    } catch {
-      setSettings(DEFAULT_SETTINGS);
-    }
-  }, []);
-
-  function patchSettings(next: Partial<GameSettings>) {
-    setSettings((prev: GameSettings) => {
-      const merged = clampSettings({ ...prev, ...next });
-      try {
-        localStorage.setItem("club-focus-settings", JSON.stringify(merged));
-      } catch {
-        /* ignore */
-      }
-      return merged;
-    });
-  }
 
   const bumpMood = useCallback((next: TurtleMood, ms = 420) => {
     setMood(next);
@@ -565,10 +507,39 @@ function BoothApp() {
     };
   }, []);
 
+  const submitResult = useCallback(async (payload: ReturnType<typeof publicResult>) => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    setRetrying(true);
+    setSave("idle");
+    try {
+      const response = await fetch("/api/result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error("Save failed");
+      if (body.clubName) setClub(body.clubName);
+      if (body.sheetsOk === true) {
+        try { clearPendingResult(sessionStorage, payload.submissionId); } catch { /* Storage unavailable. */ }
+        setPending((current) => current?.submissionId === payload.submissionId ? null : current);
+      }
+      if (gameRef.current.submissionId === payload.submissionId) setSave(body.sheetsOk === true ? "ok" : "local");
+    } catch {
+      if (gameRef.current.submissionId === payload.submissionId) setSave("fail");
+    } finally {
+      sendingRef.current = false;
+      setRetrying(false);
+    }
+  }, []);
+
   const endGame = useCallback(() => {
     const g = gameRef.current;
     if (g.resultSubmitted) return;
     g.ended = true;
+    g.completedAt ??= new Date().toISOString();
     g.resultSubmitted = true;
     if (g.kind === "warmup") {
       startingRef.current = false;
@@ -582,37 +553,22 @@ function BoothApp() {
       setSave("guest");
       return;
     }
-    fetch("/api/result", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then(async (r) => {
-        const d = await r.json().catch(() => ({}));
-        if (d.clubName) setClub(d.clubName);
-        if (!r.ok) {
-          setSave("fail");
-          return;
-        }
-        if (d.sheetsOk) setSave("ok");
-        else setSave("local");
-      })
-      .catch(() => {
-        setSave("fail");
-      });
-  }, []);
+    setPending(payload);
+    try { storePendingResult(sessionStorage, payload); } catch { /* Keep the in-memory retry available. */ }
+    void submitResult(payload);
+  }, [submitResult]);
 
   const answer = useCallback(
     (id: ColorId, snapshot?: { mode: string; seq: number }) => {
       const g = gameRef.current;
-      const now = Date.now();
-      const judged = judgeAnswer(g, id, snapshot, now);
+      const now = performance.now();
+      const judged = judgeAnswer(g, id, snapshot ?? { mode: g.mode, seq: g.questionSeq }, now);
       if (!judged.ok) {
         if (judged.reason === "expired") endGame();
         return;
       }
       if (judged.hit) {
-        const combo = judged.combo >= 5;
+        const combo = (judged.delta ?? 0) > 100;
         const text = combo ? "COMBO +" + judged.delta : "+" + judged.delta;
         setPops((xs) => [
           ...xs.slice(-3),
@@ -634,30 +590,11 @@ function BoothApp() {
 
   useEffect(() => {
     if (screen !== "game") return undefined;
-    let raf = 0;
-    const loop = () => {
-      const g = gameRef.current;
-      const tick = tickGame(g);
-      setRemaining(tick.remaining);
-      if (timeNumRef.current) timeNumRef.current.textContent = String(Math.ceil(tick.remaining));
-      if (timeRailRef.current) {
-        timeRailRef.current.style.transform =
-          "scaleX(" + Math.max(0, tick.remaining / (g.duration || 60)) + ")";
-      }
-      if (tick.expired) {
-        endGame();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) {
+        if (e.key === "Enter" || e.key === " " || colorByKey(e.key)) e.preventDefault();
         return;
       }
-      raf = window.requestAnimationFrame(loop);
-    };
-    raf = window.requestAnimationFrame(loop);
-    return () => window.cancelAnimationFrame(raf);
-  }, [screen, endGame]);
-
-  useEffect(() => {
-    if (screen !== "game") return undefined;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
       const id = colorByKey(e.key) as ColorId | null;
       if (!id) return;
       e.preventDefault();
@@ -675,8 +612,7 @@ function BoothApp() {
     setPlayer(nextPlayer);
     playerRef.current = nextPlayer;
     setErrors({});
-    gameRef.current = createLiveGame(Date.now(), { skipSave: true, settings });
-    setRemaining(settings.duration);
+    gameRef.current = createLiveGame(performance.now(), { skipSave: true, settings });
     setPops([]);
     setSave("idle");
     setMood("wave");
@@ -685,22 +621,23 @@ function BoothApp() {
   }, [settings]);
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     const api = {
       endNow: () => {
         const g = gameRef.current;
-        g.startTime = Date.now() - (g.duration || 60) * 1000;
+        g.startTime = performance.now() - (g.duration || 60) * 1000;
         endGame();
       },
       advanceMs: (ms: number) => {
         gameRef.current.startTime -= Number(ms) || 0;
-        const tick = tickGame(gameRef.current);
+        const tick = tickGame(gameRef.current, performance.now());
         if (tick.expired) endGame();
       },
       getState: () => ({
         ...gameRef.current,
         screen,
         playerName: playerRef.current.name,
-        remaining: remainingSeconds(gameRef.current),
+        remaining: remainingSeconds(gameRef.current, performance.now()),
         correctId: gameRef.current.ended ? null : correctId(gameRef.current),
       }),
       answer: (id: ColorId) => answer(id),
@@ -713,14 +650,13 @@ function BoothApp() {
     playerRef.current = next;
     gameRef.current =
       kind === "warmup"
-        ? createWarmupGame(Date.now(), settings)
-        : createLiveGame(Date.now(), {
+        ? createWarmupGame(performance.now(), settings)
+        : createLiveGame(performance.now(), {
             skipSave: kind === "practice",
             settings,
           });
     pressRef.current = null;
     window.clearTimeout(moodTimer.current);
-    setRemaining(gameRef.current.duration);
     setPops([]);
     setMood("idle");
     setSave("idle");
@@ -740,7 +676,7 @@ function BoothApp() {
   }
 
   function startChallenge() {
-    if (startingRef.current || busy) return;
+    if (startingRef.current || busy || pending) return;
     const parsed = validatePlayer(player);
     if (!parsed.ok) {
       setErrors(parsed.errors as Record<string, string | undefined>);
@@ -800,12 +736,23 @@ function BoothApp() {
 
   const g = gameRef.current;
   const q = g.question;
-  const timeShow = Math.ceil(remaining);
-  const timeRatio = Math.max(0, Math.min(1, remaining / (g.duration || 60)));
 
   return (
     <div className="app-root" data-screen={screen} data-session={g.kind}>
       <div className="shell">
+        {pending && screen !== "game" && (
+          <aside className="pending-result" role="status">
+            <strong>{language === "zh" ? "有一筆成績尚未確認儲存" : "A score is awaiting confirmation"}</strong>
+            <p>{language === "zh" ? "重試會沿用同一局編號，不會重複登記；完成或放棄後可開始新挑戰。" : "Retry keeps the same entry ID, without duplicating it. Retry or discard before a new entry."}</p>
+            <button type="button" disabled={retrying} onClick={() => void submitResult(pending)}>
+              {retrying ? (language === "zh" ? "傳送中…" : "Sending…") : (language === "zh" ? "重試儲存" : "Retry save")}
+            </button>
+            <button type="button" disabled={retrying} onClick={() => {
+              try { clearPendingResult(sessionStorage, pending.submissionId); } catch { /* Storage unavailable. */ }
+              setPending(null);
+            }}>{language === "zh" ? "放棄重試" : "Discard retry"}</button>
+          </aside>
+        )}
         {screen === "register" ? (
           <section className="screen screen-register active">
             <RegisterScreen
@@ -813,9 +760,8 @@ function BoothApp() {
               onLanguage={setLanguage}
               player={player}
               errors={errors}
-              busy={busy}
+              busy={busy || Boolean(pending)}
               settings={settings}
-              onSettings={patchSettings}
               onChange={(key, value) => {
                 setPlayer((p) => ({ ...p, [key]: value }));
                 setErrors((e) => ({ ...e, [key]: undefined }));
@@ -828,41 +774,13 @@ function BoothApp() {
 
         {screen === "game" ? (
           <section className="screen screen-game active">
-            <div className="game-top">
-              <div
-                className={"time-board" + (timeShow <= 10 ? " warn" : "")}
-                role="timer"
-                aria-label={language === "en" ? "Time left" : "剩餘秒數"}
-              >
-                <span>{TEXT[language].timeLeft}</span>
-                <strong
-                  data-time
-                  ref={(el) => {
-                    timeNumRef.current = el;
-                  }}
-                >
-                  {timeShow}
-                </strong>
-              </div>
-              <div className="game-stats">
-                <div>
-                  <span>{TEXT[language].score}</span>
-                  <strong data-score>{g.score}</strong>
-                </div>
-                <div>
-                  <span>{TEXT[language].combo}</span>
-                  <strong data-combo>x{g.combo}</strong>
-                </div>
-              </div>
-            </div>
-            <div className={"time-rail" + (timeShow <= 10 ? " is-warn" : "")} aria-hidden="true">
-              <i
-                ref={(el) => {
-                  timeRailRef.current = el;
-                }}
-                style={{ transform: "scaleX(" + timeRatio + ")" }}
-              />
-            </div>
+            <ScoreHUD
+              game={g}
+              language={language}
+              score={g.score}
+              combo={g.combo}
+              onExpire={endGame}
+            />
             <div
               className={"mode-card mode-" + g.mode + (modePulse ? " switch" : "")}
               data-mode={g.mode}
@@ -872,7 +790,6 @@ function BoothApp() {
               {g.kind === "warmup" ? (
                 <p className="eyebrow" data-warmup>
                   {TEXT[language].warmup}
-                  <ZhHelper language={language}>{TEXT.zh.warmup}</ZhHelper>
                 </p>
               ) : null}
               <div className="flash" />
@@ -881,15 +798,9 @@ function BoothApp() {
                   ? TEXT[language].meaningInstruction
                   : TEXT[language].visualInstruction}
               </small>
-              <ZhHelper language={language}>
-                {g.mode === "meaning" ? TEXT.zh.meaningInstruction : TEXT.zh.visualInstruction}
-              </ZhHelper>
               <strong>
                 {g.mode === "meaning" ? TEXT[language].meaningMode : TEXT[language].visualMode}
               </strong>
-              <ZhHelper language={language}>
-                {g.mode === "meaning" ? TEXT.zh.meaningMode : TEXT.zh.visualMode}
-              </ZhHelper>
             </div>
             <div className="play-area">
               {pops.map((p) => (
@@ -927,6 +838,9 @@ function BoothApp() {
                     onPointerCancel={() => {
                       pressRef.current = null;
                     }}
+                    onClick={(event) => {
+                      if (event.detail === 0) answer(c.id as ColorId);
+                    }}
                   >
                     {colorName(c.id as ColorId, language)}
                   </button>
@@ -962,7 +876,6 @@ function RegisterScreen({
   errors,
   busy,
   settings,
-  onSettings,
   onChange,
   onStart,
   onTryPlay,
@@ -973,14 +886,13 @@ function RegisterScreen({
   errors: Record<string, string | undefined>;
   busy: boolean;
   settings: GameSettings;
-  onSettings: (next: Partial<GameSettings>) => void;
   onChange: (key: keyof Player, value: string) => void;
   onStart: () => void;
   onTryPlay: () => void;
 }) {
   const ui = TEXT[language];
   const official = isOfficialSettings(settings);
-  const [openSettings, setOpenSettings] = useState(false);
+  const [openAdmin, setOpenAdmin] = useState(false);
   const [gatekeeperChoice, setGatekeeperChoice] = useState(() =>
     GATEKEEPERS.includes(player.gatekeeper)
       ? player.gatekeeper
@@ -990,6 +902,7 @@ function RegisterScreen({
   );
 
   return (
+    <>
     <form
       className="register-layout"
       data-register="official"
@@ -1000,6 +913,24 @@ function RegisterScreen({
         onStart();
       }}
     >
+      <header className="club-header">
+        <a className="club-brand" href="/" aria-label={language === "zh" ? "禪學社首頁" : "Zen Club home"}>
+          <img src="/club-mark.svg" alt="" width="38" height="38" />
+          <span>{language === "zh" ? "淡江禪學社" : "TKU Zen Club"}<small>ZEN CLUB</small></span>
+        </a>
+        <div className="header-actions">
+          <LanguageToggle language={language} onChange={onLanguage} />
+          <button
+            type="button"
+            className="gear-btn"
+            aria-label={language === "en" ? "Administrator login" : "管理員登入"}
+            data-admin-login
+            onClick={() => setOpenAdmin(true)}
+          >
+            <Settings size={20} aria-hidden="true" />
+          </button>
+        </div>
+      </header>
       <figure className="scene-hero">
         <img
           src="/scene-hero.jpg"
@@ -1015,47 +946,23 @@ function RegisterScreen({
         />
         <figcaption className="scene-hero-overlay">
           <p className="eyebrow">{ui.expo}</p>
-          <ZhHelper language={language}>{TEXT.zh.expo}</ZhHelper>
           <h1 className="hero-title">{ui.title}</h1>
-          <ZhHelper language={language}>{TEXT.zh.title}</ZhHelper>
-          <p className="hero-facts">
-            <span>{ui.factSeconds}</span>
-            <span>{ui.factInstruction}</span>
-            <span>{ui.factPrize}</span>
-          </p>
+          <p className="hero-subtitle">{language === "zh" ? "讓心安定，讓專注發光。" : "A calm mind. A sharper focus."}</p>
         </figcaption>
-        <div className="register-language">
-          <LanguageToggle language={language} onChange={onLanguage} />
-        </div>
-        <button
-          type="button"
-          className="gear-btn"
-          aria-label={language === "en" ? "Open settings" : "開啟設定"}
-          data-open-settings
-          onClick={() => setOpenSettings(true)}
-        >
-          <GearIcon />
-        </button>
       </figure>
+      <div className="challenge-rules" aria-label={language === "zh" ? "挑戰規則" : "Challenge rules"}>
+        <div className="rule-chip"><Timer size={18} aria-hidden="true" /><span>{ui.time}<strong>60 {ui.seconds}</strong></span></div>
+        <div className="rule-chip"><ShieldCheck size={18} aria-hidden="true" /><span>{ui.speed}<strong>{ui.normal}</strong></span></div>
+        <div className="rule-chip"><ArrowRightLeft size={18} aria-hidden="true" /><span>{language === "zh" ? "規則" : "Rule"}<strong>{language === "zh" ? "每題切換" : "Switch each answer"}</strong></span></div>
+        <p className="rule-score">{language === "zh" ? "答對 +100 · 連對 5 題起 +200 · 答錯 −50" : "Correct +100 · From 5 in a row +200 · Mistake −50"}</p>
+      </div>
       <div className="sheet-register">
-        <div className="form-kicker">
-          <Turtle mood="wave" size={48} />
-          <div>
-            <h2>{ui.officialEntry}</h2>
-            <ZhHelper language={language}>正式參賽</ZhHelper>
-            <p>{official ? ui.officialDescription : ui.practiceDescription}</p>
-            <ZhHelper language={language}>
-              {official ? TEXT.zh.officialDescription : TEXT.zh.practiceDescription}
-            </ZhHelper>
-          </div>
-        </div>
         <div className={"field gatekeeper-field" + (errors.gatekeeper ? " is-invalid" : "")}>
           <span id="gatekeeper-label" className="field-label">
             {ui.gatekeeper} <span className="req">*</span>
-            <ZhHelper language={language}>關主</ZhHelper>
+            <span className="field-hint">{ui.chooseGatekeeper}</span>
           </span>
-          <p className="field-hint">{ui.chooseGatekeeper}</p>
-          <div className="gatekeeper-picks" role="radiogroup" aria-labelledby="gatekeeper-label">
+          <div className="gatekeeper-picks" role="group" aria-labelledby="gatekeeper-label">
             {GATEKEEPERS.map((name) => (
               <button
                 key={name}
@@ -1096,29 +1003,38 @@ function RegisterScreen({
           ) : null}
           <span className="field-err">{validationText(errors.gatekeeper, language)}</span>
         </div>
+        <div className="form-kicker">
+          <div>
+            <h2>{ui.officialEntry}<span>{language === "zh" ? "先練習，再挑戰" : "Warm up, then focus"}</span></h2>
+            <p>{language === "zh" ? "填妥資料，先暖身 15 秒，再挑戰正式 60 秒。" : "Enter your details. Warm up for 15 seconds, then take the 60-second challenge."}</p>
+          </div>
+        </div>
         <div className={"field" + (errors.name ? " is-invalid" : "")}>
           <label htmlFor="name">
             {ui.name} <span className="req">*</span>
-            <ZhHelper language={language}>姓名</ZhHelper>
           </label>
           <input
             id="name"
             name="name"
             autoComplete="name"
+            maxLength={20}
+            aria-invalid={Boolean(errors.name)}
+            aria-describedby={errors.name ? "name-error" : undefined}
             value={player.name}
             onChange={(e) => onChange("name", e.target.value)}
             placeholder={ui.namePlaceholder}
           />
-          <span className="field-err">{validationText(errors.name, language)}</span>
+          <span id="name-error" className="field-err">{validationText(errors.name, language)}</span>
         </div>
         <div className={"field" + (errors.department ? " is-invalid" : "")}>
           <label htmlFor="department">
             {ui.department} <span className="req">*</span>
-            <ZhHelper language={language}>科系</ZhHelper>
           </label>
           <select
             id="department"
             name="department"
+            aria-invalid={Boolean(errors.department)}
+            aria-describedby={errors.department ? "department-error" : undefined}
             value={player.department}
             onChange={(e) => onChange("department", e.target.value)}
           >
@@ -1133,16 +1049,18 @@ function RegisterScreen({
               </optgroup>
             ))}
           </select>
-          <span className="field-err">{validationText(errors.department, language)}</span>
+          <span id="department-error" className="field-err">{validationText(errors.department, language)}</span>
         </div>
         <div className={"field" + (errors.grade ? " is-invalid" : "")}>
           <span id="grade-label" className="field-label">
             {ui.year} <span className="req">*</span>
-            <ZhHelper language={language}>年級</ZhHelper>
           </span>
           <select
             id="grade"
             className="sr-only"
+            aria-labelledby="grade-label"
+            tabIndex={-1}
+            aria-hidden="true"
             value={player.grade}
             onChange={(e) => onChange("grade", e.target.value)}
           >
@@ -1153,7 +1071,7 @@ function RegisterScreen({
               </option>
             ))}
           </select>
-          <div className="grade-picks" role="radiogroup" aria-labelledby="grade-label">
+          <div className="grade-picks" role="group" aria-labelledby="grade-label">
             {GRADE_LIST.map((g) => (
               <button
                 key={g}
@@ -1164,7 +1082,6 @@ function RegisterScreen({
                 onClick={() => onChange("grade", g)}
               >
                 {gradeName(g, language)}
-                <ZhHelper language={language}>{gradeName(g, "zh")}</ZhHelper>
               </button>
             ))}
           </div>
@@ -1173,7 +1090,6 @@ function RegisterScreen({
         <div className={"field" + (errors.phone ? " is-invalid" : "")}>
           <label htmlFor="phone">
             {ui.mobile} <span className="req">*</span>
-            <ZhHelper language={language}>電話</ZhHelper>
           </label>
           <input
             id="phone"
@@ -1181,12 +1097,14 @@ function RegisterScreen({
             type="tel"
             inputMode="numeric"
             autoComplete="tel"
+            aria-invalid={Boolean(errors.phone)}
+            aria-describedby={errors.phone ? "phone-error" : undefined}
             maxLength={10}
             value={player.phone}
             onChange={(e) => onChange("phone", e.target.value.replace(/[^\d]/g, "").slice(0, 10))}
             placeholder={ui.phonePlaceholder}
           />
-          <span className="field-err">{validationText(errors.phone, language)}</span>
+          <span id="phone-error" className="field-err">{validationText(errors.phone, language)}</span>
         </div>
       </div>
       <div className="cta-dock">
@@ -1198,277 +1116,13 @@ function RegisterScreen({
               : ui.practiceStartPrefix + settings.duration + ui.practiceStartSuffix}
         </button>
         <p className="privacy">{official ? ui.privacyOfficial : ui.privacyPractice}</p>
-        <ZhHelper language={language}>
-          {official ? TEXT.zh.privacyOfficial : TEXT.zh.privacyPractice}
-        </ZhHelper>
         <button type="button" className="guest-link" data-cta="guest" onClick={onTryPlay}>
           {ui.guest}
         </button>
       </div>
-      {openSettings ? (
-        <SettingsSheet
-          language={language}
-          onLanguage={onLanguage}
-          settings={settings}
-          official={official}
-          onSettings={onSettings}
-          onClose={() => setOpenSettings(false)}
-        />
-      ) : null}
     </form>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M19.4 12.9c.06-.3.1-.6.1-.9s-.04-.6-.1-.9l2-1.5-1.9-3.3-2.3.7c-.5-.4-1-.7-1.6-.9L15 3h-6l-.6 2.1c-.6.2-1.1.5-1.6.9l-2.3-.7L3.6 8.6l2 1.5c-.06.3-.1.6-.1.9s.04.6.1.9l-2 1.5 1.9 3.3 2.3-.7c.5.4 1.1.7 1.6.9L15 21h-6l-.6-2.1c-.6-.2-1.1-.5-1.6-.9l-2.3.7-1.9-3.3 2-1.5Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function SettingsSheet({
-  language,
-  onLanguage,
-  settings,
-  official,
-  onSettings,
-  onClose,
-}: {
-  language: Language;
-  onLanguage: (language: Language) => void;
-  settings: GameSettings;
-  official: boolean;
-  onSettings: (next: Partial<GameSettings>) => void;
-  onClose: () => void;
-}) {
-  const ui = TEXT[language];
-
-  return (
-    <div className="settings-mask" data-settings="1" onClick={onClose} role="presentation">
-      <div
-        className="settings-sheet"
-        role="dialog"
-        aria-labelledby="settings-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="settings-head">
-          <h3 id="settings-title">{ui.settings}</h3>
-          <ZhHelper language={language}>挑戰設定</ZhHelper>
-          <LanguageToggle language={language} onChange={onLanguage} compact />
-          <button
-            type="button"
-            className="settings-close"
-            onClick={onClose}
-            aria-label={language === "en" ? "Close settings" : "關閉設定"}
-          >
-            {ui.done}
-          </button>
-        </div>
-        <SettingsPreview language={language} settings={settings} />
-        <label className="slider-row" htmlFor="set-duration">
-          <span>
-            {ui.time}
-            <ZhHelper language={language}>時間</ZhHelper>
-          </span>
-          <strong data-duration-value>
-            {settings.duration} {ui.seconds}
-            {settings.duration === 60 ? " · " + ui.official : ""}
-          </strong>
-        </label>
-        <input
-          id="set-duration"
-          className="slider"
-          type="range"
-          min={DURATION_MIN}
-          max={DURATION_MAX}
-          step={5}
-          value={settings.duration}
-          data-duration-slider
-          onChange={(e) => onSettings({ duration: Number(e.target.value) })}
-        />
-        <div className="slider-ends">
-          <span>
-            {DURATION_MIN}
-            {language === "en" ? "s" : "秒"}
-          </span>
-          <span>60{language === "en" ? "s" : "秒"}</span>
-          <span>
-            {DURATION_MAX}
-            {language === "en" ? "s" : "秒"}
-          </span>
-        </div>
-        <label className="slider-row" htmlFor="set-speed">
-          <span>
-            {ui.speed}
-            <ZhHelper language={language}>速度</ZhHelper>
-          </span>
-          <strong data-speed-value>
-            {speedName(settings.speed, language)} · {speedHint(settings.speed, language)}
-          </strong>
-        </label>
-        <input
-          id="set-speed"
-          className="slider"
-          type="range"
-          min={0}
-          max={SPEED_PRESETS.length - 1}
-          step={1}
-          value={Math.max(
-            0,
-            SPEED_PRESETS.findIndex((p) => p.id === settings.speed),
-          )}
-          data-speed-slider
-          onChange={(e) => onSettings({ speed: SPEED_PRESETS[Number(e.target.value)]?.id })}
-        />
-        <div className="slider-ends">
-          {SPEED_PRESETS.map((p) => (
-            <span key={p.id}>
-              {speedName(p.id, language)}
-              <ZhHelper language={language}>{speedName(p.id, "zh")}</ZhHelper>
-            </span>
-          ))}
-        </div>
-        <p className="settings-label">
-          {ui.startRule}
-          <ZhHelper language={language}>起始規則</ZhHelper>
-        </p>
-        <div className="grade-picks" role="radiogroup" aria-label={ui.startRule}>
-          {START_MODE_OPTIONS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={"grade-pick" + (settings.startMode === s.id ? " is-on" : "")}
-              data-start-mode={s.id}
-              aria-pressed={settings.startMode === s.id}
-              onClick={() => onSettings({ startMode: s.id })}
-            >
-              {startModeName(s.id, language)}
-              <ZhHelper language={language}>{startModeName(s.id, "zh")}</ZhHelper>
-            </button>
-          ))}
-        </div>
-        <div className="settings-toggles">
-          <button
-            type="button"
-            className={"grade-pick" + (settings.sound ? " is-on" : "")}
-            aria-pressed={settings.sound}
-            data-sound={settings.sound ? "on" : "off"}
-            onClick={() => onSettings({ sound: !settings.sound })}
-          >
-            {ui.sound} {settings.sound ? ui.on : ui.off}
-          </button>
-          <button
-            type="button"
-            className={"grade-pick" + (settings.vibrate ? " is-on" : "")}
-            aria-pressed={settings.vibrate}
-            data-vibrate={settings.vibrate ? "on" : "off"}
-            onClick={() => onSettings({ vibrate: !settings.vibrate })}
-          >
-            {ui.vibration} {settings.vibrate ? ui.on : ui.off}
-          </button>
-        </div>
-        {official ? (
-          <p className="settings-note">
-            {ui.officialRules}
-            <ZhHelper language={language}>{TEXT.zh.officialRules}</ZhHelper>
-          </p>
-        ) : (
-          <button
-            type="button"
-            className="settings-reset"
-            onClick={() => onSettings(DEFAULT_SETTINGS)}
-          >
-            {ui.restoreOfficial}
-            <ZhHelper language={language}>恢復正式規則</ZhHelper>
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SettingsPreview({ language, settings }: { language: Language; settings: GameSettings }) {
-  const [q, setQ] = useState(() => nextQuestion(null));
-  const [mode, setMode] = useState<"meaning" | "visual">(
-    settings.startMode === "visual" ? "visual" : "meaning",
-  );
-  const [left, setLeft] = useState(settings.duration);
-  const [pulse, setPulse] = useState(0);
-  const startRef = useRef(Date.now());
-  const ui = TEXT[language];
-
-  useEffect(() => {
-    startRef.current = Date.now();
-    setLeft(settings.duration);
-    if (settings.startMode === "visual" || settings.startMode === "meaning") {
-      setMode(settings.startMode);
-    }
-  }, [settings.duration, settings.startMode]);
-
-  useEffect(() => {
-    let raf = 0;
-    const loop = () => {
-      const now = Date.now();
-      const elapsed = (now - startRef.current) / 1000;
-      const remain = Math.max(0, settings.duration - elapsed);
-      setLeft(remain);
-      if (remain <= 0) {
-        startRef.current = now;
-        setQ(nextQuestion(null));
-      }
-      raf = window.requestAnimationFrame(loop);
-    };
-    raf = window.requestAnimationFrame(loop);
-    return () => window.cancelAnimationFrame(raf);
-  }, [settings.duration]);
-
-  return (
-    <div className="settings-preview" data-preview="1">
-      <div className="preview-hud">
-        <span>{ui.preview}</span>
-        <strong>
-          {Math.ceil(left)}
-          {language === "en" ? "s" : "秒"}
-        </strong>
-      </div>
-      <div className={"preview-mode" + (pulse ? " switch" : "")} key={pulse}>
-        {mode === "meaning" ? ui.meaningInstruction : ui.visualInstruction}
-        <ZhHelper language={language}>
-          {mode === "meaning" ? TEXT.zh.meaningInstruction : TEXT.zh.visualInstruction}
-        </ZhHelper>
-      </div>
-      <div className="preview-word" style={{ color: q.visual.hex }}>
-        {colorName(q.meaning.id as ColorId, language)}
-      </div>
-      <div className="preview-dots">
-        {COLORS.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            className={"preview-dot ans-" + c.id}
-            aria-label={colorName(c.id as ColorId, language)}
-            onClick={() => {
-              setQ(nextQuestion(q));
-              setMode((m) => (m === "meaning" ? "visual" : "meaning"));
-              setPulse((n) => n + 1);
-            }}
-          >
-            {colorName(c.id as ColorId, language)}
-          </button>
-        ))}
-      </div>
-    </div>
+    {openAdmin ? <AdminLogin onClose={() => setOpenAdmin(false)} onSuccess={() => window.location.assign("/admin")} /> : null}
+    </>
   );
 }
 
@@ -1497,7 +1151,6 @@ function ResultScreen({
   const payload = publicResult(game, player);
   const title = resultTitle(payload.title, language);
   const blurb = resultBlurb(payload.title, language, payload.duration, payload.blurb);
-  const zhBlurb = resultBlurb(payload.title, "zh", payload.duration, payload.blurb);
   const displayClub = clubName(club, language);
   const warmup = game.kind === "warmup";
 
@@ -1507,7 +1160,6 @@ function ResultScreen({
         <div className="result-toolbar">
           <div>
             <p className="eyebrow">{displayClub}</p>
-            <ZhHelper language={language}>{club}</ZhHelper>
           </div>
           <LanguageToggle language={language} onChange={onLanguage} />
         </div>
@@ -1515,35 +1167,29 @@ function ResultScreen({
           {payload.score}
         </div>
         <h2 className="result-title">{warmup ? ui.warmupComplete : title}</h2>
-        <ZhHelper language={language}>{warmup ? TEXT.zh.warmupComplete : payload.title}</ZhHelper>
         <p className="title-blurb">{warmup ? ui.warmupDescription : blurb}</p>
-        <ZhHelper language={language}>{warmup ? TEXT.zh.warmupDescription : zhBlurb}</ZhHelper>
         <div className="result-meta">
           <div>
             <span>
               {ui.accuracy}
-              <ZhHelper language={language}>正確率</ZhHelper>
             </span>
             <strong>{payload.accuracy}%</strong>
           </div>
           <div>
             <span>
               {ui.bestCombo}
-              <ZhHelper language={language}>最高連擊</ZhHelper>
             </span>
             <strong>x{payload.maxCombo}</strong>
           </div>
           <div>
             <span>
               {ui.correct}
-              <ZhHelper language={language}>答對</ZhHelper>
             </span>
             <strong>{payload.correct}</strong>
           </div>
           <div>
             <span>
               {ui.wrong}
-              <ZhHelper language={language}>答錯</ZhHelper>
             </span>
             <strong>{payload.wrong}</strong>
           </div>
@@ -1555,7 +1201,6 @@ function ResultScreen({
             </p>
             <p className="join-copy">
               {language === "en" ? ui.joinCopy : ui.joinCopy.replace("淡江大學禪學社", displayClub)}
-              <ZhHelper language={language}>{TEXT.zh.joinCopy}</ZhHelper>
             </p>
           </>
         ) : null}

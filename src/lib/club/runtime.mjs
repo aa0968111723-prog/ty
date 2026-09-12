@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- Legacy mutable JavaScript engine; the client contract is typed in runtime.d.mts.
 /** Single source of truth: Stroop rules, titles, departments, validation. */
 
 export const GAME_DURATION = 60;
@@ -81,11 +81,21 @@ export function clampSettings(raw) {
   };
 }
 
-export const DEFAULT_SETTINGS = clampSettings(null);
+export const DEFAULT_SETTINGS = Object.freeze(clampSettings(null));
+
+export function settingsAreValid(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const canonical = clampSettings(raw);
+  return Object.keys(DEFAULT_SETTINGS).every((key) => raw[key] === canonical[key]);
+}
 
 export function isOfficialSettings(raw) {
-  const s = clampSettings(raw);
-  return s.duration === GAME_DURATION && s.speed === "normal" && s.startMode === "meaning";
+  return (
+    settingsAreValid(raw) &&
+    ["duration", "switchMs", "speed", "comboEvery", "tapLockMs", "startMode"].every(
+      (key) => raw[key] === DEFAULT_SETTINGS[key],
+    )
+  );
 }
 
 export function speedMs(speed) {
@@ -243,13 +253,13 @@ export function accuracyOf(correct, total) {
   return Math.round((1000 * correct) / total) / 10;
 }
 
-export function remainingSeconds(game, now = Date.now()) {
-  const duration = Number(game.duration) > 0 ? Number(game.duration) : GAME_DURATION;
-  const elapsed = (now - game.startTime) / 1000;
-  return Math.max(0, duration - elapsed);
+export function remainingSeconds(game, now = performance.now()) {
+  const observed = Number.isFinite(now) ? Math.max(now, game.lastClockTime) : game.lastClockTime;
+  return Math.max(0, game.duration - (observed - game.startTime) / 1000);
 }
 
-export function createLiveGame(now = Date.now(), opts = {}) {
+export function createLiveGame(now = performance.now(), opts = {}) {
+  if (!Number.isFinite(now) || now < 0) throw new TypeError("Invalid game clock");
   const s = clampSettings(opts.settings);
   const skipSave = Boolean(opts.skipSave) || !isOfficialSettings(s);
   const mode =
@@ -266,6 +276,8 @@ export function createLiveGame(now = Date.now(), opts = {}) {
     lastAnswerAt: 0,
     questionSeq: 1,
     startTime: now,
+    lastClockTime: now,
+    completedAt: null,
     ended: false,
     resultSubmitted: false,
     skipSave,
@@ -280,7 +292,7 @@ export function createLiveGame(now = Date.now(), opts = {}) {
   };
 }
 
-export function createWarmupGame(now = Date.now(), settings = {}) {
+export function createWarmupGame(now = performance.now(), settings = {}) {
   return {
     ...createLiveGame(now, {
       skipSave: true,
@@ -302,20 +314,27 @@ function switchModeAfterAnswer(game, now) {
   return true;
 }
 
-export function judgeAnswer(game, chosen, snapshot, now = Date.now()) {
+function finishGame(game) {
+  game.ended = true;
+  game.completedAt ??= new Date().toISOString();
+}
+
+export function judgeAnswer(game, chosen, snapshot, now = performance.now()) {
   if (game.ended) return { ok: false, reason: "ended" };
-  const lock = Number(game.tapLockMs) > 0 ? Number(game.tapLockMs) : TAP_LOCK_MS;
-  if (now - game.lastAnswerAt < lock) return { ok: false, reason: "lock" };
-  const seq = snapshot?.seq ?? game.questionSeq;
-  if (seq !== game.questionSeq) return { ok: false, reason: "stale" };
-  const elapsed = (now - game.startTime) / 1000;
-  const duration = Number(game.duration) > 0 ? Number(game.duration) : GAME_DURATION;
-  if (elapsed >= duration) {
-    game.ended = true;
+  if (!Number.isFinite(now) || now < game.lastClockTime) return { ok: false, reason: "clock" };
+  game.lastClockTime = now;
+  if (remainingSeconds(game, now) <= 0) {
+    finishGame(game);
     return { ok: false, reason: "expired" };
   }
-  const mode = snapshot?.mode ?? game.mode;
-  const expected = mode === "meaning" ? game.question.meaning.id : game.question.visual.id;
+  if (game.questionSeq > 1 && now - game.lastAnswerAt < game.tapLockMs) {
+    return { ok: false, reason: "lock" };
+  }
+  if (snapshot?.seq !== game.questionSeq || snapshot?.mode !== game.mode) {
+    return { ok: false, reason: "stale" };
+  }
+  if (!COLORS.some((color) => color.id === chosen)) return { ok: false, reason: "invalid" };
+  const expected = correctId(game);
   game.lastAnswerAt = now;
   const hit = chosen === expected;
   let delta = 0;
@@ -328,7 +347,7 @@ export function judgeAnswer(game, chosen, snapshot, now = Date.now()) {
   } else {
     game.wrong += 1;
     game.combo = 0;
-    delta = -Math.min(MISS_PENALTY, game.score);
+    delta = game.score === 0 ? 0 : -Math.min(MISS_PENALTY, game.score);
     game.score += delta;
   }
   game.questionSeq += 1;
@@ -337,10 +356,11 @@ export function judgeAnswer(game, chosen, snapshot, now = Date.now()) {
   return { ok: true, hit, expected, score: game.score, combo: game.combo, delta, switched };
 }
 
-export function tickGame(game, now = Date.now()) {
+export function tickGame(game, now = performance.now()) {
+  if (Number.isFinite(now)) game.lastClockTime = Math.max(game.lastClockTime, now);
   const remaining = remainingSeconds(game, now);
   const expired = remaining <= 0;
-  if (expired) game.ended = true;
+  if (expired) finishGame(game);
   return { remaining, switched: false, expired };
 }
 
@@ -414,6 +434,9 @@ export function publicResult(game, player) {
     blurb: blurbForTitle(title, duration),
     duration,
     skipSave: Boolean(game.skipSave),
+    kind: game.kind,
+    settings: { ...game.settings },
+    completedAt: game.completedAt,
     submissionId: game.submissionId,
   };
 }
@@ -426,15 +449,23 @@ export function theoreticalMaxScore(correct) {
   return warmup * HIT_SCORE + boosted * COMBO_SCORE;
 }
 
-export function scoreIsConsistent({ score, correct, wrong, maxCombo }) {
-  const s = Math.max(0, Number(score) || 0);
-  const c = Math.max(0, Math.floor(Number(correct) || 0));
-  const w = Math.max(0, Math.floor(Number(wrong) || 0));
-  const m = Math.max(0, Math.floor(Number(maxCombo) || 0));
-  if (!Number.isInteger(s) || s % 50 !== 0) return false;
+export function scoreIsConsistent(row) {
+  if (!row || typeof row !== "object") return false;
+  const { score: s, correct: c, wrong: w, maxCombo: m } = row;
+  if (![s, c, w, m].every((n) => Number.isSafeInteger(n) && n >= 0)) return false;
+  if (c + w > MAX_ANSWERS || m > MAX_ANSWERS || s % MISS_PENALTY !== 0) return false;
   if (s > theoreticalMaxScore(c)) return false;
   if (m > c) return false;
-  if (c === 0 && s !== 0) return false;
+  if (c === 0) return s === 0 && m === 0;
+  if (m === 0 || c > m * (w + 1)) return false;
   if (w === 0 && (s !== theoreticalMaxScore(c) || m !== c)) return false;
+  const unboosted = COMBO_BONUS_AT - 1;
+  const minBoosts = Math.max(0, m - unboosted) + Math.max(0, c - m - unboosted * w);
+  const maxBoosts =
+    Math.floor(c / m) * Math.max(0, m - unboosted) + Math.max(0, (c % m) - unboosted);
+  const minScore = Math.max(0, c * HIT_SCORE + minBoosts * (COMBO_SCORE - HIT_SCORE) - w * MISS_PENALTY);
+  const minSeparators = Math.ceil(c / m) - 1;
+  const maxScore = c * HIT_SCORE + maxBoosts * (COMBO_SCORE - HIT_SCORE) - minSeparators * MISS_PENALTY;
+  if (s < minScore || s > maxScore) return false;
   return true;
 }

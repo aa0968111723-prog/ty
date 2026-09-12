@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- Contract tests intentionally send malformed and incomplete JSON payloads.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { handleHealth, handleLeaderboard, handleRegister, handleResult } from "./api.mjs";
@@ -8,7 +8,12 @@ const jsonReq = (url, body) =>
   new Request(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(url.endsWith("/api/result") ? {
+      ...publicResult(createLiveGame(0), GUEST_PLAYER),
+      completedAt: "2026-09-12T01:00:00.000Z",
+      total: undefined,
+      ...body,
+    } : body),
   });
 
 describe("api", () => {
@@ -45,12 +50,12 @@ describe("api", () => {
         grade: "大一",
         gatekeeper: "柏能",
         phone: "0968111723",
-        score: 1600,
+        score: 1550,
         correct: 12,
         wrong: 1,
         maxCombo: 6,
         title: "偽造稱號",
-        submissionId: "test-sub-1",
+        submissionId: crypto.randomUUID(),
       }),
     );
     assert.equal(res.status, 200);
@@ -75,9 +80,10 @@ describe("api", () => {
     process.env.GOOGLE_SHEET_ID = "sheet-id";
     process.env.GOOGLE_SHEET_TAB = "國際生專區";
     process.env.PASSWORD = "sheet-password";
+    const submissionId = crypto.randomUUID();
     globalThis.fetch = async (url, options) => {
       calls.push({ url, options });
-      return new Response(JSON.stringify({ ok: true }), {
+      return new Response(JSON.stringify({ ok: true, saved: true }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -90,11 +96,11 @@ describe("api", () => {
           grade: "大一",
           gatekeeper: "柏能",
           phone: "0968111723",
-          score: 1600,
+          score: 1550,
           correct: 12,
           wrong: 1,
           maxCombo: 6,
-          submissionId: "sheet-sub-1",
+          submissionId,
         }),
       );
       const data = await res.json();
@@ -105,7 +111,7 @@ describe("api", () => {
       assert.equal(calls[0].url, "https://example.test/sheet");
       assert.equal(sent.row.gatekeeper, "柏能");
       assert.equal(sent.row.phone, "0968111723");
-      assert.equal(sent.row.submissionId, "sheet-sub-1");
+      assert.equal(sent.row.submissionId, submissionId);
       assert.equal(sent.password, "sheet-password");
       assert.equal(sent.sheetId, "sheet-id");
       assert.equal(sent.sheetTab, "國際生專區");
@@ -123,9 +129,13 @@ describe("api", () => {
   });
 
   it("reports a sheet failure without exposing connector details", async () => {
-    const previousUrl = process.env.GOOGLE_SCRIPT_URL;
+    const names = ["GOOGLE_SCRIPT_URL", "GOOGLE_SHEET_ID", "GOOGLE_SHEET_TAB", "PASSWORD"];
+    const previous = names.map((name) => process.env[name]);
     const previousFetch = globalThis.fetch;
     process.env.GOOGLE_SCRIPT_URL = "https://example.test/sheet";
+    process.env.GOOGLE_SHEET_ID = "sheet-id";
+    process.env.GOOGLE_SHEET_TAB = "results";
+    process.env.PASSWORD = "sheet-password";
     globalThis.fetch = async () => new Response("bad gateway", { status: 502 });
     try {
       const res = await handleResult(
@@ -135,11 +145,11 @@ describe("api", () => {
           grade: "大一",
           gatekeeper: "柏能",
           phone: "0968111723",
-          score: 1600,
+          score: 1550,
           correct: 12,
           wrong: 1,
           maxCombo: 6,
-          submissionId: "sheet-sub-2",
+          submissionId: crypto.randomUUID(),
         }),
       );
       const data = await res.json();
@@ -149,8 +159,10 @@ describe("api", () => {
       assert.equal(data.phone, undefined);
     } finally {
       globalThis.fetch = previousFetch;
-      if (previousUrl === undefined) delete process.env.GOOGLE_SCRIPT_URL;
-      else process.env.GOOGLE_SCRIPT_URL = previousUrl;
+      names.forEach((name, index) => {
+        if (previous[index] === undefined) delete process.env[name];
+        else process.env[name] = previous[index];
+      });
     }
   });
 

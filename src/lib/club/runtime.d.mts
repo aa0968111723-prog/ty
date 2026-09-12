@@ -30,6 +30,7 @@ export const GUEST_PLAYER: {
 export const START_MODE_OPTIONS: { id: string; label: string }[];
 export const DEFAULT_SETTINGS: GameSettings;
 export function pointsForHit(combo: number): number;
+export function accuracyOf(correct: number, total: number): number;
 export function scoreIsConsistent(row: {
   score: number;
   correct: number;
@@ -40,6 +41,7 @@ export function titleForScore(score: number, duration?: number): string;
 export function theoreticalMaxScore(correct: number): number;
 export function clampSettings(raw: unknown): GameSettings;
 export function isOfficialSettings(raw: unknown): boolean;
+export function settingsAreValid(raw: unknown): boolean;
 export function nextQuestion(prev: unknown): {
   meaning: { id: string; label: string; hex: string };
   visual: { id: string; label: string; hex: string };
@@ -61,7 +63,7 @@ export function emptyPlayer(): {
 export function judgeAnswer(
   game: LiveGame,
   chosen: string,
-  snapshot?: { mode: string; seq: number },
+  snapshot: { mode: string; seq: number },
   now?: number,
 ): {
   ok: boolean;
@@ -87,6 +89,11 @@ export function publicResult(
   blurb: string;
   total: number;
   duration: number;
+  skipSave: boolean;
+  submissionId: string;
+  kind: "official" | "practice" | "warmup";
+  settings: GameSettings;
+  completedAt: string | null;
 };
 export function remainingSeconds(game: LiveGame, now?: number): number;
 export function tickGame(
@@ -123,6 +130,8 @@ export type LiveGame = {
   lastAnswerAt: number;
   questionSeq: number;
   startTime: number;
+  lastClockTime: number;
+  completedAt: string | null;
   ended: boolean;
   resultSubmitted: boolean;
   skipSave: boolean;
