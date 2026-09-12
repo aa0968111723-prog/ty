@@ -111,10 +111,10 @@ export const PRIVACY_COPY =
   "成績與有沒有拿到手搖杯，都不會在網站公開。電話只用來聯絡得獎。資料只用於本次活動。試玩不登記、不抽獎。";
 
 export const COLORS = [
-  { id: "red", label: "紅", hex: "#DC2626", key: ["1", "r"] },
-  { id: "blue", label: "藍", hex: "#2563EB", key: ["2", "b"] },
-  { id: "green", label: "綠", hex: "#059669", key: ["3", "g"] },
-  { id: "yellow", label: "黃", hex: "#CA8A04", key: ["4", "y"] },
+  { id: "red", label: "紅", hex: "#DC2626" },
+  { id: "blue", label: "藍", hex: "#2563EB" },
+  { id: "green", label: "綠", hex: "#059669" },
+  { id: "yellow", label: "黃", hex: "#CA8A04" },
 ];
 
 export const GRADE_LIST = ["大一", "大二", "大三", "大四", "碩士班", "博士班", "其他"];
@@ -196,11 +196,6 @@ export const TITLE_THRESHOLDS = [
 
 export function colorById(id) {
   return COLORS.find((c) => c.id === id) ?? COLORS[0];
-}
-
-export function colorByKey(key) {
-  const k = String(key).toLowerCase();
-  return COLORS.find((c) => c.key.includes(k))?.id ?? null;
 }
 
 export function nextQuestion(prev) {

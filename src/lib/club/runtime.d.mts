@@ -16,7 +16,6 @@ export const COLORS: {
   id: "red" | "blue" | "green" | "yellow";
   label: string;
   hex: string;
-  key: string[];
 }[];
 export const GRADE_LIST: string[];
 export const DEPARTMENT_GROUPS: { college: string; items: string[] }[];
@@ -46,7 +45,6 @@ export function nextQuestion(prev: unknown): {
   meaning: { id: string; label: string; hex: string };
   visual: { id: string; label: string; hex: string };
 };
-export function colorByKey(key: string): string | null;
 export function correctId(game: LiveGame): string;
 export function createLiveGame(
   now?: number,

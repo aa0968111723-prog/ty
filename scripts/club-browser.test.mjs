@@ -240,9 +240,13 @@ test(
       await context.close();
     });
     await t.test(
-      "warmup, keyboard/pointer scoring, expiry, retry and reload keep a single entry ID",
+      "warmup, pointer-only scoring, expiry, retry and reload keep a single entry ID",
       async () => {
-        const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+        const context = await browser.newContext({
+          viewport: { width: 390, height: 844 },
+          isMobile: true,
+          hasTouch: true,
+        });
         const page = await context.newPage();
         await page.route("**/*", (route) =>
           new URL(route.request().url()).origin !== origin
@@ -277,27 +281,61 @@ test(
             score: Number(document.querySelector("[data-score]").textContent),
             seq: Number(document.querySelector("[data-seq]").getAttribute("data-seq")),
           }));
-        const correctKey = await page.locator(".stroop").innerText();
-        const keys = { 紅: "1", 藍: "2", 綠: "3", 黃: "4" };
-        await page.keyboard.press(keys[correctKey]);
+        const correctLabel = await page.locator(".stroop").innerText();
+        const colors = { 紅: "red", 藍: "blue", 綠: "green", 黃: "yellow" };
+        const initial = await state();
+        for (const key of ["1", "2", "3", "4"]) await page.keyboard.press(key);
+        assert.deepEqual(await state(), initial, "number keys must not answer");
+        await page.locator(".ans").first().click({ button: "right" });
+        await page.locator(".ans").first().click({ button: "middle" });
+        assert.deepEqual(await state(), initial, "non-primary pointer buttons must not answer");
+        await page.locator(".ans").first().focus();
+        await page.keyboard.press("Enter");
+        assert.deepEqual(await state(), initial, "button keys must not answer");
+        const correctAnswer = page.locator(`.ans[data-color="${colors[correctLabel]}"]`);
+        await correctAnswer.dispatchEvent("pointerdown", {
+          button: 0,
+          isPrimary: true,
+          pointerId: 41,
+          pointerType: "touch",
+        });
+        await page.locator(".ans").first().dispatchEvent("pointerdown", {
+          button: 0,
+          isPrimary: false,
+          pointerId: 42,
+          pointerType: "touch",
+        });
+        await page.locator(".ans").first().dispatchEvent("pointerup", {
+          button: 0,
+          isPrimary: false,
+          pointerId: 42,
+          pointerType: "touch",
+        });
+        await correctAnswer.dispatchEvent("pointerup", {
+          button: 0,
+          isPrimary: true,
+          pointerId: 41,
+          pointerType: "touch",
+        });
         assert.equal((await state()).score, 100);
         await page.clock.runFor(100);
-        await page.locator(".ans").first().focus();
-        await page.keyboard.down("Enter");
-        const entered = await state();
+        const touchLabel = await page.locator(".stroop").innerText();
+        const beforeTouch = await state();
+        await page.locator(`.ans[data-color="${colors[touchLabel]}"]`).tap();
+        const afterTouch = await state();
+        assert.equal(afterTouch.seq, beforeTouch.seq + 1, "touch must answer");
         await page.clock.runFor(100);
-        await page.keyboard.down("Enter");
-        assert.equal(
-          (await state()).seq,
-          entered.seq,
-          "holding Enter must not activate subsequent answers",
-        );
-        await page.keyboard.up("Enter");
+        const beforeClick = await state();
+        await page.locator(".ans").first().click();
+        assert.equal((await state()).seq, beforeClick.seq + 1, "primary mouse click must answer");
         await page.clock.runFor(100);
         const before = await state();
-        await page.locator(".ans").first().dblclick({ delay: 0 });
+        const box = await page.locator(".ans").first().boundingBox();
+        assert.ok(box);
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
         const after = await state();
-        assert.equal(after.seq, before.seq + 1, "double event cannot score a second time");
+        assert.equal(after.seq, before.seq + 1, "double tap cannot score a second time");
         await page.clock.fastForward(60000);
         await page.locator("[data-screen=result]").waitFor();
         await capture(page, "result-mobile");

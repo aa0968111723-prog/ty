@@ -10,7 +10,6 @@ import {
 import {
   COLORS,
   DEFAULT_SETTINGS,
-  colorByKey,
   correctId,
   createLiveGame,
   createWarmupGame,
@@ -61,7 +60,12 @@ function BoothApp() {
   const gameRef = useRef(createLiveGame(0, { skipSave: true }));
   const playerRef = useRef(player);
   const startingRef = useRef(false);
-  const pressRef = useRef<{ id: ColorId; mode: string; seq: number } | null>(null);
+  const pressRef = useRef<{
+    id: ColorId;
+    mode: string;
+    seq: number;
+    pointerId: number;
+  } | null>(null);
   const moodTimer = useRef(0);
   const audioRef = useRef<AudioContext | null>(null);
   const popId = useRef(0);
@@ -225,22 +229,6 @@ function BoothApp() {
     },
     [bumpMood, endGame, cue],
   );
-
-  useEffect(() => {
-    if (screen !== "game") return undefined;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) {
-        if (e.key === "Enter" || e.key === " " || colorByKey(e.key)) e.preventDefault();
-        return;
-      }
-      const id = colorByKey(e.key) as ColorId | null;
-      if (!id) return;
-      e.preventDefault();
-      answer(id);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [screen, answer]);
 
   const playAgain = useCallback(() => {
     startingRef.current = false;
@@ -475,28 +463,37 @@ function BoothApp() {
                     aria-label={colorName(c.id as ColorId, language)}
                     data-color={c.id}
                     disabled={g.ended}
-                    onPointerDown={() => {
-                      pressRef.current = { id: c.id as ColorId, mode: g.mode, seq: g.questionSeq };
+                    onPointerDown={(event) => {
+                      if (event.button !== 0 || !event.isPrimary) return;
+                      pressRef.current = {
+                        id: c.id as ColorId,
+                        mode: g.mode,
+                        seq: g.questionSeq,
+                        pointerId: event.pointerId,
+                      };
                     }}
-                    onPointerUp={(e) => {
-                      e.preventDefault();
+                    onPointerUp={(event) => {
                       const press = pressRef.current;
+                      if (
+                        event.button !== 0 ||
+                        !event.isPrimary ||
+                        !press ||
+                        press.pointerId !== event.pointerId ||
+                        press.id !== c.id
+                      )
+                        return;
                       pressRef.current = null;
-                      if (!press || press.id !== c.id) return;
+                      event.preventDefault();
                       answer(c.id as ColorId, { mode: press.mode, seq: press.seq });
                     }}
-                    onPointerCancel={() => {
-                      pressRef.current = null;
-                    }}
-                    onClick={(event) => {
-                      if (event.detail === 0) answer(c.id as ColorId);
+                    onPointerCancel={(event) => {
+                      if (pressRef.current?.pointerId === event.pointerId) pressRef.current = null;
                     }}
                   >
                     {colorName(c.id as ColorId, language)}
                   </button>
                 ))}
               </div>
-              <p className="keys-hint">{TEXT[language].keyHint}</p>
             </div>
           </section>
         ) : null}
