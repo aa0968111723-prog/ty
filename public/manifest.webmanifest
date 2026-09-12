@@ -7,20 +7,20 @@
   "start_url": "/admin?view=pinned",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#faf8ef",
-  "theme_color": "#267354",
+  "background_color": "#f7f8f4",
+  "theme_color": "#506525",
   "icons": [
     {
-      "src": "/club-icon-192.png",
+      "src": "/club-icon-3d-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/club-icon-512.png",
+      "src": "/club-icon-3d-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "shortcuts": [
@@ -28,25 +28,25 @@
       "name": "今日戰情",
       "short_name": "今日戰情",
       "url": "/admin?view=today",
-      "icons": [{ "src": "/club-icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/club-icon-3d-192.png", "sizes": "192x192" }]
     },
     {
       "name": "前三名",
       "short_name": "前三名",
       "url": "/admin?view=ranking",
-      "icons": [{ "src": "/club-icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/club-icon-3d-192.png", "sizes": "192x192" }]
     },
     {
       "name": "聯絡名單",
       "short_name": "聯絡名單",
       "url": "/admin?view=contacts",
-      "icons": [{ "src": "/club-icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/club-icon-3d-192.png", "sizes": "192x192" }]
     },
     {
       "name": "關主統計",
       "short_name": "關主統計",
       "url": "/admin?view=gatekeepers",
-      "icons": [{ "src": "/club-icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/club-icon-3d-192.png", "sizes": "192x192" }]
     }
   ]
 }

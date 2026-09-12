@@ -117,7 +117,7 @@ function main(argv) {
   const child = spawn(command, args, {
     stdio: "inherit",
     env,
-    shell: process.platform === "win32",
+    shell: process.platform === "win32" && !/\.exe$/i.test(command),
   });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {

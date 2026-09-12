@@ -9,8 +9,8 @@ test("admin PWA manifest opens the pinned view and exposes operational shortcuts
   assert.equal(manifest.name, "禪學社戰情");
   assert.equal(manifest.short_name, "禪學社戰情");
   assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.theme_color, "#267354");
-  assert.equal(manifest.background_color, "#faf8ef");
+  assert.equal(manifest.theme_color, "#506525");
+  assert.equal(manifest.background_color, "#f7f8f4");
   assert.equal(manifest.start_url, "/admin?view=pinned");
   assert.deepEqual(
     manifest.shortcuts.map(({ name, url }) => [name, url]),

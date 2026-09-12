@@ -15,7 +15,7 @@ export const Route = createRootRoute({
           "width=device-width, initial-scale=1, viewport-fit=cover",
       },
       { title: APP_NAME },
-      { name: "theme-color", content: "#267354" },
+      { name: "theme-color", content: "#506525" },
       { name: "apple-mobile-web-app-title", content: "禪學社專注力挑戰賽" },
       {
         name: "description",
@@ -23,10 +23,10 @@ export const Route = createRootRoute({
       },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", href: "/club-icon-3d-32.png" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/club-icon-180.png" },
+      { rel: "apple-touch-icon", href: "/club-icon-3d-180.png" },
     ],
   }),
   component: () => (
