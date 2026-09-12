@@ -1,0 +1,36 @@
+name: Apply mobile UI and gatekeeper patch
+
+on:
+  push:
+    branches:
+      - fix/mobile-ui-gatekeeper
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/mobile-ui-gatekeeper
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/apply-mobile-ui-gatekeeper.mjs
+      - run: npx prettier --write src/routes/index.tsx src/styles.css src/lib/club/runtime.mjs src/lib/club/runtime.d.ts src/lib/club/api.mjs src/lib/club/api.test.mjs src/lib/club/runtime.test.mjs
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:dev
+      - name: Commit applied patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: mobile registration UX and gatekeeper selection"
+          git push origin HEAD:fix/mobile-ui-gatekeeper
