@@ -1,3 +1,4 @@
+// @ts-nocheck -- Contract tests assemble incomplete sheet rows and form payloads.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {

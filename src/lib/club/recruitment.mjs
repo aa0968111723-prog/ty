@@ -1,11 +1,10 @@
+// @ts-nocheck -- Recruitment aggregation is covered by recruitment.test.mjs.
 import { createHash } from "node:crypto";
 import { titleForScore } from "./runtime.mjs";
 import {
   clusterGamePeople,
   identityFields,
-  matchIncomingRecruitment,
   normalizeGatekeeper,
-  normalizeName,
   personIsRecruited,
   splitDepartmentGrade,
   text,

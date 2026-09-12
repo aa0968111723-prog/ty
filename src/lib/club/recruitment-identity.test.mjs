@@ -1,3 +1,4 @@
+// @ts-nocheck -- Identity fixtures intentionally omit phones and mix formats.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {

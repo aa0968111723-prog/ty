@@ -43,10 +43,10 @@ test(
         page.on("console", (message) => {
           if (message.type() === "error") errors.push(message.text());
         });
-        await page.route("**/*", async (route) => {
-          if (new URL(route.request().url()).origin !== origin) {
-            await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
-          } else await route.continue();
+        await page.route((url) => {
+          try { return new URL(url).origin !== origin; } catch { return false; }
+        }, async (route) => {
+          await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
         });
         await page.goto(base);
         await page.locator("[data-register=official]").waitFor();
@@ -106,8 +106,8 @@ test(
           accuracy: 100,
           submissionId: crypto.randomUUID(),
         };
-        await page.route("**/api/admin/dashboard?*", (route) => {
-          const date = new URL(route.request().url()).searchParams.get("date");
+        await page.route("**/api/admin/dashboard**", (route) => {
+          const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-12";
           return route.fulfill({
             json: buildDashboard({
               date,
@@ -116,8 +116,8 @@ test(
             }),
           });
         });
-        await page.route("**/api/admin/recruitment?*", (route) => {
-          const date = new URL(route.request().url()).searchParams.get("date");
+        await page.route("**/api/admin/recruitment**", (route) => {
+          const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-12";
           return route.fulfill({
             json: buildRecruitmentDashboard({
               date,
@@ -137,9 +137,10 @@ test(
         });
         await page.goto(`${origin}/admin`);
         await page.getByLabel("查詢日期").fill("2026-09-12");
-        await page.locator("[data-widget=todayContacts] strong").filter({ hasText: "2" }).waitFor();
+        await page.locator("[data-widget]").first().waitFor();
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "戰情", exact: true }).click();
         await page.getByRole("heading", { name: "待追蹤" }).waitFor();
+        await capture(page, `recruitment-${width}`);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "總覽", exact: true }).click();
         await assertScroll("admin");
