@@ -285,8 +285,26 @@ function clientKey(request) {
 /** @param {Request} request */
 function sameOrigin(request) {
   const origin = request.headers.get("origin");
-  return Boolean(origin && origin === new URL(request.url).origin &&
-    request.headers.get("sec-fetch-site") !== "cross-site");
+  const fetchSite = request.headers.get("sec-fetch-site");
+
+  if (!origin || fetchSite === "cross-site") return false;
+
+  const configuredOrigin =
+    process.env.PUBLIC_ORIGIN?.trim().replace(/\/+$/, "");
+
+  let expectedOrigin;
+
+  if (configuredOrigin) {
+    try {
+      expectedOrigin = new URL(configuredOrigin).origin;
+    } catch {
+      return false;
+    }
+  } else {
+    expectedOrigin = new URL(request.url).origin;
+  }
+
+  return origin === expectedOrigin;
 }
 
 /** @param {string} payload @param {{password: string, secret: string}} config */

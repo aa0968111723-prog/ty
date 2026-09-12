@@ -8,7 +8,8 @@ import {
 } from "../src/lib/club/admin.mjs";
 import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
 
-const origin = "https://club.example.test";
+const origin = "https://leader-dna-mcp-a7k2.zeabur.app";
+const internalOrigin = "http://club.internal:8080";
 const official = (overrides = {}) => ({
   name: "小華", phone: "0900000000", department: "歷史學系", grade: "大一", gatekeeper: "柏能",
   completedAt: "2026-09-12T01:00:00.000Z", submissionId: crypto.randomUUID(),
@@ -16,10 +17,10 @@ const official = (overrides = {}) => ({
   score: 600, correct: 5, wrong: 0, maxCombo: 5, accuracy: 100,
   ...overrides,
 });
-const request = (path, { body, cookie, headers = {} } = {}) =>
-  new Request(`${origin}/api/admin/${path}`, {
+const request = (path, { body, cookie, headers = {}, omitOrigin = false } = {}) =>
+  new Request(`${internalOrigin}/api/admin/${path}`, {
     method: body === undefined ? "GET" : "POST",
-    headers: { origin, "content-type": "application/json", ...(cookie ? { cookie } : {}), ...headers },
+    headers: { ...(!omitOrigin ? { origin } : {}), "content-type": "application/json", ...(cookie ? { cookie } : {}), ...headers },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 
@@ -82,7 +83,7 @@ test("official ranking rejects invalid aggregates, practice settings, and repeat
 });
 
 test("admin authentication and private read API contracts with mocked Google only", async (t) => {
-  const names = ["ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "GOOGLE_SCRIPT_URL", "PASSWORD",
+  const names = ["ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "PUBLIC_ORIGIN", "GOOGLE_SCRIPT_URL", "PASSWORD",
     "GOOGLE_SHEET_ID", "GOOGLE_SHEET_TAB", "GOOGLE_FORM_SHEET_TAB"];
   const before = names.map((name) => process.env[name]);
   t.after(() => names.forEach((name, i) => {
@@ -93,8 +94,17 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.equal((await handleAdminLogin(request("login", { body: { password: "" } }))).status, 503);
   process.env.ADMIN_PASSWORD = randomBytes(24).toString("hex");
   process.env.ADMIN_SESSION_SECRET = randomBytes(32).toString("hex");
+  process.env.PUBLIC_ORIGIN = `${origin}/`;
   const login = () => handleAdminLogin(request("login", { body: { password: process.env.ADMIN_PASSWORD } }));
-  assert.equal((await handleAdminLogin(request("login", { body: {}, headers: { origin: "https://evil.test" } }))).status, 403);
+  assert.equal((await handleAdminLogin(request("login", { body: { password: process.env.ADMIN_PASSWORD },
+    headers: { origin: "https://evil.example.com" } }))).status, 403);
+  assert.equal((await handleAdminLogin(request("login", { body: { password: process.env.ADMIN_PASSWORD },
+    headers: { "sec-fetch-site": "cross-site" } }))).status, 403);
+  assert.equal((await handleAdminLogin(request("login", {
+    body: { password: process.env.ADMIN_PASSWORD }, omitOrigin: true,
+  }))).status, 403);
+  assert.equal((await handleAdminLogin(request("login", { body: { password: process.env.ADMIN_PASSWORD },
+    headers: { "x-forwarded-host": "evil.example.com" } }))).status, 200);
   assert.equal((await handleAdminLogin(request("login", { body: { password: "wrong" } }))).status, 401);
   const response = await login();
   assert.equal(response.status, 200);
