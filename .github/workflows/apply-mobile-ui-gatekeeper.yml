@@ -20,9 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
       - run: node scripts/apply-mobile-ui-gatekeeper.mjs
+      - run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
       - run: npx prettier --write src/routes/index.tsx src/styles.css src/lib/club/runtime.mjs src/lib/club/runtime.d.ts src/lib/club/api.mjs src/lib/club/api.test.mjs src/lib/club/runtime.test.mjs
       - run: npm run typecheck
       - run: npm test
