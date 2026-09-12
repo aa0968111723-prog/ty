@@ -7,23 +7,37 @@
   --color-muted: var(--text-secondary);
 }
 :root {
-  --bg: #f7f8f4;
-  --surface: #ffffff;
-  --surface-secondary: #f0f2e9;
-  --surface-hover: #e8eddc;
-  --border: #e0e4dd;
-  --border-strong: #bec8bb;
-  --text-primary: #242c26;
-  --text-secondary: #606b62;
-  --text-muted: #6b756e;
-  --brand: #506525;
-  --brand-hover: #3f501c;
-  --brand-soft: #f0f4e5;
-  --success: #506525;
-  --warning: #926b21;
-  --warning-soft: #faf4e5;
-  --danger: #b13d35;
-  --danger-soft: #fbefed;
+  --page-bg: #f3f5ee;
+  --page-bg-warm: #f8f6ed;
+  --surface-primary: #fffdf8;
+  --surface-raised: #ffffff;
+  --surface-secondary: #eef4e8;
+  --surface-highlight: #fff7dd;
+  --surface-highlight-strong: #f7eab9;
+  --surface-selected: #dfebd5;
+  --accent-primary: #4f7737;
+  --accent-primary-hover: #44652f;
+  --accent-highlight: #dfc541;
+  --status-success: #4f7737;
+  --status-warning: #dfc541;
+  --status-danger: #d65a50;
+  --text-primary: #283128;
+  --text-secondary: #626b61;
+  --text-muted: #727a71;
+  --border-soft: #e2e6dd;
+  --bg: var(--page-bg);
+  --surface: var(--surface-primary);
+  --surface-hover: var(--surface-selected);
+  --border: var(--border-soft);
+  --border-strong: #c7d0c1;
+  --brand: var(--accent-primary);
+  --brand-hover: var(--accent-primary-hover);
+  --brand-soft: var(--surface-selected);
+  --success: var(--status-success);
+  --warning: #8a7421;
+  --warning-soft: var(--surface-highlight);
+  --danger: var(--status-danger);
+  --danger-soft: #fcedea;
   --on-brand: #ffffff;
   --answer-red: #d12f35;
   --answer-blue: #245ce0;
@@ -49,7 +63,8 @@
   --text-h2: 24px;
   --text-h1: 32px;
   --text-display: 44px;
-  --shadow-dialog: 0 16px 48px #16261d1f;
+  --shadow-card: 0 10px 24px rgb(40 49 40 / 0.06);
+  --shadow-dialog: 0 16px 48px rgb(40 49 40 / 0.12);
   --motion: 180ms ease;
   --app-h: 100dvh;
 }
@@ -141,6 +156,7 @@
   min-height: 100dvh;
   margin: auto;
   background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 .screen {
   display: none;
@@ -157,6 +173,7 @@
   justify-content: space-between;
   gap: var(--space-2);
   border-bottom: 1px solid var(--border);
+  background: var(--surface-primary);
 }
 .club-brand {
   display: flex;
@@ -182,6 +199,7 @@
   padding: 2px;
   border-radius: var(--radius-sm);
   background: var(--surface-secondary);
+  border: 1px solid var(--border);
 }
 .language-toggle button {
   min-width: 44px;
@@ -195,21 +213,22 @@
   font-weight: 600;
 }
 .language-toggle .is-active {
-  background: var(--surface);
-  color: var(--text-primary);
+  background: var(--surface-selected);
+  color: var(--brand);
 }
 .gear-btn {
   display: grid;
   place-items: center;
   min-width: 44px;
   min-height: 44px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: var(--surface-secondary);
   color: var(--text-secondary);
 }
 .gear-btn:hover {
-  background: var(--surface-hover);
+  background: var(--surface-selected);
+  color: var(--brand);
 }
 .registration-content {
   max-width: 760px;
@@ -278,7 +297,7 @@
   width: 100%;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text-primary);
   padding: 0 var(--space-3);
   font-size: var(--text-body);
@@ -309,7 +328,7 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text-secondary);
   font-size: var(--text-small);
 }
@@ -392,7 +411,7 @@
 }
 .cta.secondary {
   color: var(--text-primary);
-  background: var(--surface);
+  background: var(--page-bg-warm);
   border-color: var(--border);
 }
 .cta.secondary:hover {
@@ -444,7 +463,7 @@
   margin: var(--space-1);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--surface-raised);
 }
 .screen.screen-game.active {
   display: flex;

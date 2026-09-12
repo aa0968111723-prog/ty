@@ -1,7 +1,7 @@
 /* Operations workspace: shares the public application's design tokens. */
 .admin-page {
   min-height: 100dvh;
-  background: var(--bg);
+  background: var(--page-bg-warm);
   color: var(--text-primary);
   padding: 0 0 calc(88px + env(safe-area-inset-bottom));
 }
@@ -12,7 +12,7 @@
   min-width: 44px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text-primary);
   padding: var(--space-2) var(--space-3);
 }
@@ -27,7 +27,7 @@
   padding: 0 var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text-primary);
   font-size: var(--text-body);
 }
@@ -47,8 +47,9 @@
   justify-content: space-between;
   gap: var(--space-2);
   padding: 0 var(--space-5);
-  background: var(--surface);
+  background: var(--surface-secondary);
   border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
 }
 .admin-mobile-top > span {
   color: var(--text-muted);
@@ -99,6 +100,17 @@
 .admin-login .admin-primary:hover {
   background: var(--brand-hover);
 }
+.admin-page .admin-customize,
+.admin-page .admin-refresh {
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+}
+.admin-page .admin-customize:hover:not(:disabled),
+.admin-page .admin-refresh:hover:not(:disabled) {
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
 .admin-date-controls {
   display: flex;
   flex-wrap: wrap;
@@ -120,7 +132,7 @@
   height: 44px;
 }
 .admin-date-controls button[aria-pressed="true"] {
-  background: var(--brand-soft);
+  background: var(--surface-selected);
   color: var(--brand);
   border-color: var(--brand);
 }
@@ -161,12 +173,22 @@
 .admin-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-block: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
   margin-bottom: var(--space-8);
 }
 .admin-summary .admin-widget-kpi {
   padding: var(--space-4);
   border-bottom: 1px solid var(--border);
+}
+.admin-summary .admin-widget-kpi:nth-child(-n + 2) {
+  background: var(--surface-secondary);
+}
+.admin-summary .admin-widget-kpi:last-child {
+  background: var(--surface-highlight);
 }
 .admin-summary .admin-widget-kpi:nth-child(odd) {
   border-right: 1px solid var(--border);
@@ -203,22 +225,39 @@
 }
 .admin-widget {
   min-width: 0;
-  padding: var(--space-5) 0;
-  border-top: 1px solid var(--border);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-card);
 }
 .admin-widget > h2 {
   margin-bottom: var(--space-4);
 }
+.admin-widget[data-widget="todayContacts"],
+.admin-widget[data-widget="dateContacts"],
+.admin-widget[data-widget="official"],
+.admin-widget[data-widget="practice"],
+.admin-widget[data-widget="gatekeepers"],
+.admin-widget[data-widget="sync"],
+.admin-widget[data-widget="system"] {
+  background: var(--surface-secondary);
+}
+.admin-widget[data-widget="topThree"],
+.admin-widget[data-widget="highest"],
+.admin-widget[data-widget="average"] {
+  background: var(--surface-highlight);
+}
 .admin-pinned-grid .admin-widget:has(.admin-widget-kpi) {
-  background: transparent;
   color: var(--text-primary);
 }
 .admin-panel {
-  background: var(--surface);
+  background: var(--surface-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space-5);
   min-width: 0;
+  box-shadow: var(--shadow-card);
 }
 .admin-empty {
   color: var(--text-muted);
@@ -248,14 +287,14 @@
   place-items: center;
   width: 32px;
   height: 32px;
-  background: var(--surface-secondary);
+  background: var(--page-bg-warm);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   flex-shrink: 0;
   font-size: var(--text-small);
 }
 .medal-0 {
-  background: var(--warning-soft);
+  background: var(--surface-highlight-strong);
   color: var(--warning);
 }
 .admin-podium div {
@@ -301,7 +340,7 @@
 }
 .admin-bar-track {
   height: 6px;
-  background: var(--surface-secondary);
+  background: var(--surface-selected);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -382,10 +421,10 @@
   border: 1px dashed var(--border-strong);
   padding: var(--space-4);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--surface-primary);
 }
 .is-editing .admin-widget.is-hidden {
-  background: var(--surface-secondary);
+  background: var(--page-bg);
 }
 .admin-widget-tools {
   display: flex;
@@ -407,6 +446,11 @@
   place-items: center;
   border: 0;
   background: transparent;
+  color: var(--text-secondary);
+}
+.admin-widget-tools button:hover:not(:disabled) {
+  background: var(--surface-selected);
+  color: var(--brand);
 }
 .admin-hidden-label {
   display: inline-block;
@@ -500,8 +544,9 @@
   grid-template-columns: repeat(5, 1fr);
   gap: var(--space-1);
   padding: var(--space-2) var(--space-2) max(var(--space-2), env(safe-area-inset-bottom));
-  background: var(--surface);
+  background: var(--surface-primary);
   border-top: 1px solid var(--border);
+  box-shadow: 0 -8px 20px rgb(40 49 40 / 0.06);
 }
 .admin-bottom-nav button {
   display: flex;
@@ -522,7 +567,7 @@
 .admin-sidebar nav button[aria-current],
 .admin-more-dialog nav button[aria-current] {
   color: var(--brand);
-  background: var(--brand-soft);
+  background: var(--surface-selected);
 }
 .admin-overlay {
   position: fixed;
@@ -543,7 +588,7 @@
   padding: var(--space-6);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-primary);
   color: var(--text-primary);
   box-shadow: var(--shadow-dialog);
 }
@@ -556,7 +601,7 @@
 .admin-login {
   width: min(440px, calc(100vw - 32px));
   padding: var(--space-6);
-  background: var(--surface);
+  background: var(--surface-primary);
   color: var(--text-primary);
 }
 .admin-login h1,
@@ -599,7 +644,7 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  background: var(--brand-soft);
+  background: var(--surface-selected);
   color: var(--brand);
   border-radius: var(--radius);
 }
@@ -714,7 +759,7 @@
     position: fixed;
     inset: 0 auto 0 0;
     width: 224px;
-    background: var(--surface-secondary);
+    background: color-mix(in srgb, var(--surface-secondary) 82%, var(--surface-primary));
     border-right: 1px solid var(--border);
     padding: var(--space-5) var(--space-3);
   }
@@ -753,6 +798,10 @@
     color: var(--text-secondary);
     background: transparent;
     font-size: var(--text-small);
+  }
+  .admin-sidebar nav button:hover:not([aria-current]) {
+    background: var(--page-bg);
+    color: var(--text-primary);
   }
   .admin-sidebar-footer {
     margin-top: auto;
