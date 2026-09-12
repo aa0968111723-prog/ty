@@ -91,7 +91,9 @@ test("admin authentication and private read API contracts with mocked Google onl
   }));
   delete process.env.ADMIN_PASSWORD;
   delete process.env.ADMIN_SESSION_SECRET;
-  assert.equal((await handleAdminLogin(request("login", { body: { password: "" } }))).status, 503);
+  assert.equal((await handleAdminLogin(request("login", {
+    body: { password: "" }, headers: { origin: internalOrigin },
+  }))).status, 503);
   process.env.ADMIN_PASSWORD = randomBytes(24).toString("hex");
   process.env.ADMIN_SESSION_SECRET = randomBytes(32).toString("hex");
   process.env.PUBLIC_ORIGIN = `${origin}/`;
