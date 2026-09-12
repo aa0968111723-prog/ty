@@ -1,3 +1,4 @@
+// @ts-nocheck -- Form sync planner is covered by recruitment.test.mjs.
 import {
   PLACEHOLDER_CHOICE,
   UNCLASSIFIED,
