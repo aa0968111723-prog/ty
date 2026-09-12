@@ -10,14 +10,26 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiLeaderboardRouteImport } from './routes/api/leaderboard'
 import { Route as ApiRegisterRouteImport } from './routes/api/register'
 import { Route as ApiResultRouteImport } from './routes/api/result'
+import { Route as ApiAdminDashboardRouteImport } from './routes/api/admin/dashboard'
+import { Route as ApiAdminFormResponsesRouteImport } from './routes/api/admin/form-responses'
+import { Route as ApiAdminLoginRouteImport } from './routes/api/admin/login'
+import { Route as ApiAdminLogoutRouteImport } from './routes/api/admin/logout'
+import { Route as ApiAdminResultsRouteImport } from './routes/api/admin/results'
+import { Route as ApiAdminSessionRouteImport } from './routes/api/admin/session'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -40,50 +52,138 @@ const ApiResultRoute = ApiResultRouteImport.update({
   path: '/api/result',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminDashboardRoute = ApiAdminDashboardRouteImport.update({
+  id: '/api/admin/dashboard',
+  path: '/api/admin/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminFormResponsesRoute = ApiAdminFormResponsesRouteImport.update({
+  id: '/api/admin/form-responses',
+  path: '/api/admin/form-responses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminLoginRoute = ApiAdminLoginRouteImport.update({
+  id: '/api/admin/login',
+  path: '/api/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminLogoutRoute = ApiAdminLogoutRouteImport.update({
+  id: '/api/admin/logout',
+  path: '/api/admin/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminResultsRoute = ApiAdminResultsRouteImport.update({
+  id: '/api/admin/results',
+  path: '/api/admin/results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSessionRoute = ApiAdminSessionRouteImport.update({
+  id: '/api/admin/session',
+  path: '/api/admin/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/leaderboard': typeof ApiLeaderboardRoute
   '/api/register': typeof ApiRegisterRoute
   '/api/result': typeof ApiResultRoute
+  '/api/admin/dashboard': typeof ApiAdminDashboardRoute
+  '/api/admin/form-responses': typeof ApiAdminFormResponsesRoute
+  '/api/admin/login': typeof ApiAdminLoginRoute
+  '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/results': typeof ApiAdminResultsRoute
+  '/api/admin/session': typeof ApiAdminSessionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/leaderboard': typeof ApiLeaderboardRoute
   '/api/register': typeof ApiRegisterRoute
   '/api/result': typeof ApiResultRoute
+  '/api/admin/dashboard': typeof ApiAdminDashboardRoute
+  '/api/admin/form-responses': typeof ApiAdminFormResponsesRoute
+  '/api/admin/login': typeof ApiAdminLoginRoute
+  '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/results': typeof ApiAdminResultsRoute
+  '/api/admin/session': typeof ApiAdminSessionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/leaderboard': typeof ApiLeaderboardRoute
   '/api/register': typeof ApiRegisterRoute
   '/api/result': typeof ApiResultRoute
+  '/api/admin/dashboard': typeof ApiAdminDashboardRoute
+  '/api/admin/form-responses': typeof ApiAdminFormResponsesRoute
+  '/api/admin/login': typeof ApiAdminLoginRoute
+  '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/results': typeof ApiAdminResultsRoute
+  '/api/admin/session': typeof ApiAdminSessionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/api/health' | '/api/leaderboard' | '/api/register' | '/api/result'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/health' | '/api/leaderboard' | '/api/register' | '/api/result'
-  id:
-    | '__root__'
     | '/'
+    | '/admin'
     | '/api/health'
     | '/api/leaderboard'
     | '/api/register'
     | '/api/result'
+    | '/api/admin/dashboard'
+    | '/api/admin/form-responses'
+    | '/api/admin/login'
+    | '/api/admin/logout'
+    | '/api/admin/results'
+    | '/api/admin/session'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/admin'
+    | '/api/health'
+    | '/api/leaderboard'
+    | '/api/register'
+    | '/api/result'
+    | '/api/admin/dashboard'
+    | '/api/admin/form-responses'
+    | '/api/admin/login'
+    | '/api/admin/logout'
+    | '/api/admin/results'
+    | '/api/admin/session'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/api/health'
+    | '/api/leaderboard'
+    | '/api/register'
+    | '/api/result'
+    | '/api/admin/dashboard'
+    | '/api/admin/form-responses'
+    | '/api/admin/login'
+    | '/api/admin/logout'
+    | '/api/admin/results'
+    | '/api/admin/session'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiLeaderboardRoute: typeof ApiLeaderboardRoute
   ApiRegisterRoute: typeof ApiRegisterRoute
   ApiResultRoute: typeof ApiResultRoute
+  ApiAdminDashboardRoute: typeof ApiAdminDashboardRoute
+  ApiAdminFormResponsesRoute: typeof ApiAdminFormResponsesRoute
+  ApiAdminLoginRoute: typeof ApiAdminLoginRoute
+  ApiAdminLogoutRoute: typeof ApiAdminLogoutRoute
+  ApiAdminResultsRoute: typeof ApiAdminResultsRoute
+  ApiAdminSessionRoute: typeof ApiAdminSessionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -93,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -123,15 +230,64 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiResultRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/dashboard': {
+      id: '/api/admin/dashboard'
+      path: '/api/admin/dashboard'
+      fullPath: '/api/admin/dashboard'
+      preLoaderRoute: typeof ApiAdminDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/form-responses': {
+      id: '/api/admin/form-responses'
+      path: '/api/admin/form-responses'
+      fullPath: '/api/admin/form-responses'
+      preLoaderRoute: typeof ApiAdminFormResponsesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/login': {
+      id: '/api/admin/login'
+      path: '/api/admin/login'
+      fullPath: '/api/admin/login'
+      preLoaderRoute: typeof ApiAdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/logout': {
+      id: '/api/admin/logout'
+      path: '/api/admin/logout'
+      fullPath: '/api/admin/logout'
+      preLoaderRoute: typeof ApiAdminLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/results': {
+      id: '/api/admin/results'
+      path: '/api/admin/results'
+      fullPath: '/api/admin/results'
+      preLoaderRoute: typeof ApiAdminResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/session': {
+      id: '/api/admin/session'
+      path: '/api/admin/session'
+      fullPath: '/api/admin/session'
+      preLoaderRoute: typeof ApiAdminSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiLeaderboardRoute: ApiLeaderboardRoute,
   ApiRegisterRoute: ApiRegisterRoute,
   ApiResultRoute: ApiResultRoute,
+  ApiAdminDashboardRoute: ApiAdminDashboardRoute,
+  ApiAdminFormResponsesRoute: ApiAdminFormResponsesRoute,
+  ApiAdminLoginRoute: ApiAdminLoginRoute,
+  ApiAdminLogoutRoute: ApiAdminLogoutRoute,
+  ApiAdminResultsRoute: ApiAdminResultsRoute,
+  ApiAdminSessionRoute: ApiAdminSessionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

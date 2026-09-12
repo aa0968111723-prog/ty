@@ -1,0 +1,16 @@
+{
+  "name": "淡江大學禪學社｜專注力挑戰賽",
+  "short_name": "禪學社專注力挑戰",
+  "description": "Tamkang University Zen Club | Focus Challenge",
+  "lang": "zh-Hant",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf8ef",
+  "theme_color": "#267354",
+  "icons": [
+    { "src": "/club-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/club-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

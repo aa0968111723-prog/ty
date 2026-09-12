@@ -24,7 +24,12 @@ import {
   createWarmupGame,
   clampSettings,
   correctId,
+  isOfficialSettings,
+  settingsAreValid,
 } from "./runtime.mjs";
+
+const snapshot = (game) => ({ mode: game.mode, seq: game.questionSeq });
+const answer = (game, now, chosen = correctId(game)) => judgeAnswer(game, chosen, snapshot(game), now);
 
 describe("stroop question", () => {
   it("meaning != visual always", () => {
@@ -63,7 +68,7 @@ describe("pre-official warm-up", () => {
   it("keeps scores, combos, timers and submission IDs isolated on retry and official start", () => {
     const warmup = createWarmupGame(1_000);
     for (let i = 1; i <= 5; i += 1) {
-      judgeAnswer(warmup, correctId(warmup), undefined, 1_000 + i * 100);
+      answer(warmup, 1_000 + i * 100);
     }
     assert.equal(warmup.score, 600);
     assert.equal(warmup.combo, 5);
@@ -147,6 +152,81 @@ describe("judgeAnswer", () => {
     const c = judgeAnswer(g, id, { mode: g.mode, seq: g.questionSeq }, 1_200);
     assert.equal(c.reason, "ended");
   });
+
+  it("accepts the first answer at monotonic zero and locks double/triple taps until the exact boundary", () => {
+    const game = createLiveGame(0);
+    const first = snapshot(game);
+    const chosen = correctId(game);
+    assert.equal(judgeAnswer(game, chosen, first, 0).ok, true);
+    assert.equal(judgeAnswer(game, chosen, first, 1).reason, "lock");
+    assert.equal(judgeAnswer(game, chosen, first, 2).reason, "lock");
+    assert.equal(answer(game, game.tapLockMs - 1).reason, "lock");
+    assert.equal(judgeAnswer(game, chosen, first, game.tapLockMs).reason, "stale");
+    assert.equal(answer(game, game.tapLockMs).ok, true);
+    assert.equal(game.correct, 2);
+    assert.equal(game.questionSeq, 3);
+  });
+
+  it("rejects absent, future, stale and mismatched-mode snapshots without changing the question", () => {
+    const game = createLiveGame(0);
+    for (const snap of [
+      undefined, {}, { ...snapshot(game), seq: 0 }, { ...snapshot(game), seq: 2 },
+      { ...snapshot(game), seq: "1" }, { ...snapshot(game), mode: "visual" },
+    ]) {
+      assert.equal(judgeAnswer(game, correctId(game), snap, 100).reason, "stale");
+    }
+    assert.equal(answer(game, 100, "invalid").reason, "invalid");
+    assert.equal(game.questionSeq, 1);
+    assert.equal(game.score, 0);
+  });
+
+  it("expires at the exact timer edge even when the previous answer is tap-locked", () => {
+    for (const end of [60_000, 60_001, 61_000]) {
+      const game = createLiveGame(0);
+      assert.equal(answer(game, 59_999).ok, true);
+      assert.equal(answer(game, end).reason, "expired");
+      assert.equal(game.ended, true);
+      assert.equal(game.score, 100);
+      assert.ok(game.completedAt);
+      const completion = game.completedAt;
+      tickGame(game, end + 1000);
+      assert.equal(game.completedAt, completion);
+      assert.equal(answer(game, end + 1000).reason, "ended");
+    }
+  });
+
+  it("rejects invalid/backward clocks and does not increase the remaining time", () => {
+    const game = createLiveGame(0);
+    assert.equal(answer(game, 100).ok, true);
+    for (const now of [99, NaN, Infinity, "200"]) {
+      assert.equal(answer(game, now).reason, "clock");
+    }
+    assert.equal(tickGame(game, 1000).remaining, 59);
+    assert.equal(tickGame(game, 500).remaining, 59);
+    assert.equal(answer(game, 999).reason, "clock");
+    assert.equal(answer(game, 1000).ok, true);
+  });
+
+  it("floors wrong answers at zero and resets the five-hit bonus boundary after a miss", () => {
+    const game = createLiveGame(0);
+    let now = 0;
+    const hit = () => answer(game, now += 100);
+    const miss = () => answer(game, now += 100, game.mode === "meaning" ?
+      game.question.visual.id : game.question.meaning.id);
+    assert.equal(miss().delta, 0);
+    assert.equal(hit().delta, 100);
+    assert.equal(miss().delta, -50);
+    assert.equal(miss().delta, -50);
+    assert.equal(miss().delta, 0);
+    for (let i = 1; i <= 4; i++) assert.equal(hit().delta, 100);
+    assert.equal(hit().delta, 200);
+    assert.equal(hit().delta, 200);
+    assert.equal(miss().delta, -50);
+    for (let i = 1; i <= 4; i++) assert.equal(hit().delta, 100);
+    assert.equal(hit().delta, 200);
+    assert.equal(game.maxCombo, 6);
+    assert.equal(game.combo, 5);
+  });
 });
 
 describe("timer and answer mode", () => {
@@ -192,6 +272,19 @@ describe("timer and answer mode", () => {
     assert.equal(s.duration, 30);
     assert.equal(s.speed, "rush");
     assert.equal(s.switchMs, 1400);
+  });
+  it("requires canonical gameplay settings without coercing malformed values", () => {
+    assert.equal(isOfficialSettings(DEFAULT_SETTINGS), true);
+    assert.equal(isOfficialSettings({ ...DEFAULT_SETTINGS, sound: false, vibrate: false }), true);
+    for (const settings of [
+      null, {}, { duration: 60 }, { ...DEFAULT_SETTINGS, duration: "60" },
+      { ...DEFAULT_SETTINGS, tapLockMs: 48 }, { ...DEFAULT_SETTINGS, comboEvery: 5 },
+      { ...DEFAULT_SETTINGS, sound: 0 }, { ...DEFAULT_SETTINGS, switchMs: 3001 },
+    ]) {
+      assert.equal(isOfficialSettings(settings), false);
+      assert.equal(settingsAreValid(settings), false);
+    }
+    assert.equal(isOfficialSettings(clampSettings({ duration: 30 })), false);
   });
 });
 
@@ -249,6 +342,14 @@ describe("titles validation leaderboard", () => {
     assert.equal(p.phone, "0912345678");
     assert.equal(p.gatekeeper, "柏能");
     assert.ok(p.accuracy > 0);
+    assert.equal(p.completedAt, null);
+    tickGame(g, 60_001);
+    const completed = publicResult(g, GUEST_PLAYER);
+    assert.equal(completed.kind, "official");
+    assert.equal(completed.skipSave, false);
+    assert.deepEqual(completed.settings, DEFAULT_SETTINGS);
+    assert.equal(completed.completedAt, g.completedAt);
+    assert.notEqual(completed.settings, g.settings);
   });
   it("max score bound", () => {
     assert.equal(theoreticalMaxScore(0), 0);
@@ -259,5 +360,38 @@ describe("titles validation leaderboard", () => {
     assert.equal(pointsForHit(5), COMBO_SCORE);
     assert.equal(scoreIsConsistent({ score: 600, correct: 5, wrong: 0, maxCombo: 5 }), true);
     assert.equal(scoreIsConsistent({ score: 500, correct: 5, wrong: 0, maxCombo: 5 }), false);
+  });
+
+  it("rejects malformed numeric aggregates and impossible combo/low score claims", () => {
+    const valid = { score: 600, correct: 5, wrong: 0, maxCombo: 5 };
+    for (const key of Object.keys(valid)) {
+      for (const value of [undefined, null, "5", true, NaN, Infinity, -1, 0.5, 1e20]) {
+        assert.equal(scoreIsConsistent({ ...valid, [key]: value }), false, `${key}: ${value}`);
+      }
+    }
+    assert.equal(scoreIsConsistent({ score: 0, correct: 10, wrong: 1, maxCombo: 5 }), false);
+    assert.equal(scoreIsConsistent({ score: 1600, correct: 12, wrong: 1, maxCombo: 6 }), false);
+    assert.equal(scoreIsConsistent({ score: 100, correct: 1, wrong: 1, maxCombo: 0 }), false);
+    assert.equal(scoreIsConsistent({ score: 100, correct: 1, wrong: 1250, maxCombo: 1 }), false);
+  });
+
+  it("accepts aggregates from every twelve-answer hit/miss sequence", () => {
+    for (let bits = 0; bits < 4096; bits++) {
+      const row = { score: 0, correct: 0, wrong: 0, maxCombo: 0 };
+      let combo = 0;
+      for (let i = 0; i < 12; i++) {
+        if (bits & (1 << i)) {
+          row.correct++;
+          combo++;
+          row.maxCombo = Math.max(row.maxCombo, combo);
+          row.score += pointsForHit(combo);
+        } else {
+          row.wrong++;
+          combo = 0;
+          row.score = Math.max(0, row.score - 50);
+        }
+      }
+      assert.equal(scoreIsConsistent(row), true, JSON.stringify(row));
+    }
   });
 });
