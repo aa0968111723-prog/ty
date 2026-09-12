@@ -1427,8 +1427,7 @@ html.is-keyboard .cta-dock .guest-link {
     height: auto;
     min-height: var(--app-h, 100dvh);
     max-height: none;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
+    overflow: visible;
     scroll-padding-bottom: 84px;
   }
   .register-layout {
