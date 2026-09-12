@@ -25,10 +25,10 @@ ty 不是第二套招生真相。Google Sheets 與現有 Google Form 仍是招�
 
 正式站還需要：`GOOGLE_SERVICE_ACCOUNT_JSON`、`GOOGLE_SHEET_ID`、`ADMIN_PASSWORD`、`ADMIN_SESSION_SECRET`、`PUBLIC_ORIGIN`。不要使用 `VITE_` 前綴。
 
-建議新增：
+建議新增（正式站目前若仍殘留 `GOOGLE_SHEET_TAB=國際生專區`，一定要另設遊戲分頁，不要讓正式成績寫進國際生專區）：
 
 ```
-GOOGLE_GAME_SHEET_TAB=09/14 後玩遊戲
+GOOGLE_GAME_SHEET_TAB=<sheetId 896311128 的分頁標題；程式預設為 09/ 接 14後玩遊戲，中間沒有空白>
 GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB=招生狀況表
 GOOGLE_RECRUITMENT_MASTER_SHEET_TAB=總表
 GOOGLE_FORM_ID=12fk5ubMY0fnCSSTEljFJ1l-gcao1hDMkw7F8I8qTlOw

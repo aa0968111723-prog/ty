@@ -3,8 +3,10 @@ import { test } from "node:test";
 import { google } from "googleapis";
 import {
   DEFAULT_TAB_TITLES,
+  EXPECTED_SHEET_IDS,
   RESULT_COLUMNS,
   appendOfficialResult,
+  invalidateSheetCache,
   readSheetRows,
   sheetsConfigured,
 } from "../src/lib/club/sheets.mjs";
@@ -194,5 +196,57 @@ test("GOOGLE_GAME_SHEET_TAB wins over GOOGLE_SHEET_TAB", async (t) => {
     } },
   }));
   await readSheetRows("results");
+  assert.equal(range, "'" + DEFAULT_TAB_TITLES.gameResults + "'");
+});
+
+test("gameResults follows sheetId 896311128 instead of leftover GOOGLE_SHEET_TAB", async (t) => {
+  configure(t, "gid", { GOOGLE_SHEET_TAB: "國際生專區" });
+  delete process.env.GOOGLE_GAME_SHEET_TAB;
+  invalidateSheetCache();
+  let range;
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: {
+      get: async () => ({
+        data: {
+          sheets: [
+            { properties: { title: "總表", sheetId: EXPECTED_SHEET_IDS.recruitmentMaster } },
+            { properties: { title: "茶會報名", sheetId: EXPECTED_SHEET_IDS.teaPartySignup } },
+            { properties: { title: "招生狀況表", sheetId: EXPECTED_SHEET_IDS.recruitmentResponses } },
+            { properties: { title: "國際生專區", sheetId: 123 } },
+            { properties: { title: DEFAULT_TAB_TITLES.gameResults, sheetId: EXPECTED_SHEET_IDS.gameResults } },
+          ],
+        },
+      }),
+      values: {
+        get: async (params) => {
+          range = params.range;
+          return { data: { values: [["_submissionId"]] } };
+        },
+      },
+    },
+  }));
+  await readSheetRows("gameResults");
+  assert.equal(range, "'" + DEFAULT_TAB_TITLES.gameResults + "'");
+  assert.ok(!String(range).includes("國際生"));
+  assert.ok(!String(range).includes("總表"));
+  assert.ok(!String(range).includes("招生狀況表"));
+});
+
+test("without spreadsheet metadata, leftover GOOGLE_SHEET_TAB does not receive game writes", async (t) => {
+  configure(t, "no-meta", { GOOGLE_SHEET_TAB: "國際生專區" });
+  delete process.env.GOOGLE_GAME_SHEET_TAB;
+  invalidateSheetCache();
+  let range;
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: { values: {
+      get: async (params) => {
+        range = params.range;
+        return { data: { values: [["_submissionId"]] } };
+      },
+    } },
+  }));
+  await readSheetRows("gameResults");
   assert.equal(range, "'" + DEFAULT_TAB_TITLES.gameResults + "'");
 });

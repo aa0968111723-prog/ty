@@ -149,7 +149,9 @@ export function RecruitmentDashboard({
         <div className="admin-widget-kpi"><span>今天遊戲</span><strong>{metric(data.summary.playedToday)}</strong><small>現場挑戰人數</small></div>
         <div className="admin-widget-kpi"><span>尚未填表</span><strong>{metric(data.summary.pending)}</strong><small>待追蹤</small></div>
         <div className="admin-widget-kpi"><span>已完成招生</span><strong>{metric(data.summary.recruited)}</strong><small>有效紀錄</small></div>
-        <div className="admin-widget-kpi"><span>S / A / B</span><strong>{metric(data.summary.s)} / {metric(data.summary.a)} / {metric(data.summary.b)}</strong><small>分級</small></div>
+        <div className="admin-widget-kpi"><span>S</span><strong>{metric(data.summary.s)}</strong><small>分級</small></div>
+        <div className="admin-widget-kpi"><span>A</span><strong>{metric(data.summary.a)}</strong><small>分級</small></div>
+        <div className="admin-widget-kpi"><span>B</span><strong>{metric(data.summary.b)}</strong><small>分級</small></div>
         <div className="admin-widget-kpi"><span>已報活動</span><strong>{metric(data.summary.activity)}</strong><small>總表</small></div>
         <div className="admin-widget-kpi"><span>已入社</span><strong>{metric(data.summary.joined)}</strong><small>總表</small></div>
         <div className="admin-widget-kpi"><span>保證金已繳</span><strong>{metric(data.summary.depositPaid)}</strong><small>總額 {metric(data.summary.depositTotal)}</small></div>
@@ -338,6 +340,15 @@ export function RecruitmentSync({ data }: { data: RecruitmentData }) {
           <dd>{flag.ok ? "● 正常" : flag.stale ? "○ 同步異常 · 顯示上次資料" : "○ 同步異常"}</dd>
         </Fragment>
       ))}
+      <dt>最後同步</dt>
+      <dd>{syncClock(data.sync.updatedAt)}</dd>
     </dl>
   );
+}
+
+function syncClock(value: string | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return date.toLocaleTimeString("zh-TW", { hour12: false, timeZone: "Asia/Taipei" });
 }

@@ -444,6 +444,10 @@ async function resolveTab(sheets, spreadsheetId, action) {
     const byId = expectedId != null ? meta.find((sheet) => sheet.sheetId === expectedId) : null;
     if (byId) return byId.title;
   }
+  const productDefault = DEFAULT_TAB_TITLES[canonical];
+  if (!explicit && !meta.length && productDefault && configured !== productDefault) {
+    return productDefault;
+  }
   return configured;
 }
 
