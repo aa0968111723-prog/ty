@@ -16,6 +16,7 @@ import {
   colorByKey,
   correctId,
   createLiveGame,
+  createWarmupGame,
   emptyPlayer,
   isOfficialSettings,
   judgeAnswer,
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/")({
   component: BoothApp,
 });
 
-type Screen = "register" | "game" | "result";
+type Screen = "register" | "game" | "warmup-result" | "result";
 type Language = "en" | "zh";
 type Player = {
   name: string;
@@ -62,7 +63,7 @@ const TEXT = {
     factPrize: "On-site bubble tea",
     officialEntry: "Official Entry",
     officialDescription:
-      "Enter your details to play for 60 seconds. Winners are announced at the booth; scores are not published online.",
+      "Enter your details, warm up for 15 seconds, then start a fresh 60-second challenge. Winners are announced at the booth; scores are not published online.",
     practiceDescription: "Practice mode is active. This score is not entered into the prize draw.",
     name: "Name",
     department: "Department",
@@ -77,7 +78,13 @@ const TEXT = {
     namePlaceholder: "e.g. Alex",
     phonePlaceholder: "10-digit mobile number",
     preparing: "Preparing…",
-    officialStart: "Official entry · Start 60 seconds →",
+    officialStart: "Start 15-second warm-up →",
+    warmup: "Warm-up · Practice only",
+    warmupComplete: "Warm-up complete",
+    warmupDescription:
+      "Your practice score stays here; nothing has been registered or submitted. Your details are ready. Continue when you are ready for a fresh 60-second challenge.",
+    warmupRetry: "Practice again · 15 seconds",
+    officialContinue: "Continue · Start official 60 seconds →",
     practiceStartPrefix: "Start ",
     practiceStartSuffix: "-second practice →",
     privacyOfficial:
@@ -133,7 +140,8 @@ const TEXT = {
     factInstruction: "看指令選顏色",
     factPrize: "現場手搖杯",
     officialEntry: "正式參賽",
-    officialDescription: "填資料開始 60 秒。得獎現場公布，網站不公開成績。",
+    officialDescription:
+      "填資料後先練習 15 秒，再開始全新的 60 秒正式挑戰。得獎現場公布，網站不公開成績。",
     practiceDescription: "目前是練習規則，成績不登記抽獎。",
     name: "姓名",
     department: "科系",
@@ -148,7 +156,13 @@ const TEXT = {
     namePlaceholder: "例如：小華",
     phonePlaceholder: "09xxxxxxxx",
     preparing: "準備中…",
-    officialStart: "正式參賽，開始 60 秒 →",
+    officialStart: "開始 15 秒賽前練習 →",
+    warmup: "賽前練習 · 不計正式成績",
+    warmupComplete: "賽前練習完成",
+    warmupDescription:
+      "練習成績只留在這裡，尚未登記或傳送任何資料。你的參賽資料已準備好，準備好了再開始全新的 60 秒正式挑戰。",
+    warmupRetry: "再練習一次 · 15 秒",
+    officialContinue: "繼續，開始正式 60 秒 →",
     practiceStartPrefix: "開始 ",
     practiceStartSuffix: " 秒練習 →",
     privacyOfficial:
@@ -556,6 +570,12 @@ function BoothApp() {
     if (g.resultSubmitted) return;
     g.ended = true;
     g.resultSubmitted = true;
+    if (g.kind === "warmup") {
+      startingRef.current = false;
+      setScreen("warmup-result");
+      setSave("guest");
+      return;
+    }
     const payload = publicResult(g, playerRef.current);
     setScreen("result");
     if (g.skipSave) {
@@ -688,12 +708,19 @@ function BoothApp() {
     (window as unknown as { __focusChallenge: typeof api }).__focusChallenge = api;
   }, [answer, screen, endGame]);
 
-  function launchGame(next: Player, skipSave: boolean) {
+  function launchGame(next: Player, kind: "official" | "practice" | "warmup") {
     setPlayer(next);
     playerRef.current = next;
-    gameRef.current = createLiveGame(Date.now(), { skipSave, settings });
+    gameRef.current =
+      kind === "warmup"
+        ? createWarmupGame(Date.now(), settings)
+        : createLiveGame(Date.now(), {
+            skipSave: kind === "practice",
+            settings,
+          });
     pressRef.current = null;
-    setRemaining(settings.duration);
+    window.clearTimeout(moodTimer.current);
+    setRemaining(gameRef.current.duration);
     setPops([]);
     setMood("idle");
     setSave("idle");
@@ -720,15 +747,35 @@ function BoothApp() {
       return;
     }
     startingRef.current = true;
-    setBusy(true);
     setErrors({});
-    launchGame(parsed.data as Player, !isOfficialSettings(settings));
+    if (isOfficialSettings(settings)) {
+      launchGame(parsed.data as Player, "warmup");
+    } else {
+      launchGame(parsed.data as Player, "practice");
+      startingRef.current = false;
+    }
+  }
+
+  function retryWarmup() {
+    if (startingRef.current || screen !== "warmup-result" || gameRef.current.kind !== "warmup")
+      return;
+    startingRef.current = true;
+    launchGame(playerRef.current, "warmup");
+  }
+
+  function continueOfficial() {
+    if (startingRef.current || screen !== "warmup-result" || gameRef.current.kind !== "warmup")
+      return;
+    startingRef.current = true;
+    setBusy(true);
+    const next = playerRef.current;
+    launchGame(next, "official");
     const ctrl = new AbortController();
     const timer = window.setTimeout(() => ctrl.abort(), 8000);
     fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed.data),
+      body: JSON.stringify(next),
       signal: ctrl.signal,
     })
       .then(async (r) => {
@@ -747,7 +794,7 @@ function BoothApp() {
     if (startingRef.current || busy) return;
     startingRef.current = true;
     setErrors({});
-    launchGame(GUEST_PLAYER, true);
+    launchGame(GUEST_PLAYER, "practice");
     startingRef.current = false;
   }
 
@@ -757,7 +804,7 @@ function BoothApp() {
   const timeRatio = Math.max(0, Math.min(1, remaining / (g.duration || 60)));
 
   return (
-    <div className="app-root" data-screen={screen}>
+    <div className="app-root" data-screen={screen} data-session={g.kind}>
       <div className="shell">
         {screen === "register" ? (
           <section className="screen screen-register active">
@@ -822,6 +869,12 @@ function BoothApp() {
               key={modePulse}
             >
               <LanguageToggle language={language} onChange={setLanguage} compact />
+              {g.kind === "warmup" ? (
+                <p className="eyebrow" data-warmup>
+                  {TEXT[language].warmup}
+                  <ZhHelper language={language}>{TEXT.zh.warmup}</ZhHelper>
+                </p>
+              ) : null}
               <div className="flash" />
               <small>
                 {g.mode === "meaning"
@@ -884,7 +937,7 @@ function BoothApp() {
           </section>
         ) : null}
 
-        {screen === "result" ? (
+        {screen === "result" || screen === "warmup-result" ? (
           <ResultScreen
             language={language}
             onLanguage={setLanguage}
@@ -893,6 +946,8 @@ function BoothApp() {
             save={save}
             club={club}
             onAgain={playAgain}
+            onContinue={continueOfficial}
+            onPracticeAgain={retryWarmup}
           />
         ) : null}
       </div>
@@ -1425,6 +1480,8 @@ function ResultScreen({
   save,
   club,
   onAgain,
+  onContinue,
+  onPracticeAgain,
 }: {
   language: Language;
   onLanguage: (language: Language) => void;
@@ -1433,6 +1490,8 @@ function ResultScreen({
   save: SaveKind;
   club: string;
   onAgain: () => void;
+  onContinue: () => void;
+  onPracticeAgain: () => void;
 }) {
   const ui = TEXT[language];
   const payload = publicResult(game, player);
@@ -1440,6 +1499,7 @@ function ResultScreen({
   const blurb = resultBlurb(payload.title, language, payload.duration, payload.blurb);
   const zhBlurb = resultBlurb(payload.title, "zh", payload.duration, payload.blurb);
   const displayClub = clubName(club, language);
+  const warmup = game.kind === "warmup";
 
   return (
     <section className="screen screen-result active">
@@ -1454,10 +1514,10 @@ function ResultScreen({
         <div className="score-xl" data-result-score>
           {payload.score}
         </div>
-        <h2 className="result-title">{title}</h2>
-        <ZhHelper language={language}>{payload.title}</ZhHelper>
-        <p className="title-blurb">{blurb}</p>
-        <ZhHelper language={language}>{zhBlurb}</ZhHelper>
+        <h2 className="result-title">{warmup ? ui.warmupComplete : title}</h2>
+        <ZhHelper language={language}>{warmup ? TEXT.zh.warmupComplete : payload.title}</ZhHelper>
+        <p className="title-blurb">{warmup ? ui.warmupDescription : blurb}</p>
+        <ZhHelper language={language}>{warmup ? TEXT.zh.warmupDescription : zhBlurb}</ZhHelper>
         <div className="result-meta">
           <div>
             <span>
@@ -1488,16 +1548,25 @@ function ResultScreen({
             <strong>{payload.wrong}</strong>
           </div>
         </div>
-        <p className="save-note" data-save={save}>
-          {saveText(save, language)}
-        </p>
-        <p className="join-copy">
-          {language === "en" ? ui.joinCopy : ui.joinCopy.replace("淡江大學禪學社", displayClub)}
-          <ZhHelper language={language}>{TEXT.zh.joinCopy}</ZhHelper>
-        </p>
-        <button type="button" className="cta" onClick={onAgain}>
-          {ui.tryAgain}
+        {!warmup ? (
+          <>
+            <p className="save-note" data-save={save}>
+              {saveText(save, language)}
+            </p>
+            <p className="join-copy">
+              {language === "en" ? ui.joinCopy : ui.joinCopy.replace("淡江大學禪學社", displayClub)}
+              <ZhHelper language={language}>{TEXT.zh.joinCopy}</ZhHelper>
+            </p>
+          </>
+        ) : null}
+        <button type="button" className="cta" onClick={warmup ? onContinue : onAgain}>
+          {warmup ? ui.officialContinue : ui.tryAgain}
         </button>
+        {warmup ? (
+          <button type="button" className="cta secondary" onClick={onPracticeAgain}>
+            {ui.warmupRetry}
+          </button>
+        ) : null}
         <button type="button" className="cta secondary" onClick={onAgain}>
           {ui.home}
         </button>

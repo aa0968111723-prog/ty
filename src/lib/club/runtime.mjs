@@ -2,6 +2,7 @@
 /** Single source of truth: Stroop rules, titles, departments, validation. */
 
 export const GAME_DURATION = 60;
+export const WARMUP_DURATION = 15;
 export const TAP_LOCK_MS = 48;
 export const MODE_SWITCH_MS = 3000;
 export const COMBO_BONUS_AT = 5;
@@ -249,8 +250,8 @@ export function remainingSeconds(game, now = Date.now()) {
 }
 
 export function createLiveGame(now = Date.now(), opts = {}) {
-  const skipSave = Boolean(opts.skipSave);
   const s = clampSettings(opts.settings);
+  const skipSave = Boolean(opts.skipSave) || !isOfficialSettings(s);
   const mode =
     s.startMode === "random" ? (Math.random() < 0.5 ? "visual" : "meaning") : s.startMode;
   const question = nextQuestion(null);
@@ -267,7 +268,8 @@ export function createLiveGame(now = Date.now(), opts = {}) {
     startTime: now,
     ended: false,
     resultSubmitted: false,
-    skipSave: Boolean(skipSave) || !isOfficialSettings(s),
+    skipSave,
+    kind: skipSave ? "practice" : "official",
     submissionId: crypto.randomUUID(),
     duration: s.duration,
     modeSwitchMs: s.switchMs,
@@ -275,6 +277,21 @@ export function createLiveGame(now = Date.now(), opts = {}) {
     tapLockMs: s.tapLockMs,
     settings: s,
     question,
+  };
+}
+
+export function createWarmupGame(now = Date.now(), settings = {}) {
+  return {
+    ...createLiveGame(now, {
+      skipSave: true,
+      settings: {
+        ...DEFAULT_SETTINGS,
+        duration: WARMUP_DURATION,
+        sound: settings.sound,
+        vibrate: settings.vibrate,
+      },
+    }),
+    kind: "warmup",
   };
 }
 

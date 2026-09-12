@@ -1,4 +1,5 @@
 export const GAME_DURATION: number;
+export const WARMUP_DURATION: number;
 export const MODE_SWITCH_MS: number;
 export const SPEED_PRESETS: {
   id: string;
@@ -49,6 +50,7 @@ export function createLiveGame(
   now?: number,
   opts?: { skipSave?: boolean; settings?: unknown },
 ): LiveGame;
+export function createWarmupGame(now?: number, settings?: Partial<GameSettings>): LiveGame;
 export function emptyPlayer(): {
   name: string;
   department: string;
@@ -124,6 +126,7 @@ export type LiveGame = {
   ended: boolean;
   resultSubmitted: boolean;
   skipSave: boolean;
+  kind: "official" | "practice" | "warmup";
   submissionId: string;
   duration: number;
   modeSwitchMs: number;
