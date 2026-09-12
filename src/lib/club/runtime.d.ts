@@ -19,7 +19,13 @@ export const COLORS: {
 }[];
 export const GRADE_LIST: string[];
 export const DEPARTMENT_GROUPS: { college: string; items: string[] }[];
-export const GUEST_PLAYER: { name: string; department: string; grade: string; phone: string };
+export const GUEST_PLAYER: {
+  name: string;
+  department: string;
+  grade: string;
+  phone: string;
+  gatekeeper: string;
+};
 export const START_MODE_OPTIONS: { id: string; label: string }[];
 export const DEFAULT_SETTINGS: GameSettings;
 export function pointsForHit(combo: number): number;
@@ -43,7 +49,13 @@ export function createLiveGame(
   now?: number,
   opts?: { skipSave?: boolean; settings?: unknown },
 ): LiveGame;
-export function emptyPlayer(): { name: string; department: string; grade: string; phone: string };
+export function emptyPlayer(): {
+  name: string;
+  department: string;
+  grade: string;
+  phone: string;
+  gatekeeper: string;
+};
 export function judgeAnswer(
   game: LiveGame,
   chosen: string,
@@ -61,7 +73,7 @@ export function judgeAnswer(
 };
 export function publicResult(
   game: LiveGame,
-  player: { name: string; department: string; grade: string; phone: string },
+  player: { name: string; department: string; grade: string; phone: string; gatekeeper: string },
 ): Record<string, unknown> & {
   name: string;
   score: number;
@@ -79,13 +91,11 @@ export function tickGame(
   game: LiveGame,
   now?: number,
 ): { remaining: number; switched: boolean; expired: boolean };
-export function validatePlayer(
-  player: unknown,
-):
+export function validatePlayer(player: unknown):
   | {
       ok: true;
       errors: Record<string, string | undefined>;
-      data: { name: string; department: string; grade: string; phone: string };
+      data: { name: string; department: string; grade: string; phone: string; gatekeeper: string };
     }
   | { ok: false; errors: Record<string, string | undefined>; data?: undefined };
 

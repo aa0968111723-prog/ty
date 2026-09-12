@@ -117,6 +117,7 @@ async function appendOfficialResult(row) {
       name: row.name,
       department: row.department,
       grade: row.grade,
+      gatekeeper: row.gatekeeper,
       phone: row.phone,
       score: row.score,
       correct: row.correct,

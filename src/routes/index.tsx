@@ -33,7 +33,13 @@ export const Route = createFileRoute("/")({
 
 type Screen = "register" | "game" | "result";
 type Language = "en" | "zh";
-type Player = { name: string; department: string; grade: string; phone: string };
+type Player = {
+  name: string;
+  department: string;
+  grade: string;
+  phone: string;
+  gatekeeper: string;
+};
 type GameSettings = {
   duration: number;
   switchMs: number;
@@ -62,6 +68,10 @@ const TEXT = {
     department: "Department",
     year: "Year",
     mobile: "Mobile number",
+    gatekeeper: "Booth leader",
+    chooseGatekeeper: "Choose the booth leader guiding you",
+    customGatekeeper: "Custom",
+    customGatekeeperPlaceholder: "Enter the booth leader name",
     selectDepartment: "Select your Tamkang department",
     selectYear: "Select your year",
     namePlaceholder: "e.g. Alex",
@@ -129,6 +139,10 @@ const TEXT = {
     department: "科系",
     year: "年級",
     mobile: "電話",
+    gatekeeper: "關主",
+    chooseGatekeeper: "請選擇帶你闖關的關主",
+    customGatekeeper: "自訂",
+    customGatekeeperPlaceholder: "輸入關主姓名",
     selectDepartment: "請選擇淡江科系",
     selectYear: "請選擇年級",
     namePlaceholder: "例如：小華",
@@ -183,6 +197,8 @@ const TEXT = {
       "想更認識自己、練習專注與表達，歡迎來淡江大學禪學社坐坐。手搖杯得獎現場公布，網站不公開成績。",
   },
 } as const;
+
+const GATEKEEPERS = ["柏能", "安倢", "小哲", "振泰"];
 
 const COLOR_NAMES: Record<ColorId, { en: string; zh: string }> = {
   red: { en: "Red", zh: "紅" },
@@ -296,6 +312,8 @@ const VALIDATION_EN: Record<string, string> = {
   請選擇淡江科系: "Please select your Tamkang department.",
   請從名單選擇淡江科系: "Please choose a department from the list.",
   請選擇年級: "Please select your year.",
+  請選擇關主: "Please choose your booth leader.",
+  "請填 1–20 字的關主姓名": "Please enter a booth leader name between 1 and 20 characters.",
   請填寫手機: "Please enter your mobile number.",
   "請填 09 開頭的 10 碼手機": "Please enter a 10-digit mobile number starting with 09.",
 };
@@ -908,6 +926,13 @@ function RegisterScreen({
   const ui = TEXT[language];
   const official = isOfficialSettings(settings);
   const [openSettings, setOpenSettings] = useState(false);
+  const [gatekeeperChoice, setGatekeeperChoice] = useState(() =>
+    GATEKEEPERS.includes(player.gatekeeper)
+      ? player.gatekeeper
+      : player.gatekeeper
+        ? "__custom__"
+        : "",
+  );
 
   return (
     <form
@@ -968,6 +993,53 @@ function RegisterScreen({
               {official ? TEXT.zh.officialDescription : TEXT.zh.practiceDescription}
             </ZhHelper>
           </div>
+        </div>
+        <div className={"field gatekeeper-field" + (errors.gatekeeper ? " is-invalid" : "")}>
+          <span id="gatekeeper-label" className="field-label">
+            {ui.gatekeeper} <span className="req">*</span>
+            <ZhHelper language={language}>關主</ZhHelper>
+          </span>
+          <p className="field-hint">{ui.chooseGatekeeper}</p>
+          <div className="gatekeeper-picks" role="radiogroup" aria-labelledby="gatekeeper-label">
+            {GATEKEEPERS.map((name) => (
+              <button
+                key={name}
+                type="button"
+                className={"gatekeeper-pick" + (gatekeeperChoice === name ? " is-on" : "")}
+                aria-pressed={gatekeeperChoice === name}
+                onClick={() => {
+                  setGatekeeperChoice(name);
+                  onChange("gatekeeper", name);
+                }}
+              >
+                {name}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={"gatekeeper-pick" + (gatekeeperChoice === "__custom__" ? " is-on" : "")}
+              aria-pressed={gatekeeperChoice === "__custom__"}
+              onClick={() => {
+                setGatekeeperChoice("__custom__");
+                if (GATEKEEPERS.includes(player.gatekeeper)) onChange("gatekeeper", "");
+              }}
+            >
+              {ui.customGatekeeper}
+            </button>
+          </div>
+          {gatekeeperChoice === "__custom__" ? (
+            <input
+              id="gatekeeper-custom"
+              name="gatekeeper"
+              value={player.gatekeeper}
+              maxLength={20}
+              autoComplete="off"
+              onChange={(e) => onChange("gatekeeper", e.target.value.slice(0, 20))}
+              placeholder={ui.customGatekeeperPlaceholder}
+              aria-label={ui.customGatekeeperPlaceholder}
+            />
+          ) : null}
+          <span className="field-err">{validationText(errors.gatekeeper, language)}</span>
         </div>
         <div className={"field" + (errors.name ? " is-invalid" : "")}>
           <label htmlFor="name">

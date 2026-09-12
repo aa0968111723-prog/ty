@@ -27,6 +27,7 @@ describe("api", () => {
         name: "小華",
         department: "歷史學系",
         grade: "大一",
+        gatekeeper: "柏能",
         phone: "0968111723",
       }),
     );
@@ -41,6 +42,7 @@ describe("api", () => {
         name: "小華",
         department: "歷史學系",
         grade: "大一",
+        gatekeeper: "柏能",
         phone: "0968111723",
         score: 1600,
         correct: 12,
@@ -85,6 +87,7 @@ describe("api", () => {
           name: "小華",
           department: "歷史學系",
           grade: "大一",
+          gatekeeper: "柏能",
           phone: "0968111723",
           score: 1600,
           correct: 12,
@@ -99,6 +102,7 @@ describe("api", () => {
       assert.equal(calls.length, 1);
       const sent = JSON.parse(calls[0].options.body);
       assert.equal(calls[0].url, "https://example.test/sheet");
+      assert.equal(sent.row.gatekeeper, "柏能");
       assert.equal(sent.row.phone, "0968111723");
       assert.equal(sent.row.submissionId, "sheet-sub-1");
       assert.equal(sent.password, "sheet-password");
@@ -128,6 +132,7 @@ describe("api", () => {
           name: "小華",
           department: "歷史學系",
           grade: "大一",
+          gatekeeper: "柏能",
           phone: "0968111723",
           score: 1600,
           correct: 12,
@@ -154,6 +159,7 @@ describe("api", () => {
         name: "小華",
         department: "歷史學系",
         grade: "大一",
+        gatekeeper: "柏能",
         phone: "0968111723",
         score: 99999,
         correct: 2,
