@@ -144,6 +144,7 @@ describe("titles validation leaderboard", () => {
       name: "小華",
       department: "歷史學系",
       grade: "大一",
+      gatekeeper: "柏能",
       phone: "0968111723",
     });
     assert.equal(good.ok, true);
@@ -169,10 +170,13 @@ describe("titles validation leaderboard", () => {
       name: "小華",
       department: "歷史學系",
       grade: "大一",
+      gatekeeper: "柏能",
       phone: "0912345678",
     });
     assert.equal(p.title.includes("潛力領袖"), true);
     assert.equal(p.total, 14);
+    assert.equal(p.phone, "0912345678");
+    assert.equal(p.gatekeeper, "柏能");
     assert.ok(p.accuracy > 0);
   });
   it("max score bound", () => {

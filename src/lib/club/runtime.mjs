@@ -328,7 +328,7 @@ export function tickGame(game, now = Date.now()) {
 }
 
 export function emptyPlayer() {
-  return { name: "", department: "", grade: "", phone: "" };
+  return { name: "", department: "", grade: "", phone: "", gatekeeper: "" };
 }
 
 export const GUEST_PLAYER = {
@@ -336,10 +336,12 @@ export const GUEST_PLAYER = {
   department: "現場試玩",
   grade: "其他",
   phone: "0900000000",
+  gatekeeper: "試玩",
 };
 
 const PHONE_RE = /^09\d{8}$/;
 const NAME_RE = /^[\u4e00-\u9fffA-Za-z·．\s]{1,20}$/;
+const GATEKEEPER_RE = /^[\u4e00-\u9fffA-Za-z·．\s]{1,20}$/;
 
 export function validatePlayer(player) {
   const errors = {};
@@ -347,6 +349,7 @@ export function validatePlayer(player) {
   const department = String(player?.department ?? "").trim();
   const grade = String(player?.grade ?? "").trim();
   const phone = String(player?.phone ?? "").replace(/\s+/g, "");
+  const gatekeeper = String(player?.gatekeeper ?? "").trim();
   if (!name) errors.name = "請填寫姓名";
   else if (!NAME_RE.test(name)) errors.name = "請填 1–20 字的真實姓名";
   if (!department) errors.department = "請選擇淡江科系";
@@ -354,10 +357,12 @@ export function validatePlayer(player) {
     errors.department = "請從名單選擇淡江科系";
   if (!grade) errors.grade = "請選擇年級";
   else if (!GRADE_LIST.includes(grade)) errors.grade = "請選擇年級";
+  if (!gatekeeper) errors.gatekeeper = "請選擇關主";
+  else if (!GATEKEEPER_RE.test(gatekeeper)) errors.gatekeeper = "請填 1–20 字的關主姓名";
   if (!phone) errors.phone = "請填寫手機";
   else if (!PHONE_RE.test(phone)) errors.phone = "請填 09 開頭的 10 碼手機";
   if (Object.keys(errors).length) return { ok: false, errors };
-  return { ok: true, data: { name, department, grade, phone }, errors: {} };
+  return { ok: true, data: { name, department, grade, phone, gatekeeper }, errors: {} };
 }
 
 export function sanitizeLeaderboard(rows) {
@@ -380,6 +385,8 @@ export function publicResult(game, player) {
     name: player.name,
     department: player.department,
     grade: player.grade,
+    phone: player.phone,
+    gatekeeper: player.gatekeeper,
     score: game.score,
     correct: game.correct,
     wrong: game.wrong,
