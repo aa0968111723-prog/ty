@@ -1,0 +1,136 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { chromium } from "playwright";
+import { buildDashboard } from "../src/lib/club/admin.mjs";
+import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
+
+const base = process.env.CLUB_BROWSER_URL;
+test("club mobile DOM, scrolling, admin filters and game interactions (no screenshots)", { skip: !base }, async (t) => {
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
+    args: ["--no-sandbox"],
+  });
+  t.after(() => browser.close());
+  const origin = new URL(base).origin;
+  for (const [width, height] of [[360, 800], [390, 844], [412, 915], [430, 932]]) {
+    await t.test(`${width}x${height} registration and dashboard scroll`, async () => {
+      const context = await browser.newContext({ viewport: { width, height }, isMobile: true, hasTouch: true });
+      const errors = [];
+      const page = await context.newPage();
+      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+      await page.route("**/*", async (route) => {
+        if (new URL(route.request().url()).origin !== origin) {
+          await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+        } else await route.continue();
+      });
+      await page.goto(base);
+      await page.locator("[data-register=official]").waitFor();
+      assert.equal(await page.locator("[data-settings], .settings-sheet").count(), 0);
+      const header = await page.locator(".club-header").boundingBox();
+      const toggle = await page.locator(".header-actions").boundingBox();
+      assert.ok(toggle.x >= header.x && toggle.x + toggle.width <= header.x + header.width + 1);
+      async function assertScroll(label) {
+        const initial = await page.evaluate(() => ({
+          scrollHeight: document.documentElement.scrollHeight,
+          clientHeight: document.documentElement.clientHeight,
+          innerHeight: innerHeight,
+          width: document.documentElement.scrollWidth,
+          viewport: innerWidth,
+        }));
+        assert.ok(initial.scrollHeight > initial.innerHeight, `${label}: ${JSON.stringify(initial)}`);
+        assert.ok(initial.width <= initial.viewport + 1, `${label}: no horizontal overflow`);
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        await page.waitForFunction(() => window.scrollY > 0);
+        console.log(JSON.stringify({ label, width, height, ...initial, scrollY: await page.evaluate(() => scrollY) }));
+      }
+      await assertScroll("register");
+      await page.getByRole("button", { name: "管理員登入", exact: true }).click();
+      assert.equal(await page.getByRole("dialog").count(), 1);
+      await page.getByRole("button", { name: "關閉登入" }).click();
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      const result = {
+        name: "測試同學", phone: "0900000000", department: "歷史學系", grade: "大一", gatekeeper: "柏能",
+        completedAt: "2026-09-12T01:00:00Z", kind: "official", skipSave: false,
+        duration: 60, settings: DEFAULT_SETTINGS, score: 600, correct: 5, wrong: 0, maxCombo: 5, accuracy: 100,
+        submissionId: crypto.randomUUID(),
+      };
+      await page.route("**/api/admin/dashboard?*", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date");
+        return route.fulfill({ json: buildDashboard({ date, results: [result],
+          forms: [{ name: "表單同學", timestamp: "2026/9/12 09:00", gatekeeper: "小哲" }] }) });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByLabel("查詢日期").fill("2026-09-12");
+      await page.locator(".admin-kpis strong").first().filter({ hasText: "2" }).waitFor();
+      await assertScroll("admin");
+      await page.getByRole("button", { name: "名單", exact: true }).click();
+      await page.getByLabel("篩選來源").selectOption("Google Form");
+      assert.equal(await page.locator(".admin-person-list article").count(), 1);
+      await page.getByRole("button", { name: "成績", exact: true }).click();
+      assert.equal(await page.locator(".admin-person-list article").count(), 1, "hidden form-source filter must not hide results");
+      await page.getByRole("button", { name: "查看前三名" }).click();
+      assert.equal(await page.locator(".admin-podium li").count(), 1);
+      await page.getByRole("button", { name: "關主", exact: true }).click();
+      await page.getByRole("button", { name: /柏能/ }).click();
+      assert.equal(await page.getByLabel("篩選關主").inputValue(), "柏能");
+      await page.getByLabel("查詢日期").fill("2026-09-11");
+      await page.getByText("沒有符合條件的紀錄").waitFor();
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+  }
+  await t.test("warmup, keyboard/pointer scoring, expiry, retry and reload keep a single entry ID", async () => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+    await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+      ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" }) : route.continue());
+    let confirmed = false;
+    const submissions = [];
+    await page.route("**/api/result", async (route) => {
+      submissions.push(route.request().postDataJSON());
+      await route.fulfill({ json: { ok: true, sheetsOk: confirmed, saved: confirmed } });
+    });
+    await page.route("**/api/register", (route) => route.fulfill({ json: { ok: true } }));
+    await page.clock.install();
+    await page.goto(base);
+    await page.getByRole("button", { name: "柏能", exact: true }).click();
+    await page.locator("#name").fill("測試同學");
+    await page.locator("#department").selectOption("歷史學系");
+    await page.getByRole("button", { name: "大一", exact: true }).click();
+    await page.locator("#phone").fill("0900000000");
+    await page.getByRole("button", { name: /開始 15 秒/ }).click();
+    await page.locator("[data-screen=game]").waitFor();
+    await page.clock.fastForward(15100);
+    await page.locator("[data-screen=warmup-result]").waitFor();
+    assert.equal(submissions.length, 0);
+    await page.getByRole("button", { name: /開始正式 60 秒/ }).click();
+    await page.locator("[data-session=official]").waitFor();
+    const state = () => page.evaluate(() => ({
+      score: Number(document.querySelector("[data-score]").textContent),
+      seq: Number(document.querySelector("[data-seq]").getAttribute("data-seq")),
+    }));
+    const correctKey = await page.locator(".stroop").innerText();
+    const keys = { 紅: "1", 藍: "2", 綠: "3", 黃: "4" };
+    await page.keyboard.press(keys[correctKey]);
+    assert.equal((await state()).score, 100);
+    await page.clock.runFor(100);
+    const before = await state();
+    await page.locator(".ans").first().dblclick({ delay: 0 });
+    const after = await state();
+    assert.equal(after.seq, before.seq + 1, "double event cannot score a second time");
+    await page.clock.fastForward(60000);
+    await page.locator("[data-screen=result]").waitFor();
+    await page.waitForFunction(() => document.querySelector(".pending-result button")?.disabled === false);
+    assert.equal(submissions.length, 1);
+    await page.reload();
+    await page.getByRole("button", { name: "重試儲存", exact: true }).waitFor();
+    confirmed = true;
+    await page.getByRole("button", { name: "重試儲存", exact: true }).click();
+    await page.locator(".pending-result").waitFor({ state: "detached" });
+    assert.equal(submissions.length, 2);
+    assert.deepEqual(submissions[1], submissions[0]);
+    await context.close();
+  });
+});

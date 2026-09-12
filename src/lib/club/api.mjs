@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- HTTP boundary accepts untrusted JSON, checked by runtime validators and contract tests.
 import {
   CLUB_NAME,
   GAME_DURATION,

@@ -1,5 +1,35 @@
 @import "tailwindcss";
 
+.club-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px;
+  background: var(--color-paper);
+}
+.club-brand { display: flex; align-items: center; gap: 8px; color: var(--color-ink); text-decoration: none; font-weight: 800; }
+.club-brand img { flex-shrink: 0; }
+.club-brand small { display: block; color: var(--color-muted); font-size: 10px; letter-spacing: .16em; }
+.header-actions { display: flex; align-items: center; gap: 8px; }
+.club-header .gear-btn { position: static; width: 44px; height: 44px; background: var(--color-paper); color: var(--color-moss); opacity: 1; }
+.club-header .language-toggle { background: var(--color-paper); color: var(--color-ink); box-shadow: none; border-color: var(--color-muted); }
+.club-header .language-toggle button { min-height: 44px; padding: 4px 8px; }
+.club-header .language-toggle button.is-active { background: var(--color-moss); color: var(--color-paper); }
+.hero-subtitle { font-size: 13px; margin: 0; }
+.challenge-rules { padding: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rule-chip { display: flex; align-items: center; gap: 8px; padding: 12px 8px; border: 1px solid var(--color-wood); border-radius: 12px; color: var(--color-moss); }
+.rule-chip svg { flex-shrink: 0; }
+.rule-chip span { font-size: 11px; color: var(--color-muted); }
+.rule-chip strong { display: block; color: var(--color-ink); font-size: 13px; }
+.rule-score { grid-column: 1 / -1; margin: 4px 0 0; font-size: 12px; color: var(--color-muted); text-align: center; }
+.form-kicker h2 span { display: block; font: 12px var(--font-sans); color: var(--color-moss); margin: 4px 0; }
+.pending-result { padding: 16px; background: var(--color-paper); color: var(--color-ink); border-bottom: 2px solid var(--color-wood); flex-shrink: 0; }
+.pending-result p { font-size: 13px; margin: 8px 0; }
+.pending-result button { min-height: 44px; padding: 8px 12px; margin-right: 8px; border: 1px solid var(--color-moss); border-radius: 12px; }
+.pending-result button:first-of-type { background: var(--color-moss); color: var(--color-paper); }
+.score-hud { flex-shrink: 0; }
+
 @theme {
   --color-sky: #8ec8f0;
   --color-paper: #fff8ec;

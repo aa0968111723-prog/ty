@@ -30,6 +30,7 @@ export const GUEST_PLAYER: {
 export const START_MODE_OPTIONS: { id: string; label: string }[];
 export const DEFAULT_SETTINGS: GameSettings;
 export function pointsForHit(combo: number): number;
+export function accuracyOf(correct: number, total: number): number;
 export function scoreIsConsistent(row: {
   score: number;
   correct: number;

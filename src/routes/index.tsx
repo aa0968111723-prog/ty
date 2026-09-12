@@ -4,6 +4,7 @@ import { Turtle, type TurtleMood } from "@/components/turtle";
 import { AdminLogin } from "@/components/admin-login";
 import { ScoreHUD } from "@/components/club/score-hud";
 import { Settings, ShieldCheck, Timer, ArrowRightLeft } from "lucide-react";
+import { clearPendingResult, readPendingResult, storePendingResult } from "@/lib/club/pending-result.mjs";
 import {
   COLORS,
   CLUB_NAME,
@@ -420,6 +421,9 @@ function BoothApp() {
   const [pops, setPops] = useState<{ id: number; text: string; kind: string }[]>([]);
   const [modePulse, setModePulse] = useState(0);
   const [save, setSave] = useState<SaveKind>("idle");
+  const [pending, setPending] = useState<ReturnType<typeof publicResult> | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const sendingRef = useRef(false);
   const [club, setClub] = useState(CLUB_NAME);
   const settings = DEFAULT_SETTINGS;
   const [, setTick] = useState(0);
@@ -436,6 +440,7 @@ function BoothApp() {
 
   useEffect(() => {
     try {
+      setPending(readPendingResult(sessionStorage));
       const saved = localStorage.getItem("club-focus-language");
       if (saved === "en" || saved === "zh") setLanguage(saved);
     } catch {
@@ -502,10 +507,39 @@ function BoothApp() {
     };
   }, []);
 
+  const submitResult = useCallback(async (payload: ReturnType<typeof publicResult>) => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    setRetrying(true);
+    setSave("idle");
+    try {
+      const response = await fetch("/api/result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error("Save failed");
+      if (body.clubName) setClub(body.clubName);
+      if (body.sheetsOk === true) {
+        try { clearPendingResult(sessionStorage, payload.submissionId); } catch { /* Storage unavailable. */ }
+        setPending((current) => current?.submissionId === payload.submissionId ? null : current);
+      }
+      if (gameRef.current.submissionId === payload.submissionId) setSave(body.sheetsOk === true ? "ok" : "local");
+    } catch {
+      if (gameRef.current.submissionId === payload.submissionId) setSave("fail");
+    } finally {
+      sendingRef.current = false;
+      setRetrying(false);
+    }
+  }, []);
+
   const endGame = useCallback(() => {
     const g = gameRef.current;
     if (g.resultSubmitted) return;
     g.ended = true;
+    g.completedAt ??= new Date().toISOString();
     g.resultSubmitted = true;
     if (g.kind === "warmup") {
       startingRef.current = false;
@@ -519,31 +553,16 @@ function BoothApp() {
       setSave("guest");
       return;
     }
-    fetch("/api/result", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then(async (r) => {
-        const d = await r.json().catch(() => ({}));
-        if (d.clubName) setClub(d.clubName);
-        if (!r.ok) {
-          setSave("fail");
-          return;
-        }
-        if (d.sheetsOk) setSave("ok");
-        else setSave("local");
-      })
-      .catch(() => {
-        setSave("fail");
-      });
-  }, []);
+    setPending(payload);
+    try { storePendingResult(sessionStorage, payload); } catch { /* Keep the in-memory retry available. */ }
+    void submitResult(payload);
+  }, [submitResult]);
 
   const answer = useCallback(
     (id: ColorId, snapshot?: { mode: string; seq: number }) => {
       const g = gameRef.current;
       const now = performance.now();
-      const judged = judgeAnswer(g, id, snapshot, now);
+      const judged = judgeAnswer(g, id, snapshot ?? { mode: g.mode, seq: g.questionSeq }, now);
       if (!judged.ok) {
         if (judged.reason === "expired") endGame();
         return;
@@ -654,7 +673,7 @@ function BoothApp() {
   }
 
   function startChallenge() {
-    if (startingRef.current || busy) return;
+    if (startingRef.current || busy || pending) return;
     const parsed = validatePlayer(player);
     if (!parsed.ok) {
       setErrors(parsed.errors as Record<string, string | undefined>);
@@ -718,6 +737,19 @@ function BoothApp() {
   return (
     <div className="app-root" data-screen={screen} data-session={g.kind}>
       <div className="shell">
+        {pending && screen !== "game" && (
+          <aside className="pending-result" role="status">
+            <strong>{language === "zh" ? "有一筆成績尚未確認儲存" : "A score is awaiting confirmation"}</strong>
+            <p>{language === "zh" ? "重試會沿用同一局編號，不會重複登記；完成或放棄後可開始新挑戰。" : "Retry keeps the same entry ID, without duplicating it. Retry or discard before a new entry."}</p>
+            <button type="button" disabled={retrying} onClick={() => void submitResult(pending)}>
+              {retrying ? (language === "zh" ? "傳送中…" : "Sending…") : (language === "zh" ? "重試儲存" : "Retry save")}
+            </button>
+            <button type="button" disabled={retrying} onClick={() => {
+              try { clearPendingResult(sessionStorage, pending.submissionId); } catch { /* Storage unavailable. */ }
+              setPending(null);
+            }}>{language === "zh" ? "放棄重試" : "Discard retry"}</button>
+          </aside>
+        )}
         {screen === "register" ? (
           <section className="screen screen-register active">
             <RegisterScreen
@@ -725,7 +757,7 @@ function BoothApp() {
               onLanguage={setLanguage}
               player={player}
               errors={errors}
-              busy={busy}
+              busy={busy || Boolean(pending)}
               settings={settings}
               onChange={(key, value) => {
                 setPlayer((p) => ({ ...p, [key]: value }));

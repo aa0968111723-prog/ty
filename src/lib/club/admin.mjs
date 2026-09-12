@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
+import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 
 /** @typedef {import("./admin").AdminContact} AdminContact */
 /** @typedef {import("./admin").OfficialResult} OfficialResult */
@@ -135,6 +136,7 @@ export function rankOfficialResults(rows, date) {
   if (date !== undefined && !validDate(date)) throw new RangeError("Invalid date");
   /** @type {OfficialResult[]} */
   const eligible = [];
+  const submissions = new Set();
   for (const value of rows) {
     const row = record(value);
     if (row.kind !== "official" || row.skipSave !== false || row.duration !== 60 ||
@@ -147,15 +149,19 @@ export function rankOfficialResults(rows, date) {
     const wrong = number(row.wrong);
     const maxCombo = number(row.maxCombo);
     if (![score, correct, wrong, maxCombo].every((n) => Number.isSafeInteger(n) && n >= 0) ||
-      !Number.isFinite(accuracy) || accuracy < 0 || accuracy > 100 || maxCombo > correct) continue;
-    const submissionId = text(row.submissionId);
+      !scoreIsConsistent({ score, correct, wrong, maxCombo }) ||
+      correct + wrong > Math.ceil(60000 / 64) ||
+      accuracy !== accuracyOf(correct, correct + wrong)) continue;
+    const submissionId = text(row.submissionId).toLowerCase();
+    if (submissionId && submissions.has(submissionId)) continue;
+    if (submissionId) submissions.add(submissionId);
     const stable = JSON.stringify([contact, score, accuracy, correct, wrong, maxCombo]);
     eligible.push({
       ...contact,
       id: text(row.id) || submissionId || createHash("sha256").update(stable).digest("hex"),
       submissionId,
       score, accuracy, correct, wrong, maxCombo,
-      title: text(row.title),
+      title: titleForScore(score),
       kind: "official", skipSave: false, duration: 60,
     });
   }
@@ -182,7 +188,8 @@ export function buildDashboard(input = {}) {
   const date = input.date ?? dateInTaipei(now);
   if (!validDate(date)) throw new RangeError("Invalid date");
   const forms = (input.forms || []).map(normalizeFormResponse).filter((r) => onDate(r, date));
-  const challenges = (input.results || []).map(resultContact).filter((r) => onDate(r, date));
+  const results = rankOfficialResults(input.results || [], date);
+  const challenges = results.map(resultContact);
   const raw = [...forms, ...challenges].sort((a, b) =>
     b.completedAt.localeCompare(a.completedAt) || a.source.localeCompare(b.source));
   const names = new Set();
@@ -192,7 +199,6 @@ export function buildDashboard(input = {}) {
     names.add(key);
     return true;
   });
-  const results = rankOfficialResults(input.results || [], date);
   const trend = Array.from({ length: 24 }, (_, hour) => ({
     hour: `${String(hour).padStart(2, "0")}:00`, count: 0,
   }));

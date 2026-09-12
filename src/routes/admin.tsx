@@ -13,7 +13,7 @@ type Contact = {
   name: string; phone: string; department: string; grade: string;
   gatekeeper: string; source: string; completedAt: string;
 };
-type Result = Contact & { submissionId: string; score: number; accuracy: number; correct: number; maxCombo: number };
+type Result = Contact & { id: string; submissionId: string; score: number; accuracy: number; correct: number; maxCombo: number };
 type Count = { name: string; count: number };
 type Dashboard = {
   date: string; contacts: Contact[]; results: Result[]; topThree: Result[];
@@ -46,11 +46,11 @@ function Bars({ rows, onSelect }: { rows: Count[]; onSelect?: (name: string) => 
     </button>
   ))}</div>;
 }
-function Podium({ rows }: { rows: Result[] }) {
-  return <section className="admin-panel"><h2><Medal size={20} /> 今日前三名</h2>
+function Podium({ rows, date }: { rows: Result[]; date: string }) {
+  return <section className="admin-panel"><h2><Medal size={20} /> {date === taipeiDate() ? "今日" : "當日"}前三名</h2>
     <p className="admin-caption">僅正式挑戰 · 指定日期 · 排名不公開</p>
     {!rows.length ? <p className="admin-empty">尚無正式挑戰紀錄</p> : <ol className="admin-podium">{rows.map((row, index) => (
-      <li key={row.submissionId}><span className={`admin-medal medal-${index}`}>{index + 1}</span>
+      <li key={row.id}><span className={`admin-medal medal-${index}`}>{index + 1}</span>
         <div><strong>{row.name}</strong><small>正確率 {row.accuracy}% · 關主 {row.gatekeeper || "未填"}</small></div><b>{row.score.toLocaleString()}</b></li>
     ))}</ol>}
   </section>;
@@ -110,7 +110,7 @@ function AdminDashboard() {
   if (!authenticated) return <main className="admin-page admin-auth"><AdminLogin onSuccess={() => setAuthenticated(true)} /></main>;
   const rows = (tab === "results" ? data?.results : data?.contacts) ?? [];
   const filtered = rows.filter((row) =>
-    (!leader || row.gatekeeper === leader) && (!source || row.source === source) &&
+    (!leader || row.gatekeeper === leader) && (tab === "results" || !source || row.source === source) &&
     (!department || row.department === department) &&
     (!query || `${row.name} ${row.phone} ${row.department}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())));
   function selectLeader(name: string) { setLeader(name); setTab("contacts"); }
@@ -140,7 +140,7 @@ function AdminDashboard() {
             {[["今日接觸", data.kpis.contacts, "去重複姓名"], ["今日正式挑戰", data.kpis.officialChallenges, "正式完成紀錄"], ["平均分數", data.kpis.averageScore, "正式挑戰"], ["最高分", data.kpis.highestScore, "正式挑戰"]].map(([label, value, hint]) =>
               <article key={label}><span>{String(label).replace("今日", date === taipeiDate() ? "今日" : "當日")}</span><strong>{Number(value).toLocaleString()}</strong><small>{hint}</small></article>)}
           </section>}
-          <Podium rows={data.topThree} />
+          <Podium rows={data.topThree} date={date} />
           {tab === "overview" && <>
             <section className="admin-panel"><h2>接觸人數</h2><div className="admin-counts"><span>原始紀錄 <b>{data.kpis.rawRecords}</b></span><span>重複 <b>{data.kpis.duplicates}</b></span><span>去重複 <b>{data.kpis.contacts} 人</b></span></div><p className="admin-caption">Google 表單 + 正式遊戲登記，依姓名去重；表單不代表試玩人數。</p></section>
             <section className="admin-panel"><h2>接觸趨勢</h2><Bars rows={data.trend.map((row) => ({ name: `${row.hour} 時`, count: row.count }))} /></section>

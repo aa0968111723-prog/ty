@@ -1,8 +1,7 @@
-// @ts-nocheck
+// @ts-nocheck -- Engine tests intentionally exercise invalid inputs and mutable game fixtures.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  COMBO_BONUS_AT,
   GAME_DURATION,
   WARMUP_DURATION,
   DEFAULT_SETTINGS,
@@ -219,7 +218,7 @@ describe("judgeAnswer", () => {
     assert.equal(miss().delta, -50);
     assert.equal(miss().delta, 0);
     for (let i = 1; i <= 4; i++) assert.equal(hit().delta, 100);
-    assert.equal(hit().delta, 200);
+    assert.equal(hit().delta, COMBO_SCORE);
     assert.equal(hit().delta, 200);
     assert.equal(miss().delta, -50);
     for (let i = 1; i <= 4; i++) assert.equal(hit().delta, 100);

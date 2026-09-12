@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- Legacy mutable JavaScript engine; the client contract is typed in runtime.d.mts.
 /** Single source of truth: Stroop rules, titles, departments, validation. */
 
 export const GAME_DURATION = 60;
@@ -347,7 +347,7 @@ export function judgeAnswer(game, chosen, snapshot, now = performance.now()) {
   } else {
     game.wrong += 1;
     game.combo = 0;
-    delta = -Math.min(MISS_PENALTY, game.score);
+    delta = game.score === 0 ? 0 : -Math.min(MISS_PENALTY, game.score);
     game.score += delta;
   }
   game.questionSeq += 1;
