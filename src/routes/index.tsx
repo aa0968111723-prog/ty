@@ -458,14 +458,24 @@ function BoothApp() {
                     aria-label={colorName(c.id as ColorId, language)}
                     data-color={c.id}
                     disabled={g.ended}
-                    onPointerDown={() => {
+                    onPointerDown={(event) => {
+                      if (event.button !== 0 || !event.isPrimary) {
+                        pressRef.current = null;
+                        return;
+                      }
                       pressRef.current = { id: c.id as ColorId, mode: g.mode, seq: g.questionSeq };
                     }}
-                    onPointerUp={(e) => {
-                      e.preventDefault();
+                    onPointerUp={(event) => {
                       const press = pressRef.current;
                       pressRef.current = null;
-                      if (!press || press.id !== c.id) return;
+                      if (
+                        event.button !== 0 ||
+                        !event.isPrimary ||
+                        !press ||
+                        press.id !== c.id
+                      )
+                        return;
+                      event.preventDefault();
                       answer(c.id as ColorId, { mode: press.mode, seq: press.seq });
                     }}
                     onPointerCancel={() => {
