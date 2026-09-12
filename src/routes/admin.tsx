@@ -1,24 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Check,
-  ChevronDown,
-  Flag,
-  LayoutDashboard,
-  ListFilter,
-  Medal,
-  RefreshCw,
-  RotateCcw,
-  Sheet,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { Check, ChevronDown, Flag, LayoutDashboard, ListFilter, Medal, RefreshCw, RotateCcw, Sheet, Trophy, Users } from "lucide-react";
 import { AdminShell } from "@/components/club/admin-shell";
 import { AdminLogin } from "@/components/admin-login";
 import "@/admin.css";
 import { DashboardWidget } from "@/components/club/dashboard-widget";
 import { DEFAULT_LAYOUT, STORAGE_KEY, readLayout, initialView, taipeiDate, time, type Dashboard, type Tab, type LayoutPreference, type WidgetId, type Result } from "@/components/club/admin-presentation";
 import { Kpi, Bars, Podium } from "@/components/club/admin-metrics";
+import { RecruitmentDashboard, RecruitmentSync, type RecruitmentData } from "@/components/club/recruitment-dashboard";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -36,10 +25,14 @@ function AdminDashboard() {
   const [tab, setTab] = useState<Tab>(initialView);
   const [data, setData] = useState<Dashboard | null>(null);
   const [todayData, setTodayData] = useState<Dashboard | null>(null);
+  const [recruitment, setRecruitment] = useState<RecruitmentData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [leader, setLeader] = useState("");
+  const [recruiter, setRecruiter] = useState("");
+  const [tier, setTier] = useState("");
+  const [track, setTrack] = useState("");
   const [source, setSource] = useState(() =>
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("view") === "form"
@@ -72,7 +65,7 @@ function AdminDashboard() {
     return () => controller.abort();
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force = false) => {
     const id = ++generation.current;
     setBusy(true);
     try {
@@ -87,11 +80,23 @@ function AdminDashboard() {
         if (!response.ok) throw new Error(body.error || "同步失敗");
         return body as Dashboard;
       };
+      const loadRecruitment = async (target: string) => {
+        const response = await fetch(
+          `/api/admin/recruitment?date=${encodeURIComponent(target)}${force ? "&refresh=1" : ""}`,
+          { cache: "no-store", signal: AbortSignal.timeout(15000) },
+        );
+        if (response.status === 401) throw new Error("AUTH");
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "同步失敗");
+        return body as RecruitmentData;
+      };
       const selected = await load(date);
       const today = date === current ? selected : await load(current);
+      const board = await loadRecruitment(date).catch(() => null);
       if (id === generation.current) {
         setData(selected);
         setTodayData(today);
+        if (board) setRecruitment(board);
         setError("");
       }
     } catch (cause) {
@@ -99,6 +104,7 @@ function AdminDashboard() {
       if (cause instanceof Error && cause.message === "AUTH") {
         setAuthenticated(false);
         setData(null);
+        setRecruitment(null);
       } else setError(cause instanceof Error ? cause.message : "同步失敗，請重新整理");
     } finally {
       if (id === generation.current) setBusy(false);
@@ -216,6 +222,9 @@ function AdminDashboard() {
         setLeader("");
         setDepartment("");
         setQuery("");
+        setRecruiter("");
+        setTier("");
+        setTrack("");
         setView(view, shortcut);
       }}
     >
@@ -226,6 +235,7 @@ function AdminDashboard() {
             {
               {
                 overview: "活動總覽",
+                recruitment: "招生戰情",
                 pinned: "我的釘選",
                 contacts: source === "Google Form" ? "Google 表單" : "聯絡名單",
                 results: "比賽成績",
@@ -251,7 +261,7 @@ function AdminDashboard() {
           <button
             className="admin-refresh"
             disabled={busy}
-            onClick={() => void refresh()}
+            onClick={() => void refresh(true)}
             aria-label="更新資料"
           >
             <RefreshCw size={20} className={busy ? "admin-spinning" : ""} />
@@ -280,15 +290,22 @@ function AdminDashboard() {
       </div>
       <div className="admin-sync-line" role="status">
         <span>
-          {data
-            ? data.sync.forms.ok && data.sync.results.ok && !error
+          {data || recruitment
+            ? (
+                tab === "recruitment"
+                  ? recruitment?.sync.gameResults.ok
+                    && recruitment.sync.recruitmentResponses.ok
+                    && recruitment.sync.recruitmentMaster.ok
+                    && !error
+                  : data?.sync.forms.ok && data?.sync.results.ok && !error
+              )
               ? "● 已連線"
               : "○ 同步異常 · 部分資料可能缺漏"
             : busy
               ? "同步中…"
               : "尚未同步"}
         </span>
-        <span>最後同步 {data ? time(data.sync.updatedAt) : "—"}</span>
+        <span>最後同步 {recruitment || data ? time((recruitment?.sync.updatedAt || data?.sync.updatedAt) as string) : "—"}</span>
       </div>
       {error && (
         <p className="admin-error" role="alert">
@@ -365,6 +382,7 @@ function AdminDashboard() {
                 <h2>快速入口</h2>
                 <div>
                   {[
+                    ["戰情", Flag, "recruitment", "recruitment"],
                     ["名單", Users, "contacts", "contacts"],
                     ["前三名", Medal, "podium", "ranking"],
                     ["關主", Flag, "leaders", "gatekeepers"],
@@ -388,6 +406,22 @@ function AdminDashboard() {
             </>
           )}
         </>
+      )}
+
+      {recruitment && tab === "recruitment" && (
+        <RecruitmentDashboard
+          data={recruitment}
+          query={query}
+          setQuery={setQuery}
+          gameGatekeeper={leader}
+          setGameGatekeeper={setLeader}
+          recruiter={recruiter}
+          setRecruiter={setRecruiter}
+          tier={tier}
+          setTier={setTier}
+          status={track}
+          setStatus={setTrack}
+        />
       )}
 
       {data && tab === "podium" && (
@@ -524,19 +558,23 @@ function AdminDashboard() {
       {tab === "system" && (
         <section className="admin-panel">
           <h2>系統同步狀態</h2>
+          {recruitment ? <RecruitmentSync data={recruitment} /> : (
+            <dl className="admin-system">
+              <dt>Google 表單</dt>
+              <dd>{data?.sync.forms.ok ? "● 已連線" : "○ 同步異常"}</dd>
+              <dt>正式比賽成績</dt>
+              <dd>{data?.sync.results.ok ? "● 已連線" : "○ 同步異常"}</dd>
+            </dl>
+          )}
           <dl className="admin-system">
-            <dt>Google 表單</dt>
-            <dd>{data?.sync.forms.ok ? "● 已連線" : "○ 同步異常"}</dd>
-            <dt>正式比賽成績</dt>
-            <dd>{data?.sync.results.ok ? "● 已連線" : "○ 同步異常"}</dd>
             <dt>自動更新</dt>
             <dd>每 30 秒</dd>
             <dt>統計時區</dt>
             <dd>Asia/Taipei</dd>
             <dt>最後同步</dt>
-            <dd>{data ? time(data.sync.updatedAt) : "—"}</dd>
+            <dd>{recruitment || data ? time((recruitment?.sync.updatedAt || data?.sync.updatedAt) as string) : "—"}</dd>
           </dl>
-          <p className="admin-caption">若同步異常，請聯絡部署管理者檢查 Google Sheet 連線設定。</p>
+          <p className="admin-caption">若同步異常，請聯絡部署管理者檢查 Google Sheet 連線設定。單一來源失敗時會保留其他成功資料。</p>
           <button className="admin-primary" onClick={logout}>
             安全登出
           </button>

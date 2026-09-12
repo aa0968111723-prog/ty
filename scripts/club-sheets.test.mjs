@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { google } from "googleapis";
 import {
+  DEFAULT_TAB_TITLES,
   RESULT_COLUMNS,
   appendOfficialResult,
   readSheetRows,
@@ -15,6 +16,9 @@ function configure(t, suffix, overrides = {}) {
     "GOOGLE_SHEET_ID",
     "GOOGLE_SHEET_TAB",
     "GOOGLE_FORM_SHEET_TAB",
+    "GOOGLE_GAME_SHEET_TAB",
+    "GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB",
+    "GOOGLE_RECRUITMENT_MASTER_SHEET_TAB",
   ];
   const previous = names.map((name) => process.env[name]);
   t.after(() => names.forEach((name, index) => {
@@ -147,4 +151,48 @@ test("updates headers and batch-writes one idempotent result row", async (t) => 
   assert.equal(calls.get, 3);
   assert.equal(calls.update.length, 1);
   assert.equal(calls.batchUpdate.length, 1);
+});
+
+test("empty game sheet writes Chinese headers plus technical submissionId", async (t) => {
+  configure(t, "empty-zh");
+  const values = [];
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: { values: {
+      get: async () => ({ data: { values } }),
+      update: async (params) => {
+        values[0] = [...params.requestBody.values[0]];
+        return { data: {} };
+      },
+      batchUpdate: async (params) => {
+        values.push([...params.requestBody.data[0].values[0]]);
+        return { data: {} };
+      },
+    } },
+  }));
+  const row = result({ completedAt: "2026-09-12T01:00:00.367Z" });
+  assert.deepEqual(await appendOfficialResult(row), { saved: true, duplicate: false });
+  assert.ok(values[0].includes("姓名"));
+  assert.ok(values[0].includes("_submissionId"));
+  assert.equal(values[0].includes("submissionId") || values[0].includes("_submissionId"), true);
+  const saved = Object.fromEntries(values[0].map((header, index) => [header, values[1][index]]));
+  assert.equal(saved._submissionId, row.submissionId);
+  assert.equal(saved.遊戲關主, "柏能");
+  assert.deepEqual(await appendOfficialResult(row), { saved: true, duplicate: true });
+});
+
+test("GOOGLE_GAME_SHEET_TAB wins over GOOGLE_SHEET_TAB", async (t) => {
+  configure(t, "prefer-new", { GOOGLE_GAME_SHEET_TAB: DEFAULT_TAB_TITLES.gameResults });
+  let range;
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: { values: {
+      get: async (params) => {
+        range = params.range;
+        return { data: { values: [["submissionId"]] } };
+      },
+    } },
+  }));
+  await readSheetRows("results");
+  assert.equal(range, "'" + DEFAULT_TAB_TITLES.gameResults + "'");
 });

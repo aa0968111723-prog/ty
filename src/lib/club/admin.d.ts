@@ -52,6 +52,28 @@ export interface AdminDashboard {
   trend: { hour: string; count: number }[];
   sync: { forms: SyncStatus; results: SyncStatus; updatedAt: string };
 }
+export interface RecruitmentSyncStatus extends SyncStatus {
+  stale?: boolean;
+}
+export interface RecruitmentDashboard {
+  ok: true;
+  date: string;
+  summary: Record<string, number>;
+  funnel: Array<{ id: string; label: string; count: number; fromPrevious: number | null; fromStart: number | null; missing?: boolean }>;
+  pending: unknown[];
+  profiles: unknown[];
+  gameGatekeepers: unknown[];
+  recruiters: unknown[];
+  distributions: unknown;
+  sync: {
+    gameResults: RecruitmentSyncStatus;
+    recruitmentResponses: RecruitmentSyncStatus;
+    recruitmentMaster: RecruitmentSyncStatus;
+    form: RecruitmentSyncStatus;
+    updatedAt: string;
+    tabs?: Record<string, string>;
+  };
+}
 export function normalizeName(value: unknown): string;
 export function normalizeFormResponse(value: unknown): AdminContact;
 export function rankOfficialResults(rows: unknown[], date?: string): OfficialResult[];
@@ -62,3 +84,4 @@ export function handleAdminSession(request: Request): Promise<Response>;
 export function handleAdminDashboard(request: Request): Promise<Response>;
 export function handleAdminFormResponses(request: Request): Promise<Response>;
 export function handleAdminResults(request: Request): Promise<Response>;
+export function handleAdminRecruitment(request: Request): Promise<Response>;

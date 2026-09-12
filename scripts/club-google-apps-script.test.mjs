@@ -88,9 +88,15 @@ test("result HTTP contract confirms durable duplicate and conflict via mocked Sh
     GOOGLE_FORM_SHEET_TAB: "forms",
     GOOGLE_SCRIPT_URL: "https://example.test/legacy-rollback",
   };
-  const previous = Object.fromEntries(Object.keys(props).map((key) => [key, process.env[key]]));
+  const previous = Object.fromEntries([
+    ...Object.keys(props),
+    "GOOGLE_GAME_SHEET_TAB",
+    "GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB",
+    "GOOGLE_RECRUITMENT_MASTER_SHEET_TAB",
+  ].map((key) => [key, process.env[key]]));
   Object.assign(process.env, props);
-  t.after(() => Object.keys(props).forEach((key) => {
+  delete process.env.GOOGLE_GAME_SHEET_TAB;
+  t.after(() => Object.keys(previous).forEach((key) => {
     if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key];
   }));
   const values = [];

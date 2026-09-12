@@ -1,0 +1,225 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import {
+  buildPrefilledFormUrl,
+  buildRecruitmentDashboard,
+  decodeStudentChoice,
+  encodeStudentChoice,
+  parseGameAttempts,
+  parseMasterRows,
+  parseRecruitmentResponses,
+} from "./recruitment.mjs";
+import {
+  applyLastKnownGood,
+  markSubmissionDuplicate,
+  parseSubmittedStudent,
+  planRecruitmentFormSync,
+  snapshotFormStructure,
+  validatePlanDoesNotTouchRecruitmentQuestions,
+} from "./recruitment-form-sync.mjs";
+
+const game = (overrides = {}) => ({
+  姓名: "王小明",
+  電話: "0912345678",
+  科系: "歷史學系",
+  年級: "大一",
+  遊戲關主: "柏能",
+  分數: 600,
+  答對: 5,
+  答錯: 0,
+  正確率: 100,
+  最佳連續: 5,
+  遊戲秒數: 60,
+  遊戲時間: "2026-09-14T06:32:00.000Z",
+  _submissionId: crypto.randomUUID(),
+  _kind: "official",
+  _skipSave: false,
+  ...overrides,
+});
+
+test("two plays by one student become one pending candidate under the game gatekeeper", () => {
+  const first = game({ _submissionId: "11111111-1111-4111-8111-111111111111" });
+  const second = game({
+    _submissionId: "22222222-2222-4222-8222-222222222222",
+    遊戲時間: "2026-09-14T07:00:00.000Z",
+    分數: 800,
+  });
+  const other = game({
+    姓名: "李小華",
+    電話: "0987654321",
+    遊戲關主: "安倢",
+    _submissionId: "33333333-3333-4333-8333-333333333333",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T08:00:00+08:00"),
+    gameRows: [first, second, other],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.pending.length, 2);
+  const peng = data.pending.find((row) => row.name === "王小明");
+  assert.equal(peng.attemptCount, 2);
+  assert.equal(peng.gameGatekeeper, "柏能");
+  assert.equal(data.candidatesByGatekeeper["柏能"].length, 1);
+  assert.equal(data.candidatesByGatekeeper["安倢"].length, 1);
+  const decoded = decodeStudentChoice(encodeStudentChoice(peng));
+  assert.equal(decoded.submissionId, second._submissionId);
+  assert.match(peng.choiceLabel, /王小明/);
+  assert.equal(decoded.personKey, peng.personKey);
+});
+
+test("filled recruitment form removes the candidate and keeps another student", () => {
+  const a1 = game({ 姓名: "A1", 電話: "0910000001", _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" });
+  const a2 = game({ 姓名: "A2", 電話: "0910000002", _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [a1, a2],
+    recruitmentRows: [{
+      時間戳記: "2026/9/14 下午 3:00:00",
+      同學的姓名: "A1",
+      "同學電話/LINE": "0910000001",
+      _gameSubmissionId: a1._submissionId,
+    }],
+    masterRows: [],
+  });
+  assert.deepEqual(data.pending.map((row) => row.name), ["A2"]);
+});
+
+test("unknown and missing gatekeepers are not dropped", () => {
+  const custom = game({ 遊戲關主: "現場志工", 電話: "0910000003", _submissionId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" });
+  const none = game({ 遊戲關主: "", 姓名: "未選關主", 電話: "0910000004", _submissionId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [custom, none],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.pending.length, 2);
+  assert.ok(data.gameGatekeepers.some((row) => row.name === "現場志工"));
+  assert.ok(data.gameGatekeepers.some((row) => row.name === "未分類"));
+});
+
+test("master rows keep 總表 schema and parse 系級-derived fields", () => {
+  const rows = parseMasterRows([{
+    接引日期: "9/14",
+    "接引人(可複選)": "柏能",
+    同學的姓名: "王小明",
+    科系: "物理",
+    年級: "大三",
+    分級: "S(已報名)",
+    報名了那個活動: "9/30茶會",
+    是否入社: "否",
+    保證金是否繳費: "是",
+    繳了多少: "100",
+    "同學電話/LINE": "0912345678",
+    即時統計: "總留資料人數",
+  }]);
+  assert.equal(rows[0].department, "物理");
+  assert.equal(rows[0].grade, "大三");
+  assert.match(rows[0].tier, /^S/);
+  const responses = parseRecruitmentResponses([{
+    時間戳記: "2026/9/14 10:00:00",
+    同學的姓名: "王小明",
+    系級: "物理大三",
+    "同學電話/LINE": "0912345678",
+    "這位同學是屬於那個分級呢:-)": "S(已報名)",
+    是否入社: "否",
+    保證金是否繳費: "是",
+    "繳了多少呢?": "100",
+  }]);
+  assert.equal(responses[0].department, "物理");
+  assert.equal(responses[0].grade, "大三");
+});
+
+test("prefill URL keeps responder fallback when entry map is absent", () => {
+  const url = buildPrefilledFormUrl({
+    name: "王小明",
+    phone: "0912345678",
+    department: "歷史學系",
+    grade: "大一",
+    gameGatekeeper: "柏能",
+    latestAttempt: { submissionId: "x", completedAt: "2026-09-14T06:32:00.000Z" },
+    personKey: "phone:0912345678",
+  }, { responderUrl: "https://forms.gle/CBmNvkcvSQMzvh9X7" });
+  assert.equal(url, "https://forms.gle/CBmNvkcvSQMzvh9X7");
+});
+
+test("form plan never deletes preserved recruitment questions and keeps last-known-good on failure", () => {
+  const snapshot = snapshotFormStructure({
+    items: [
+      { title: "接引人(可複選)", type: "CHECKBOX" },
+      { title: "同學的姓名", type: "TEXT" },
+      { title: "這位同學是屬於那個分級呢:-)", type: "CHOICE" },
+    ],
+  });
+  const plan = planRecruitmentFormSync({
+    snapshot,
+    candidatesByGatekeeper: {
+      柏能: [{ name: "A1", phone: "0910000001", department: "歷史學系", grade: "大一", personKey: "phone:0910000001", latestAttempt: { submissionId: "sid-a", completedAt: "2026-09-14T01:00:00.000Z" } }],
+      安倢: [{ name: "B1", phone: "0910000002", department: "會計學系", grade: "大一", personKey: "phone:0910000002", latestAttempt: { submissionId: "sid-b", completedAt: "2026-09-14T01:00:00.000Z" } }],
+    },
+  });
+  assert.equal(plan.firstQuestion, "本次遊戲關主");
+  assert.ok(plan.gatekeeperChoices.includes("柏能"));
+  assert.equal(validatePlanDoesNotTouchRecruitmentQuestions(plan, snapshot), true);
+  const failed = planRecruitmentFormSync({
+    snapshot,
+    failed: true,
+    lastGood: { gatekeepers: ["柏能"], choices: { 柏能: ["kept"] } },
+    candidatesByGatekeeper: {},
+  });
+  assert.equal(failed.sections[0].choices[0], "kept");
+  assert.equal(applyLastKnownGood({ choices: ["old"] }, { choices: [] }, true).source, "last-known-good");
+});
+
+test("same submission processed twice is duplicate and does not create a second student", () => {
+  const first = markSubmissionDuplicate(["sid-a"], "sid-a");
+  const second = markSubmissionDuplicate([], "sid-b");
+  assert.equal(first.duplicate, true);
+  assert.equal(second.duplicate, false);
+  const parsed = parseSubmittedStudent({
+    namedValues: {
+      本次遊戲關主: "柏能",
+      選擇學生: "王小明｜歷史學系大一｜0912345678｜14:32|#p:phone:0912345678|#s:sid-a",
+    },
+  });
+  assert.equal(parsed.submissionId, "sid-a");
+  assert.equal(parsed.personKey, "phone:0912345678");
+  const sectioned = parseSubmittedStudent({
+    namedValues: {
+      本次遊戲關主: ["柏能"],
+      "柏能｜待跟進｜選擇學生": ["王小明｜歷史學系大一｜0912345678｜14:32|#p:phone:0912345678|#s:sid-a"],
+    },
+  });
+  assert.equal(sectioned.submissionId, "sid-a");
+  assert.equal(sectioned.gameGatekeeper, "柏能");
+});
+
+test("practice-like rows are ignored by game attempt parser", () => {
+  const rows = parseGameAttempts([
+    game({ _kind: "practice", _skipSave: true }),
+    game({ _submissionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee" }),
+  ]);
+  assert.equal(rows.length, 1);
+});
+
+test("missing S/A/B and deposit fields are 資料不足 instead of zero", () => {
+  const player = game({ _submissionId: "ffffffff-ffff-4fff-8fff-ffffffffffff" });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [player],
+    recruitmentRows: [{
+      時間戳記: "2026/9/14 10:00:00",
+      同學的姓名: "王小明",
+      "同學電話/LINE": "0912345678",
+      _gameSubmissionId: player._submissionId,
+    }],
+    masterRows: [],
+  });
+  assert.equal(data.summary.s, null);
+  assert.equal(data.summary.depositPaid, null);
+  assert.equal(data.funnel.find((layer) => layer.id === "s")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 1);
+  assert.equal(data.funnel.find((layer) => layer.id === "recruited")?.count, 1);
+});

@@ -139,6 +139,7 @@ export function initialView(): Tab {
         contacts: "contacts",
         gatekeepers: "leaders",
         pinned: "pinned",
+        recruitment: "recruitment",
         form: "contacts",
         results: "results",
         sync: "system",

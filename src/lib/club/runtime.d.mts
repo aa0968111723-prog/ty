@@ -146,4 +146,15 @@ export type LiveGame = {
     meaning: { id: string; label: string; hex: string };
     visual: { id: string; label: string; hex: string };
   };
+  answers: Array<{
+    sequence: number;
+    mode: string;
+    word: string;
+    wordColorLabel: string;
+    inkColorLabel: string;
+    selectedLabel: string;
+    correct: boolean;
+    responseMs: number;
+    elapsedMs: number;
+  }>;
 };

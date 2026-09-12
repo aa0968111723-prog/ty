@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { chromium } from "playwright";
 import { buildDashboard } from "../src/lib/club/admin.mjs";
+import { buildRecruitmentDashboard } from "../src/lib/club/recruitment.mjs";
 import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
 
 const base = process.env.CLUB_BROWSER_URL;
@@ -115,9 +116,32 @@ test(
             }),
           });
         });
+        await page.route("**/api/admin/recruitment?*", (route) => {
+          const date = new URL(route.request().url()).searchParams.get("date");
+          return route.fulfill({
+            json: buildRecruitmentDashboard({
+              date,
+              gameRows: [{
+                ...result,
+                姓名: result.name,
+                電話: result.phone,
+                科系: result.department,
+                年級: result.grade,
+                遊戲關主: result.gatekeeper,
+                _submissionId: result.submissionId,
+              }],
+              recruitmentRows: [],
+              masterRows: [],
+            }),
+          });
+        });
         await page.goto(`${origin}/admin`);
         await page.getByLabel("查詢日期").fill("2026-09-12");
         await page.locator("[data-widget=todayContacts] strong").filter({ hasText: "2" }).waitFor();
+        await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "戰情", exact: true }).click();
+        await page.getByRole("heading", { name: "待追蹤" }).waitFor();
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+        await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "總覽", exact: true }).click();
         await assertScroll("admin");
         await capture(page, `admin-${width}`);
         await page.getByRole("button", { name: "自訂", exact: true }).click();
@@ -198,6 +222,10 @@ test(
             { name: "介面測試 B", timestamp: `${date} 10:00`, gatekeeper: "小哲" },
           ],
         }) });
+      });
+      await page.route("**/api/admin/recruitment?*", route => {
+        const date = new URL(route.request().url()).searchParams.get("date");
+        return route.fulfill({ json: buildRecruitmentDashboard({ date, gameRows: [], recruitmentRows: [], masterRows: [] }) });
       });
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.locator(".admin-summary").waitFor();
