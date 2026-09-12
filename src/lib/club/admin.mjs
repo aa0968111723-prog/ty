@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 
@@ -12,6 +12,8 @@ const SESSION_SECONDS = 8 * 60 * 60;
 const SHEET_TIMEOUT_MS = 8_000;
 /** @type {Map<string, {count: number, expires: number}>} */
 const limits = new Map();
+/** @type {{ password: string, secret: string, key: Buffer } | undefined} */
+let signingConfig;
 const taipei = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Taipei",
   year: "numeric",
@@ -249,7 +251,14 @@ function json(body, status = 200, headers = {}) {
 
 /** @param {string} left @param {string} right */
 function constantEqual(left, right) {
-  return timingSafeEqual(createHash("sha256").update(left).digest(), createHash("sha256").update(right).digest());
+  const leftBytes = Buffer.from(left);
+  const rightBytes = Buffer.from(right);
+  const length = Math.max(leftBytes.length, rightBytes.length, 1);
+  const paddedLeft = Buffer.alloc(length);
+  const paddedRight = Buffer.alloc(length);
+  leftBytes.copy(paddedLeft);
+  rightBytes.copy(paddedRight);
+  return timingSafeEqual(paddedLeft, paddedRight) && leftBytes.length === rightBytes.length;
 }
 
 /** @param {string} key @param {number} limit @param {number} windowMs @param {boolean} [consume] */
@@ -282,7 +291,10 @@ function sameOrigin(request) {
 
 /** @param {string} payload @param {{password: string, secret: string}} config */
 function signature(payload, config) {
-  return createHmac("sha256", config.secret).update(JSON.stringify(["club-admin-v1", config.password, payload])).digest("base64url");
+  if (!signingConfig || signingConfig.password !== config.password || signingConfig.secret !== config.secret) {
+    signingConfig = { ...config, key: scryptSync(config.password, config.secret, 32) };
+  }
+  return createHmac("sha256", signingConfig.key).update(JSON.stringify(["club-admin-v2", payload])).digest("base64url");
 }
 
 /** @param {Request} request */
