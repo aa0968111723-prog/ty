@@ -116,6 +116,14 @@ test("club mobile DOM, scrolling, admin filters and game interactions (no screen
     await page.keyboard.press(keys[correctKey]);
     assert.equal((await state()).score, 100);
     await page.clock.runFor(100);
+    await page.locator(".ans").first().focus();
+    await page.keyboard.down("Enter");
+    const entered = await state();
+    await page.clock.runFor(100);
+    await page.keyboard.down("Enter");
+    assert.equal((await state()).seq, entered.seq, "holding Enter must not activate subsequent answers");
+    await page.keyboard.up("Enter");
+    await page.clock.runFor(100);
     const before = await state();
     await page.locator(".ans").first().dblclick({ delay: 0 });
     const after = await state();

@@ -591,7 +591,10 @@ function BoothApp() {
   useEffect(() => {
     if (screen !== "game") return undefined;
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
+      if (e.repeat) {
+        if (e.key === "Enter" || e.key === " " || colorByKey(e.key)) e.preventDefault();
+        return;
+      }
       const id = colorByKey(e.key) as ColorId | null;
       if (!id) return;
       e.preventDefault();
