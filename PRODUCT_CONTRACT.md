@@ -47,7 +47,7 @@ Canonical：TanStack Start，`npm run dev` 綁定 0.0.0.0:8080。正式站用同
 
 ## 管理後台與 Google 整合
 
-- `/admin` 以伺服器環境變數 `ADMIN_PASSWORD` 登入；`ADMIN_SESSION_SECRET` 必須至少 32 bytes，使用獨立隨機值。未設定時拒絕啟用，不提供預設密碼。
+- `/admin` 以伺服器環境變數 `ADMIN_PASSWORD` 登入；`ADMIN_SESSION_SECRET` 必須至少 32 bytes，使用獨立隨機值。未設定時拒絕啟用，不提供預設密碼。正式 Zeabur 部署另設 `PUBLIC_ORIGIN=https://leader-dna-mcp-a7k2.zeabur.app`，供伺服器在 reverse proxy 後驗證登入與登出的同源 `Origin`。
 - Cookie 使用 `__Host-`、HttpOnly、Secure、SameSite=Strict、Path=/，8 小時到期；正式部署必須 HTTPS。更換密碼或 session secret 會使既有 session 失效。登出清除瀏覽器 cookie。
 - 所有 `/api/admin/*` 資料端點要求有效 session，回應 private/no-store；登入、登出要求同源 Origin。個資與前三名不會出現在公開排行榜。
 - 統計使用 Asia/Taipei 日期；Google Form 與有效正式遊戲紀錄合併，姓名經 NFKC、移除空白與大小寫正規化後去重。重複姓名保留當日最新紀錄及其關主；試玩、練習、無效成績不計入。前三名是當日有效正式成績排序。
