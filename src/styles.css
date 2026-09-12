@@ -1424,10 +1424,11 @@ html.is-keyboard .cta-dock .guest-link {
 
 @media (max-width: 559px) {
   .app-root[data-screen="register"] .shell {
-    height: auto;
+    height: var(--app-h, 100dvh);
     min-height: var(--app-h, 100dvh);
-    max-height: none;
+    max-height: var(--app-h, 100dvh);
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     scroll-padding-bottom: 84px;
   }
