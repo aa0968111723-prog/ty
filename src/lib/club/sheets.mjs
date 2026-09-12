@@ -538,9 +538,8 @@ async function saveOfficialResult(row) {
   const empty = currentHeaders.every((header) => !header);
   const headers = empty ? [...GAME_SAFE_HEADERS] : [...currentHeaders];
   if (!empty) {
-    const needed = headers.some((header) => header === "submissionId" || header === "_submissionId")
-      ? RESULT_COLUMNS
-      : GAME_SAFE_HEADERS;
+    const chinese = headers.includes("姓名") || headers.includes("遊戲時間") || headers.includes("_submissionId");
+    const needed = chinese ? GAME_SAFE_HEADERS : RESULT_COLUMNS;
     for (const column of needed) if (!headers.includes(column)) headers.push(column);
     if (!headers.includes("_submissionId") && !headers.includes("submissionId")) {
       headers.push("_submissionId");

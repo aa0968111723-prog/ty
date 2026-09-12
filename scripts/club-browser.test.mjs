@@ -188,6 +188,7 @@ test(
         await page.getByText("沒有符合條件的紀錄").waitFor();
         await page.goto(`${origin}/admin?view=pinned`);
         await page.getByRole("heading", { name: "我的釘選" }).waitFor();
+        await page.locator(".admin-pinned-grid [data-widget]").first().waitFor();
         assert.equal(new URL(page.url()).searchParams.get("view"), "pinned");
         assert.ok((await page.locator(".admin-pinned-grid [data-widget]").count()) > 0);
         assert.deepEqual(errors, []);

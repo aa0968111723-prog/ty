@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import {
   DEFAULT_TAB_TITLES,
   EXPECTED_SHEET_IDS,
+  GAME_SAFE_HEADERS,
   RESULT_COLUMNS,
   appendOfficialResult,
   invalidateSheetCache,
@@ -181,6 +182,32 @@ test("empty game sheet writes Chinese headers plus technical submissionId", asyn
   assert.equal(saved._submissionId, row.submissionId);
   assert.equal(saved.遊戲關主, "柏能");
   assert.deepEqual(await appendOfficialResult(row), { saved: true, duplicate: true });
+});
+
+test("Chinese game headers do not grow English duplicate columns", async (t) => {
+  configure(t, "zh-stable");
+  const values = [[...GAME_SAFE_HEADERS]];
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: { values: {
+      get: async () => ({ data: { values } }),
+      update: async (params) => {
+        values[0] = [...params.requestBody.values[0]];
+        return { data: {} };
+      },
+      batchUpdate: async (params) => {
+        values.push([...params.requestBody.data[0].values[0]]);
+        return { data: {} };
+      },
+    } },
+  }));
+  const first = result({ submissionId: crypto.randomUUID() });
+  const second = result({ submissionId: crypto.randomUUID(), name: "小明" });
+  assert.deepEqual(await appendOfficialResult(first), { saved: true, duplicate: false });
+  assert.deepEqual(await appendOfficialResult(second), { saved: true, duplicate: false });
+  assert.deepEqual(values[0], GAME_SAFE_HEADERS);
+  assert.equal(values[0].includes("gatekeeper"), false);
+  assert.equal(values[0].includes("submissionId"), false);
 });
 
 test("GOOGLE_GAME_SHEET_TAB wins over GOOGLE_SHEET_TAB", async (t) => {
