@@ -96,6 +96,12 @@ test("reads service-account JSON credentials and normalizes escaped private-key 
   assert.deepEqual(rows[0].settings, DEFAULT_SETTINGS);
 });
 
+test("rejects incomplete service-account JSON instead of falling back to file credentials", async (t) => {
+  configure(t, "invalid", { GOOGLE_SERVICE_ACCOUNT_JSON: "{}" });
+  assert.equal(sheetsConfigured(), false);
+  await assert.rejects(() => readSheetRows("results"), /GOOGLE_SERVICE_ACCOUNT_JSON is invalid/);
+});
+
 test("updates headers and batch-writes one idempotent result row", async (t) => {
   configure(t, "write");
   t.mock.method(google.auth, "GoogleAuth", function GoogleAuth(options) {
@@ -121,7 +127,7 @@ test("updates headers and batch-writes one idempotent result row", async (t) => 
       },
     } },
   }));
-  const row = result();
+  const row = result({ settings: { ...DEFAULT_SETTINGS, ignored: "not persisted" } });
 
   assert.deepEqual(await appendOfficialResult(row), { saved: true, duplicate: false });
   assert.equal(calls.update.length, 1);
