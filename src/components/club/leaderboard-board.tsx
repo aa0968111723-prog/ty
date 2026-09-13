@@ -20,6 +20,8 @@ export type PublicLeaderboard = {
   date: string;
   rows: PublicLeaderboardRow[];
   topThree: PublicLeaderboardRow[];
+  count?: number;
+  generatedAt?: string;
 };
 
 function medalClass(rank: number) {
@@ -31,26 +33,25 @@ function medalClass(rank: number) {
 export function LeaderboardBoard({
   language,
   onLanguage,
+  initialScope = "today",
+  initialData = null,
 }: {
   language: Language;
   onLanguage: (language: Language) => void;
+  initialScope?: LeaderboardScope;
+  initialData?: PublicLeaderboard | null;
 }) {
   const ui = TEXT[language];
   const zh = language === "zh";
-  const [scope, setScope] = useState<LeaderboardScope>(() => {
-    if (typeof window === "undefined") return "today";
-    return new URLSearchParams(window.location.search).get("scope") === "history"
-      ? "history"
-      : "today";
-  });
+  const [scope, setScope] = useState<LeaderboardScope>(initialScope);
   const [reload, setReload] = useState(0);
-  const [data, setData] = useState<PublicLeaderboard | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<PublicLeaderboard | null>(initialData);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     const ac = new AbortController();
-    setLoading(true);
+    if (!data || data.scope !== scope) setLoading(true);
     setError(false);
     try {
       window.history.replaceState(null, "", `/leaderboard?scope=${scope}`);

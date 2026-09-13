@@ -263,7 +263,7 @@ export async function loadPublicLeaderboard(scope, now = new Date()) {
   const date = dateInTaipei(now);
   const key = leaderboardCacheKey(scope, date);
   const cached = readLeaderboardCache(key);
-  if (cached) return { ...cached, cached: true };
+  if (cached) return /** @type {Record<string, unknown>} */ ({ ...cached, cached: true });
   const rows = sheetsConfigured("gameResults") ? await readSheetRows("gameResults") : [];
   const body = {
     ...buildPublicLeaderboard({ rows, scope, now }),
