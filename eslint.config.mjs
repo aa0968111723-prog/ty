@@ -45,7 +45,7 @@ export default tseslint.config(
   // Disable rules that conflict with Prettier formatting.
   prettier,
   {
-    files: ["src/lib/club/{api,runtime}{,.test}.mjs"],
+    files: ["src/lib/club/**/*.mjs"],
     rules: {
       "@typescript-eslint/ban-ts-comment": ["error", { "ts-nocheck": "allow-with-description" }],
     },

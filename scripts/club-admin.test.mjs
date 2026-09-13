@@ -136,6 +136,9 @@ test("admin authentication and private read API contracts with mocked Google onl
   process.env.GOOGLE_SHEET_ID = "fixture-sheet";
   process.env.GOOGLE_SHEET_TAB = "results";
   process.env.GOOGLE_FORM_SHEET_TAB = "forms";
+  process.env.GOOGLE_GAME_SHEET_TAB = "results";
+  process.env.GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB = "招生狀況表";
+  process.env.GOOGLE_RECRUITMENT_MASTER_SHEET_TAB = "總表";
   const calls = [];
   const result = official();
   let failForms = false;

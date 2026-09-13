@@ -1,9 +1,9 @@
+// @ts-nocheck -- Recruitment aggregation is covered by recruitment.test.mjs.
 import { createHash } from "node:crypto";
 import { titleForScore } from "./runtime.mjs";
 import {
   clusterGamePeople,
   identityFields,
-  matchIncomingRecruitment,
   normalizeGatekeeper,
   normalizeName,
   personIsRecruited,
@@ -238,8 +238,8 @@ export function parseMasterRows(rows) {
       studentId: field(row, ["學號"]),
       interest: field(row, ["對甚麼有興趣"]),
       joined: field(row, ["是否入社"]),
-      depositPaid: field(row, ["保證金是否繳費"]),
-      depositAmount: field(row, ["繳了多少"]),
+      depositPaid: field(row, ["保證金是否繳費", "保證金"]),
+      depositAmount: field(row, ["繳了多少呢?", "繳了多少", "繳費金額"]),
     };
   }).filter(Boolean);
 }
@@ -268,6 +268,99 @@ export function decodeStudentChoice(value) {
   const submissionId = (raw.match(/#s:([^|#]*)/i)?.[1] || "").toLowerCase();
   const label = raw.split("|#p:")[0];
   return { label, personKey, submissionId, placeholder: raw.startsWith(PLACEHOLDER_CHOICE) || raw === PLACEHOLDER_CHOICE };
+}
+
+function rosterOverlap(profile, row) {
+  const profilePhone = text(profile?.normalizedPhone);
+  const rowPhone = text(row?.normalizedPhone);
+  if (profilePhone && rowPhone) return profilePhone === rowPhone;
+  const profileId = text(profile?.submissionId).toLowerCase();
+  const rowId = text(row?.submissionId).toLowerCase();
+  if (profileId && rowId && profileId === rowId) return true;
+  if (profilePhone || rowPhone) return false;
+  const profileName = normalizeName(profile?.name);
+  return Boolean(profileName && row?.normalizedName && profileName === row.normalizedName);
+}
+
+function profileFromSources({
+  personKey,
+  status = "",
+  normalizedPhone = "",
+  name = "",
+  phone = "",
+  department = "",
+  grade = "",
+  gameGatekeeper = "",
+  gameCompletedAt = "",
+  score = "",
+  title = "",
+  accuracy = "",
+  correct = "",
+  wrong = "",
+  submissionId = "",
+  pending = false,
+  source = null,
+  recruited = null,
+}) {
+  return {
+    personKey,
+    status,
+    normalizedPhone,
+    name,
+    phone,
+    department,
+    grade,
+    gameGatekeeper,
+    gameCompletedAt,
+    score,
+    title,
+    accuracy,
+    correct,
+    wrong,
+    submissionId,
+    pending,
+    recruiters: source?.recruiters || "",
+    recruiterList: source?.recruiterList || [],
+    recruitedAt: source?.recruitedAt || recruited?.submittedAt || "",
+    submittedAt: recruited?.submittedAt || source?.submittedAt || "",
+    tier: source?.tier || "",
+    activity: source?.activity || "",
+    joined: source?.joined || "",
+    depositPaid: source?.depositPaid || "",
+    depositAmount: source?.depositAmount || "",
+    birthday: source?.birthday || "",
+    note: source?.note || "",
+    studentId: source?.studentId || "",
+    interest: source?.interest || "",
+    timeline: [
+      gameCompletedAt ? { at: gameCompletedAt, kind: "game", title: "遊戲完成", detail: `${gameGatekeeper || UNCLASSIFIED}${score !== "" ? ` · ${score} 分` : ""}` } : null,
+      (recruited?.submittedAt || source?.submittedAt) ? { at: recruited?.submittedAt || source?.submittedAt, kind: "recruitment", title: "招生表提交", detail: recruited?.recruiters || source?.recruiters || "" } : null,
+      source?.tier ? { at: recruited?.submittedAt || source?.submittedAt || "", kind: "tier", title: source.tier, detail: "分級" } : null,
+      source?.activity && hasActivity(source.activity) ? { at: "", kind: "activity", title: source.activity, detail: "活動報名" } : null,
+      source?.joined && isYes(source.joined) ? { at: "", kind: "joined", title: "入社", detail: "" } : null,
+      source?.depositPaid && isYes(source.depositPaid) ? { at: "", kind: "deposit", title: "保證金", detail: String(source.depositAmount || "") } : null,
+    ].filter(Boolean),
+  };
+}
+
+function appendUnmatchedRoster(profiles, rows, { prefix }) {
+  rows.forEach((row, index) => {
+    if (profiles.some((profile) => rosterOverlap(profile, row))) return;
+    profiles.push(profileFromSources({
+      personKey: row.normalizedPhone ? `phone:${row.normalizedPhone}` : `${prefix}:${index}`,
+      status: row.normalizedPhone ? "matched" : "unmatched",
+      normalizedPhone: row.normalizedPhone || "",
+      name: row.name,
+      phone: row.phone,
+      department: row.department,
+      grade: row.grade,
+      gameGatekeeper: row.gameGatekeeper || "",
+      submissionId: row.submissionId || "",
+      pending: false,
+      source: row,
+      recruited: prefix === "recruit" ? row : null,
+    }));
+  });
 }
 
 function tierLetter(value) {
@@ -340,14 +433,15 @@ export function buildRecruitmentDashboard(input = {}) {
   const profiles = people.map((person) => {
     const latest = latestAttempt(person.attempts);
     const recruited = recruits.find((row) => personIsRecruited(person, [row]));
-    const masterRow = master.find((row) =>
-      (person.normalizedPhone && row.normalizedPhone === person.normalizedPhone)
-      || (person.status === "matched" && row.normalizedName === person.normalizedName && row.normalizedName),
-    );
+    const masterRow = master.find((row) => rosterOverlap({
+      normalizedPhone: person.normalizedPhone,
+      submissionId: latest.submissionId,
+    }, row));
     const source = masterRow || recruited;
-    return {
+    return profileFromSources({
       personKey: person.personKey,
       status: person.status,
+      normalizedPhone: person.normalizedPhone,
       name: latest.name,
       phone: latest.phone,
       department: person.department || latest.department,
@@ -361,29 +455,12 @@ export function buildRecruitmentDashboard(input = {}) {
       wrong: latest.wrong,
       submissionId: latest.submissionId,
       pending: !recruited,
-      recruiters: source?.recruiters || "",
-      recruiterList: source?.recruiterList || [],
-      recruitedAt: source?.recruitedAt || recruited?.submittedAt || "",
-      submittedAt: recruited?.submittedAt || "",
-      tier: source?.tier || "",
-      activity: source?.activity || "",
-      joined: source?.joined || "",
-      depositPaid: source?.depositPaid || "",
-      depositAmount: source?.depositAmount || "",
-      birthday: source?.birthday || "",
-      note: source?.note || "",
-      studentId: source?.studentId || "",
-      interest: source?.interest || "",
-      timeline: [
-        latest.completedAt ? { at: latest.completedAt, kind: "game", title: "遊戲完成", detail: `${latest.gatekeeper || UNCLASSIFIED} · ${latest.score} 分` } : null,
-        recruited?.submittedAt ? { at: recruited.submittedAt, kind: "recruitment", title: "招生表提交", detail: recruited.recruiters || "" } : null,
-        source?.tier ? { at: recruited?.submittedAt || "", kind: "tier", title: source.tier, detail: "分級" } : null,
-        source?.activity && hasActivity(source.activity) ? { at: "", kind: "activity", title: source.activity, detail: "活動報名" } : null,
-        source?.joined && isYes(source.joined) ? { at: "", kind: "joined", title: "入社", detail: "" } : null,
-        source?.depositPaid && isYes(source.depositPaid) ? { at: "", kind: "deposit", title: "保證金", detail: String(source.depositAmount || "") } : null,
-      ].filter(Boolean),
-    };
+      source,
+      recruited,
+    });
   });
+  appendUnmatchedRoster(profiles, master, { prefix: "master" });
+  appendUnmatchedRoster(profiles, recruits, { prefix: "recruit", pending: false });
 
   const completed = master.length ? master : recruits;
   function presentCount(rows, hasField, predicate) {

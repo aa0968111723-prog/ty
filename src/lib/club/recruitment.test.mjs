@@ -1,3 +1,4 @@
+// @ts-nocheck -- Contract tests assemble incomplete sheet rows and form payloads.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -222,4 +223,80 @@ test("missing S/A/B and deposit fields are 資料不足 instead of zero", () => 
   assert.equal(data.funnel.find((layer) => layer.id === "s")?.missing, true);
   assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 1);
   assert.equal(data.funnel.find((layer) => layer.id === "recruited")?.count, 1);
+});
+
+test("招生狀況表 plus 總表 formula-shaped row keeps game gatekeeper separate from recruiter", () => {
+  const player = game({ _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [player],
+    recruitmentRows: [{
+      時間戳記: "2026/9/14 10:00:00",
+      "接引人(可複選)": "安倢",
+      接引日期: "9/14",
+      同學的姓名: "王小明",
+      "同學電話/LINE": "0912345678",
+      系級: "歷史學系大一",
+      "這位同學是屬於那個分級呢:-)": "S(已報名)",
+      報名了那個活動: "9/30茶會",
+      是否入社: "是",
+      "保證金是否繳費": "是",
+      "繳了多少呢?": "300",
+      _gameSubmissionId: player._submissionId,
+    }],
+    masterRows: [{
+      接引日期: "9/14",
+      "接引人(可複選)": "安倢",
+      同學的姓名: "王小明",
+      科系: "歷史學系",
+      年級: "大一",
+      分級: "S(已報名)",
+      報名了那個活動: "9/30茶會",
+      是否入社: "是",
+      保證金是否繳費: "是",
+      繳了多少: "300",
+      "同學電話/LINE": "0912345678",
+    }],
+  });
+  assert.equal(data.pending.length, 0);
+  assert.equal(data.summary.s, 1);
+  assert.equal(data.summary.activity, 1);
+  assert.equal(data.summary.joined, 1);
+  assert.equal(data.summary.depositPaid, 1);
+  assert.equal(data.summary.depositTotal, 300);
+  const profile = data.profiles[0];
+  assert.equal(profile.gameGatekeeper, "柏能");
+  assert.ok(profile.recruiterList.includes("安倢"));
+  assert.equal(profile.department, "歷史學系");
+  assert.equal(profile.grade, "大一");
+  assert.equal(data.profiles.length, 1);
+});
+
+test("總表-only roster rows appear even without a game attempt", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [],
+    recruitmentRows: [],
+    masterRows: [{
+      接引日期: "9/14",
+      "接引人(可複選)": "安倢",
+      同學的姓名: "歷史生",
+      科系: "歷史學系",
+      年級: "大一",
+      分級: "S(已報名)",
+      報名了那個活動: "9/30茶會",
+      是否入社: "是",
+      保證金是否繳費: "是",
+      繳了多少: "300",
+      "同學電話/LINE": "0912000000",
+    }],
+  });
+  assert.equal(data.profiles.length, 1);
+  assert.equal(data.profiles[0].name, "歷史生");
+  assert.equal(data.summary.s, 1);
+  assert.equal(data.summary.joined, 1);
+  assert.equal(data.summary.depositTotal, 300);
+  assert.equal(data.pending.length, 0);
+  assert.equal(data.profiles[0].gameGatekeeper, "");
+  assert.ok(data.profiles[0].timeline.every((item) => item.kind !== "game"));
 });

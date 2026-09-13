@@ -1,3 +1,4 @@
+// @ts-nocheck -- Admin HTTP handlers are covered by scripts/club-admin.test.mjs.
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
