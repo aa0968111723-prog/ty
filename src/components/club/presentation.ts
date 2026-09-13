@@ -30,7 +30,7 @@ export const TEXT = {
     factPrize: "On-site bubble tea",
     officialEntry: "Official Entry",
     officialDescription:
-      "Learn the two rules, try two practice taps, warm up for 15 seconds, then start a fresh 60-second challenge. Winners are announced at the booth; scores are not published online.",
+      "Learn the two rules, try two practice taps, warm up for 15 seconds, then start a fresh 60-second challenge. The public board shows masked names only.",
     practiceDescription: "Practice mode is active. This score is not entered into the prize draw.",
     name: "Name",
     department: "Department",
@@ -107,6 +107,19 @@ export const TEXT = {
     saving: "Saving your score…",
     tryAgain: "Try again",
     home: "Back to start",
+    leaderboard: "Leaderboard",
+    leaderboardToday: "Today",
+    leaderboardHistory: "All-time",
+    leaderboardIntro:
+      "Official 60-second runs only. Practice, warm-up and unsaved games are excluded. Each player keeps their best score.",
+    leaderboardEmptyToday: "No official scores yet today.",
+    leaderboardEmptyHistory: "No official scores yet.",
+    leaderboardLoading: "Loading the board…",
+    leaderboardError: "The board is unavailable right now.",
+    leaderboardRetry: "Try again",
+    leaderboardPlay: "Play the 60-second challenge",
+    viewLeaderboard: "View leaderboard",
+    accuracyShort: "Accuracy",
   },
   zh: {
     title: "專注力挑戰賽",
@@ -115,7 +128,7 @@ export const TEXT = {
     factPrize: "現場手搖杯",
     officialEntry: "正式參賽",
     officialDescription:
-      "先看懂兩種規則，再做兩題教學與 15 秒練習，然後開始全新的 60 秒正式挑戰。得獎現場公布，網站不公開成績。",
+      "先看懂兩種規則，再做兩題教學與 15 秒練習，然後開始全新的 60 秒正式挑戰。公開榜只顯示遮罩姓名與成績。",
     practiceDescription: "目前是練習規則，成績不登記抽獎。",
     name: "姓名",
     department: "科系",
@@ -192,6 +205,19 @@ export const TEXT = {
     saving: "成績傳送中…",
     tryAgain: "重新挑戰",
     home: "回首頁",
+    leaderboard: "排行榜",
+    leaderboardToday: "今日",
+    leaderboardHistory: "歷史",
+    leaderboardIntro:
+      "只計正式 60 秒、官方規則且成功儲存的成績。練習與未存檔不計入。每位玩家只保留最高分。",
+    leaderboardEmptyToday: "今天還沒有正式成績。",
+    leaderboardEmptyHistory: "目前還沒有正式成績。",
+    leaderboardLoading: "排行榜載入中…",
+    leaderboardError: "排行榜暫時無法讀取。",
+    leaderboardRetry: "再試一次",
+    leaderboardPlay: "去挑戰 60 秒",
+    viewLeaderboard: "看排行榜",
+    accuracyShort: "正確率",
   },
 } as const;
 
@@ -340,13 +366,13 @@ export function saveText(kind: SaveKind, language: Language) {
   }
   if (kind === "ok") {
     return language === "zh"
-      ? "成績已交給攤位。得獎現場公布，網站不公開榜單。"
-      : "Score sent to the booth. Winners will be announced on site; scores are not published online.";
+      ? "成績已交給攤位。公開榜只顯示遮罩姓名。"
+      : "Score sent to the booth. The public board shows a masked name only.";
   }
   if (kind === "local") {
     return language === "zh"
-      ? "成績先留在畫面。得獎現場公布，網站不公開榜單。"
-      : "Your score is shown here for now. Winners will be announced on site; scores are not published online.";
+      ? "成績先留在畫面。公開榜只顯示遮罩姓名。"
+      : "Your score is shown here for now. The public board shows a masked name only.";
   }
   return language === "zh"
     ? "成績沒有登記成功。請跟攤位同學說一聲。"
