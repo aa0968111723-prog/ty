@@ -62,8 +62,8 @@ Canonical：TanStack Start，`npm run dev` 綁定 0.0.0.0:8080。正式站用同
 
 ## 管理後台與 Google 整合
 
-- `/admin` 以 Google 登入為管理員身分來源。伺服器驗證 Google ID token／OAuth callback 後，email 必須在 `ADMIN_ALLOWED_EMAILS` 白名單內才會建立 admin session。`ADMIN_SESSION_SECRET` 必須至少 32 bytes。未設定 Google OAuth 與 session secret 時拒絕啟用。`ADMIN_PASSWORD` 僅保留為隱藏的緊急備用登入（`/admin?fallback=1`），UI 不預設顯示。正式部署另設 `PUBLIC_ORIGIN`，供伺服器在 reverse proxy 後驗證同源 `Origin`。
-- 已授權裝置可設定 4 碼 PIN（server-side scrypt hash）與 WebAuthn／Passkey（指紋、Face ID、裝置解鎖）。PIN 不能單獨成為新裝置密碼；新裝置必須先 Google 登入。PIN 連續錯誤由伺服器限速（5 次暫停 30 秒、10 次 5 分鐘、15 次要求重新 Google 登入）。
+- `/admin` 以管理員密碼登入。未設定 `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET` 時，現場仍可用攤位密碼 `tkuzen` 與已授權裝置的指紋／PIN 快速解鎖。設定完成後自動改用環境變數中的密碼與 session secret，不必再改畫面。`ADMIN_SESSION_SECRET` 正式站應至少 32 bytes；未設定時僅供預覽／尚未接環境變數的攤位使用內建後備。若另設 `GOOGLE_OAUTH_CLIENT_ID`、`GOOGLE_OAUTH_CLIENT_SECRET`、`ADMIN_ALLOWED_EMAILS`，可選 Google 帳號作為額外登入。正式部署另設 `PUBLIC_ORIGIN`，供伺服器在 reverse proxy 後驗證同源 `Origin`。
+- 已授權裝置可設定 4 碼 PIN（server-side scrypt hash）與 WebAuthn／Passkey（指紋、Face ID、裝置解鎖）。新裝置必須先用密碼（或已設定時的 Google）登入後才能登記指紋／PIN。PIN 連續錯誤由伺服器限速（5 次暫停 30 秒、10 次 5 分鐘、15 次要求重新用密碼登入）。
 - Cookie 使用 `__Host-`、HttpOnly、Secure；session 為 SameSite=Strict、8 小時到期，OAuth state 為 SameSite=Lax。正式部署必須 HTTPS。裝置撤銷會立刻讓該裝置的 PIN、Passkey 與 session 失效。登出清除瀏覽器 session cookie，仍可在信任裝置上快速解鎖。
 - 所有 `/api/admin/*` 資料端點要求有效 session，回應 private/no-store；登入、登出與 PIN／Passkey 變更要求同源 Origin。完整個資、電話、submissionId 與原始成績不會出現在公開排行榜。OAuth session、PIN hash、WebAuthn 公鑰、trusted device 與 challenge 存在伺服器資料庫，不寫入招生 Google Sheet。
 - 統計使用 Asia/Taipei 日期；Google Form 與有效正式遊戲紀錄合併，姓名經 NFKC、移除空白與大小寫正規化後去重。重複姓名保留當日最新紀錄及其關主；試玩、練習、無效成績不計入。前三名是當日有效正式成績排序。

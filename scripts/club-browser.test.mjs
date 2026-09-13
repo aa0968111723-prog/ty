@@ -228,15 +228,14 @@ test(
       assert.equal(await page.locator("[data-howto=rules]").count(), 1);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await capture(page, "register-desktop");
-      await page.route("**/api/admin/session", route => route.fulfill({ json: { authenticated: false, googleEnabled: true } }));
+      await page.route("**/api/admin/session", route => route.fulfill({ json: { authenticated: false, passwordEnabled: true, googleEnabled: true } }));
       await page.route("**/api/admin/login", route => route.fulfill({ status: 401, json: { error: "密碼錯誤" } }));
       await page.goto(`${origin}/admin`);
       await page.getByRole("heading", { name: "管理員登入" }).waitFor();
+      await page.getByLabel("管理員密碼").waitFor();
       await page.getByRole("link", { name: "使用 Google 登入" }).waitFor();
-      await page.goto(`${origin}/admin?fallback=1`);
-      await page.getByRole("heading", { name: "管理員登入" }).waitFor();
       assert.equal(await page.locator(".admin-error").count(), 0);
-      await page.getByLabel("緊急備用密碼").fill("ui-test-only");
+      await page.getByLabel("管理員密碼").fill("ui-test-only");
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("alert").waitFor();
       await page.route("**/api/admin/login", route => route.fulfill({ json: { ok: true } }));

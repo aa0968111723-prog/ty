@@ -30,7 +30,7 @@ function methodLabel(device: Device) {
   const parts = [];
   if (device.passkeyEnabled) parts.push("指紋");
   if (device.pinEnabled) parts.push("PIN");
-  if (!parts.length) parts.push("Google 登入");
+  if (!parts.length) parts.push(device.lastMethod === "google" ? "Google 登入" : "密碼登入");
   return parts.join(" + ");
 }
 
@@ -64,7 +64,7 @@ export function AdminSecurity() {
   return (
     <section className="admin-panel admin-security">
       <h2>安全與登入</h2>
-      <p className="admin-caption">Google 帳號是管理員身分來源。PIN 與指紋只在已授權裝置上快速解鎖。</p>
+      <p className="admin-caption">現場以管理員密碼登入。已授權裝置可用指紋或 PIN 快速解鎖。若已設定 Google 白名單，也可使用 Google 帳號。</p>
       {error && <p className="admin-error" role="alert">{error}</p>}
       <h3>我的裝置</h3>
       {!active.length ? (
@@ -153,7 +153,7 @@ export function AdminSecurity() {
                 <button
                   disabled={busy === device.id}
                   onClick={() => {
-                    if (!window.confirm("移除此裝置後，必須重新使用 Google 登入。")) return;
+                    if (!window.confirm("移除此裝置後，必須重新用密碼登入。")) return;
                     setBusy(device.id);
                     void send("/api/admin/auth/devices/revoke", { id: device.id })
                       .then((payload) => {

@@ -25,6 +25,10 @@ export function createSqlStore(
   query: (text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>,
 ): unknown;
 export function ensureAdminAuthStore(): Promise<unknown>;
+export function passwordConfig(): { password: string; secret: string };
+export function passwordIsConfigured(): boolean;
+export function sessionSecret(): string;
+export function issuePasswordLogin(request: Request): Promise<string[]>;
 export function adminServiceEnabled(): boolean;
 export function readV2Session(request: Request): Promise<unknown>;
 export function revokeCurrentV2Session(request: Request): Promise<void>;
@@ -33,6 +37,7 @@ export function buildSessionView(
   options?: { passwordSession?: boolean },
 ): Promise<{
   authenticated: boolean;
+  passwordEnabled?: boolean;
   googleEnabled?: boolean;
   emergencyFallback?: boolean;
   method?: string;

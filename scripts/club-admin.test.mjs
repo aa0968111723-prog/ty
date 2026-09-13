@@ -98,7 +98,21 @@ test("admin authentication and private read API contracts with mocked Google onl
   delete process.env.PUBLIC_ORIGIN;
   assert.equal((await handleAdminLogin(request("login", {
     body: { password: "" }, headers: { origin: internalOrigin },
-  }))).status, 503);
+  }))).status, 401);
+  assert.equal((await handleAdminLogin(request("login", {
+    body: { password: "wrong" }, headers: { origin: internalOrigin },
+  }))).status, 401);
+  const boothLogin = await handleAdminLogin(request("login", {
+    body: { password: "tkuzen" }, headers: { origin: internalOrigin },
+  }));
+  assert.equal(boothLogin.status, 200);
+  const boothCookie = (typeof boothLogin.headers.getSetCookie === "function"
+    ? boothLogin.headers.getSetCookie()
+    : [boothLogin.headers.get("set-cookie")]).filter(Boolean).map((item) => String(item).split(";")[0]).join("; ");
+  assert.equal((await (await handleAdminSession(request("session", { cookie: boothCookie }))).json()).authenticated, true);
+  assert.equal((await handleAdminLogin(request("login", {
+    body: { password: "tkuzen" }, headers: { origin: internalOrigin },
+  }))).status, 200);
   process.env.ADMIN_PASSWORD = randomBytes(24).toString("hex");
   process.env.ADMIN_SESSION_SECRET = randomBytes(32).toString("hex");
   process.env.PUBLIC_ORIGIN = `${origin}/`;
@@ -228,10 +242,10 @@ test("admin authentication and private read API contracts with mocked Google onl
   const logout = await handleAdminLogout(request("logout", { body: {}, cookie }));
   assert.match(logout.headers.get("set-cookie"), /Max-Age=0/);
   assert.equal((await handleAdminLogout(request("logout", { body: {}, headers: { origin: "https://evil.test" } }))).status, 403);
-  const originalPassword = process.env.ADMIN_PASSWORD;
-  process.env.ADMIN_PASSWORD = randomBytes(24).toString("hex");
+  const originalSecret = process.env.ADMIN_SESSION_SECRET;
+  process.env.ADMIN_SESSION_SECRET = randomBytes(32).toString("hex");
   assert.equal((await (await handleAdminSession(request("session", { cookie }))).json()).authenticated, false);
-  process.env.ADMIN_PASSWORD = originalPassword;
+  process.env.ADMIN_SESSION_SECRET = originalSecret;
   const now = Date.now();
   t.mock.method(Date, "now", () => now + 8 * 60 * 60 * 1000);
   assert.equal((await (await handleAdminSession(request("session", { cookie }))).json()).authenticated, false);

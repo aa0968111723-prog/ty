@@ -12,6 +12,15 @@ const PIN_N = 16384;
 const PIN_R = 8;
 const PIN_P = 1;
 const PIN_KEYLEN = 32;
+const BOOTH_PASSWORD_FALLBACK = "tkuzen";
+const BOOTH_SESSION_FALLBACK = "club-admin-booth-session-v1-preview!!!!";
+const BOOTH_STAFF = {
+  googleSubject: "booth-password",
+  email: "staff@booth.local",
+  displayName: "現場工作人員",
+};
+/** @type {{ secret: string, key: Buffer } | undefined} */
+let cachedIdentityKey;
 
 /** @type {ReturnType<typeof createMemoryStore>} */
 let store;
@@ -522,15 +531,17 @@ export async function ensureAdminAuthStore() {
 
 export function sessionSecret() {
   const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!secret || Buffer.byteLength(secret) < 32) return null;
-  return secret;
+  if (secret && Buffer.byteLength(secret) >= 32) return secret;
+  return BOOTH_SESSION_FALLBACK;
+}
+
+export function passwordIsConfigured() {
+  return Boolean(process.env.ADMIN_PASSWORD?.trim());
 }
 
 export function passwordConfig() {
-  const password = process.env.ADMIN_PASSWORD;
-  const secret = sessionSecret();
-  if (!password?.trim() || !secret) return null;
-  return { password, secret };
+  const password = process.env.ADMIN_PASSWORD?.trim() || BOOTH_PASSWORD_FALLBACK;
+  return { password, secret: sessionSecret() };
 }
 
 export function parseAllowedEmails(raw) {
@@ -547,7 +558,15 @@ export function googleConfig() {
 }
 
 export function adminServiceEnabled() {
-  return Boolean(sessionSecret() && (passwordConfig() || googleConfig()));
+  return Boolean(passwordConfig() || googleConfig());
+}
+
+function reauthHint() {
+  return googleConfig() ? "請改用密碼或 Google 登入" : "請改用密碼登入";
+}
+
+function deviceLoginHint() {
+  return "請先登入此裝置";
 }
 
 function json(body, status = 200, headers = {}) {
@@ -629,7 +648,10 @@ function constantEqual(left, right) {
 }
 
 function identityKey(secret) {
-  return scryptSync(secret, "club-admin-identity-v2", 32);
+  if (!cachedIdentityKey || cachedIdentityKey.secret !== secret) {
+    cachedIdentityKey = { secret, key: scryptSync(secret, "club-admin-identity-v2", 32) };
+  }
+  return cachedIdentityKey.key;
 }
 
 function signPayload(label, payload, secret) {
@@ -752,8 +774,8 @@ async function issueIdentityCookies({ user, device, method }) {
       lastUsedAt: new Date().toISOString(),
       lastMethod: method,
       pinReauthRequired: false,
-      failedAttempts: method === "google" ? 0 : device.failedAttempts,
-      lockedUntil: method === "google" ? null : device.lockedUntil,
+      failedAttempts: 0,
+      lockedUntil: null,
     });
     cookies.push(writeSigned(DEVICE_COOKIE, "club-admin-device", {
       v: 1, deviceId: device.id, userId: user.id, iat: now, exp: now + DEVICE_SECONDS, nonce: randomBytes(8).toString("hex"),
@@ -768,12 +790,33 @@ export async function revokeCurrentV2Session(request) {
   if (session) await store.revokeSession(session.id);
 }
 
+export async function issuePasswordLogin(request) {
+  await ensureAdminAuthStore();
+  const user = await store.upsertUser(BOOTH_STAFF);
+  let device = await readDeviceRecord(request);
+  if (!device || device.userId !== user.id) {
+    device = await store.createDevice({
+      userId: user.id,
+      deviceName: deviceNameFromUa(request.headers.get("user-agent")),
+    });
+  }
+  return issueIdentityCookies({ user, device, method: "password" });
+}
+
 export async function buildSessionView(request, { passwordSession = false } = {}) {
   await ensureAdminAuthStore();
   const googleEnabled = Boolean(googleConfig());
-  const emergencyFallback = Boolean(passwordConfig());
+  const passwordEnabled = true;
+  const emergencyFallback = passwordIsConfigured();
   if (passwordSession) {
-    return { authenticated: true, method: "password", googleEnabled, emergencyFallback, setupRequired: false };
+    return {
+      authenticated: true,
+      method: "password",
+      passwordEnabled,
+      googleEnabled,
+      emergencyFallback,
+      setupRequired: false,
+    };
   }
   const session = await readV2Session(request);
   if (session) {
@@ -784,6 +827,7 @@ export async function buildSessionView(request, { passwordSession = false } = {}
     return {
       authenticated: true,
       method: session.method,
+      passwordEnabled,
       googleEnabled,
       emergencyFallback,
       setupRequired,
@@ -801,6 +845,7 @@ export async function buildSessionView(request, { passwordSession = false } = {}
   const canQuick = Boolean(device && !reauth && (device.pinEnabled || device.passkeyEnabled));
   return {
     authenticated: false,
+    passwordEnabled,
     googleEnabled,
     emergencyFallback,
     quickUnlock: canQuick ? {
@@ -992,14 +1037,13 @@ export async function handlePinSetup(request) {
   if (!sameOrigin(request)) return json({ error: "請從本站設定" }, 403);
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
-  if (session.method === "password") return json({ error: "請先使用 Google 登入此裝置" }, 403);
   let body;
   try { body = await readJson(request, 2048); }
   catch { return json({ error: "請提供有效資料" }, 400); }
   if (!validPin(body.pin) || !validPin(body.confirm)) return json({ error: "請輸入 4 碼數字 PIN" }, 400);
   if (body.pin !== body.confirm) return json({ error: "兩次 PIN 不一致" }, 400);
   let device = await readDeviceRecord(request);
-  if (!device || device.userId !== session.userId) return json({ error: "請先使用 Google 登入此裝置" }, 403);
+  if (!device || device.userId !== session.userId) return json({ error: deviceLoginHint() }, 403);
   const pinHash = hashPin(body.pin);
   await store.updateDevice(device.id, {
     pinHash,
@@ -1038,11 +1082,11 @@ export async function handlePinUnlock(request) {
   const device = await readDeviceRecord(request);
   if (!device || !device.pinEnabled || !device.pinHash) {
     await store.addAudit({ method: "pin", success: false, deviceId: device?.id, userId: device?.userId });
-    return json({ error: "請先使用 Google 登入" }, 401);
+    return json({ error: deviceLoginHint() }, 401);
   }
   if (device.pinReauthRequired) {
     await store.addAudit({ userId: device.userId, deviceId: device.id, method: "pin", success: false });
-    return json({ error: "請改用 Google 登入", requireGoogle: true }, 403);
+    return json({ error: reauthHint(), requireGoogle: Boolean(googleConfig()), requirePassword: true }, 403);
   }
   const now = Date.now();
   if (device.lockedUntil && new Date(device.lockedUntil).getTime() > now) {
@@ -1065,7 +1109,7 @@ export async function handlePinUnlock(request) {
       pinReauthRequired: lock.reauth,
     });
     await store.addAudit({ userId: device.userId, deviceId: device.id, method: "pin", success: false });
-    if (lock.reauth) return json({ error: "請改用 Google 登入", requireGoogle: true }, 403);
+    if (lock.reauth) return json({ error: reauthHint(), requireGoogle: Boolean(googleConfig()), requirePassword: true }, 403);
     if (lock.until) {
       const retry = Math.ceil((new Date(lock.until).getTime() - now) / 1000);
       return json({ error: "PIN 不正確", retryAfter: retry }, 401, { "Retry-After": String(retry) });
@@ -1073,7 +1117,7 @@ export async function handlePinUnlock(request) {
     return json({ error: "PIN 不正確" }, 401);
   }
   const user = await store.getUser(device.userId);
-  if (!user) return json({ error: "請先使用 Google 登入" }, 401);
+  if (!user) return json({ error: deviceLoginHint() }, 401);
   await store.updateDevice(device.id, { failedAttempts: 0, lockedUntil: null, pinReauthRequired: false });
   const cookies = await issueIdentityCookies({ request, user, device, method: "pin" });
   return json({ ok: true, authenticated: true }, 200, { "set-cookie": cookies });
@@ -1085,7 +1129,7 @@ export async function handleSetupSkip(request) {
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
   const device = await readDeviceRecord(request);
-  if (!device || device.userId !== session.userId) return json({ error: "請先使用 Google 登入此裝置" }, 403);
+  if (!device || device.userId !== session.userId) return json({ error: deviceLoginHint() }, 403);
   await store.updateDevice(device.id, { setupSkipped: true });
   return json({ ok: true });
 }
@@ -1098,7 +1142,7 @@ export async function handleWebAuthnRegisterOptions(request) {
   const user = await store.getUser(session.userId);
   const device = await readDeviceRecord(request);
   if (!user || !device || device.userId !== session.userId) {
-    return json({ error: "請先使用 Google 登入此裝置" }, 403);
+    return json({ error: deviceLoginHint() }, 403);
   }
   const existing = await store.listPasskeys(user.id);
   const adapter = await webauthn();
@@ -1126,7 +1170,7 @@ export async function handleWebAuthnRegister(request) {
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
   const device = await readDeviceRecord(request);
-  if (!device || device.userId !== session.userId) return json({ error: "請先使用 Google 登入此裝置" }, 403);
+  if (!device || device.userId !== session.userId) return json({ error: deviceLoginHint() }, 403);
   let body;
   try { body = await readJson(request, 32_768); }
   catch { return json({ error: "請提供有效資料" }, 400); }
@@ -1168,10 +1212,10 @@ export async function handleWebAuthnLoginOptions(request) {
   await ensureAdminAuthStore();
   const device = await readDeviceRecord(request);
   if (!device || !device.passkeyEnabled || device.pinReauthRequired) {
-    return json({ error: "請先使用 Google 登入" }, 401);
+    return json({ error: deviceLoginHint() }, 401);
   }
   const passkeys = await store.listPasskeys(device.userId, device.id);
-  if (!passkeys.length) return json({ error: "請先使用 Google 登入" }, 401);
+  if (!passkeys.length) return json({ error: deviceLoginHint() }, 401);
   const adapter = await webauthn();
   const options = await adapter.authenticationOptions({
     rpID: relyingPartyId(request),
@@ -1195,7 +1239,7 @@ export async function handleWebAuthnLogin(request) {
   const device = await readDeviceRecord(request);
   if (!device || !device.passkeyEnabled || device.pinReauthRequired) {
     await store.addAudit({ method: "passkey", success: false, deviceId: device?.id, userId: device?.userId });
-    return json({ error: "請先使用 Google 登入" }, 401);
+    return json({ error: deviceLoginHint() }, 401);
   }
   let body;
   try { body = await readJson(request, 32_768); }

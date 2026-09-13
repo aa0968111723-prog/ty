@@ -6,6 +6,7 @@ import "@/admin.css";
 
 export type AdminGate = {
   authenticated: boolean;
+  passwordEnabled?: boolean;
   googleEnabled?: boolean;
   emergencyFallback?: boolean;
   method?: string;
@@ -95,11 +96,9 @@ export function AdminLogin({
     typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search)
   ), []);
   const urlError = search.get("error");
-  const wantFallback = search.get("fallback") === "1";
   const setupPin = search.get("setup") === "pin";
-  const [view, setView] = useState<"google" | "quick" | "setup" | "pin" | "fallback">(
-    wantFallback ? "fallback" : "google",
-  );
+  const [resolved, setGate] = useState<AdminGate | null>(gate ?? null);
+  const [view, setView] = useState<"password" | "quick" | "setup" | "pin">("password");
   const [password, setPassword] = useState("");
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -109,19 +108,34 @@ export function AdminLogin({
   );
 
   useEffect(() => {
-    if (!gate) return;
-    if (gate.authenticated && (gate.setupRequired || setupPin)) setView("setup");
-    else if (!gate.authenticated && gate.quickUnlock?.available) setView("quick");
-    else if (wantFallback) setView("fallback");
-    else setView("google");
-  }, [gate, setupPin, wantFallback]);
+    if (gate) {
+      setGate(gate);
+      return;
+    }
+    const controller = new AbortController();
+    fetch("/api/admin/session", { signal: controller.signal })
+      .then((response) => response.json())
+      .then((body) => setGate(body))
+      .catch(() => {
+        if (!controller.signal.aborted) setGate({ authenticated: false, passwordEnabled: true });
+      });
+    return () => controller.abort();
+  }, [gate]);
 
   useEffect(() => {
-    if (view !== "quick" || !gate?.quickUnlock?.passkey || busy) return;
+    if (!resolved) return;
+    if (resolved.authenticated && setupPin) setView("pin");
+    else if (resolved.authenticated && resolved.setupRequired) setView("setup");
+    else if (!resolved.authenticated && resolved.quickUnlock?.available) setView("quick");
+    else setView("password");
+  }, [resolved, setupPin]);
+
+  useEffect(() => {
+    if (view !== "quick" || !resolved?.quickUnlock?.passkey || busy) return;
     void unlockWithPasskey();
     // Auto-prompt once when returning to a trusted device.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, gate?.quickUnlock?.passkey]);
+  }, [view, resolved?.quickUnlock?.passkey]);
 
   async function finished() {
     if (onSuccess) onSuccess();
@@ -172,9 +186,11 @@ export function AdminLogin({
       setPin("");
       await finished();
     } catch (cause) {
-      const payload = (cause as Error & { payload?: { requireGoogle?: boolean } }).payload;
-      if (payload?.requireGoogle) {
-        window.location.assign(googleHref());
+      const payload = (cause as Error & { payload?: { requireGoogle?: boolean; requirePassword?: boolean } }).payload;
+      if (payload?.requirePassword || payload?.requireGoogle) {
+        setView("password");
+        setError(cause instanceof Error ? cause.message : "請改用密碼登入");
+        setBusy(false);
         return;
       }
       setError(cause instanceof Error ? cause.message : "解鎖失敗");
@@ -241,24 +257,35 @@ export function AdminLogin({
         <p>現場工作人員專用</p>
       )}
 
-      {view === "google" && (
-        <div className="admin-login-actions">
-          {gate?.googleEnabled === false && !gate.emergencyFallback ? (
-            <p className="admin-error" role="alert">管理功能尚未啟用</p>
-          ) : (
+      {view === "password" && (
+        <form onSubmit={loginPassword}>
+          <label htmlFor="admin-password">管理員密碼</label>
+          <input
+            id="admin-password"
+            type="password"
+            autoComplete="current-password"
+            required
+            maxLength={256}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+          {error && <p role="alert" className="admin-error">{error}</p>}
+          <button className="admin-primary" disabled={busy} type="submit">
+            {busy ? "登入中…" : "登入後台"}
+          </button>
+          {resolved?.googleEnabled && (
             <a className="admin-primary admin-google" href={googleHref()}>
               <GoogleMark />
               使用 Google 登入
             </a>
           )}
-          {error && <p role="alert" className="admin-error">{error}</p>}
-        </div>
+        </form>
       )}
 
       {view === "setup" && (
         <div className="admin-login-actions">
           <h2>設定快速解鎖</h2>
-          <p>此裝置已經通過 Google 授權。可設定指紋／Face ID、4 碼 PIN，或兩者都設定。</p>
+          <p>此裝置已經通過管理員授權。可設定指紋／Face ID、4 碼 PIN，或兩者都設定。</p>
           <button className="admin-primary" disabled={busy} type="button" onClick={() => void registerPasskey()}>
             <Fingerprint size={18} />
             {busy ? "請在裝置上確認…" : "使用指紋 / Face ID"}
@@ -292,48 +319,33 @@ export function AdminLogin({
 
       {view === "quick" && (
         <div className="admin-login-actions">
-          {gate?.quickUnlock?.passkey && (
+          {resolved?.quickUnlock?.passkey && (
             <button className="admin-primary" disabled={busy} type="button" onClick={() => void unlockWithPasskey()}>
               <Fingerprint size={18} />
-              {busy ? "請在裝置上確認…" : "使用手機解鎖"}
+              {busy ? "請在裝置上確認…" : "使用指紋解鎖"}
             </button>
           )}
-          {gate?.quickUnlock?.pin && (
+          {resolved?.quickUnlock?.pin && (
             <form onSubmit={unlockPin}>
               <label htmlFor="admin-pin-unlock">輸入 4 碼 PIN</label>
-              <PinBoxes id="admin-pin-unlock" value={pin} onChange={setPin} autoFocus={!gate.quickUnlock.passkey} />
+              <PinBoxes id="admin-pin-unlock" value={pin} onChange={setPin} autoFocus={!resolved.quickUnlock.passkey} />
               {error && <p role="alert" className="admin-error">{error}</p>}
               <button className="admin-primary" disabled={busy || pin.length !== 4} type="submit">
                 {busy ? "解鎖中…" : "解鎖"}
               </button>
             </form>
           )}
-          {!gate?.quickUnlock?.pin && error && <p role="alert" className="admin-error">{error}</p>}
-          <a className="admin-text-btn" href={googleHref()}>使用 Google 帳號登入</a>
-          {gate?.quickUnlock?.pin && (
+          {!resolved?.quickUnlock?.pin && error && <p role="alert" className="admin-error">{error}</p>}
+          <button className="admin-text-btn" type="button" onClick={() => { setView("password"); setError(""); }}>
+            使用密碼登入
+          </button>
+          {resolved?.googleEnabled && (
+            <a className="admin-text-btn" href={googleHref()}>使用 Google 帳號登入</a>
+          )}
+          {resolved?.quickUnlock?.pin && resolved.googleEnabled && (
             <a className="admin-text-btn" href={googleHref("reset-pin")}>忘記 PIN？</a>
           )}
         </div>
-      )}
-
-      {view === "fallback" && (
-        <form onSubmit={loginPassword}>
-          <label htmlFor="admin-password">緊急備用密碼</label>
-          <input
-            id="admin-password"
-            type="password"
-            autoComplete="current-password"
-            required
-            maxLength={256}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          {error && <p role="alert" className="admin-error">{error}</p>}
-          <button className="admin-primary" disabled={busy} type="submit">
-            {busy ? "登入中…" : "登入後台"}
-          </button>
-          <a className="admin-text-btn" href={googleHref()}>使用 Google 登入</a>
-        </form>
       )}
     </>
   );

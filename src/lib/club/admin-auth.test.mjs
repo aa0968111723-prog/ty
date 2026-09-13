@@ -94,6 +94,101 @@ async function googleLogin(t, { email = "admin@example.com", code = "ok-code", u
   return { location: callback.headers.get("location"), cookie: cookiesFrom(callback), start };
 }
 
+test("booth password works before env is set and switches when ADMIN_PASSWORD is configured", async (t) => {
+  const names = [
+    "ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "PUBLIC_ORIGIN",
+    "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET", "ADMIN_ALLOWED_EMAILS",
+  ];
+  const before = names.map((name) => process.env[name]);
+  t.after(() => names.forEach((name, i) => {
+    if (before[i] === undefined) delete process.env[name];
+    else process.env[name] = before[i];
+  }));
+  for (const name of names) delete process.env[name];
+  resetAdminAuthStore();
+  const local = { headers: { origin: "https://club.internal:8080" } };
+  const denied = await handleAdminLogin(request("/api/admin/login", { body: { password: "wrong" }, ...local }));
+  assert.equal(denied.status, 401);
+  const booth = await handleAdminLogin(request("/api/admin/login", { body: { password: "tkuzen" }, ...local }));
+  assert.equal(booth.status, 200);
+  const boothSession = await (await handleAdminSession(request("/api/admin/session", { cookie: cookiesFrom(booth) }))).json();
+  assert.equal(boothSession.authenticated, true);
+  assert.equal(boothSession.method, "password");
+  assert.equal(boothSession.setupRequired, true);
+  assert.equal(boothSession.passwordEnabled, true);
+  assert.equal(JSON.stringify(boothSession).includes("tkuzen"), false);
+  assert.equal(JSON.stringify(boothSession).includes("ADMIN_PASSWORD"), false);
+
+  const configuredPassword = randomBytes(16).toString("hex");
+  process.env.ADMIN_PASSWORD = configuredPassword;
+  process.env.ADMIN_SESSION_SECRET = randomBytes(32).toString("hex");
+  process.env.PUBLIC_ORIGIN = origin;
+  assert.equal((await handleAdminLogin(request("/api/admin/login", { body: { password: "tkuzen" } }))).status, 401);
+  const configured = await handleAdminLogin(request("/api/admin/login", { body: { password: configuredPassword } }));
+  assert.equal(configured.status, 200);
+  assert.equal(cookiesFrom(configured).includes(configuredPassword), false);
+  const configuredSession = await (await handleAdminSession(request("/api/admin/session", { cookie: cookiesFrom(configured) }))).json();
+  assert.equal(configuredSession.authenticated, true);
+  assert.equal(configuredSession.method, "password");
+});
+
+test("password login can set PIN and fingerprint without Google", async (t) => {
+  const names = [
+    "ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "PUBLIC_ORIGIN",
+    "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET", "ADMIN_ALLOWED_EMAILS",
+  ];
+  const before = names.map((name) => process.env[name]);
+  t.after(() => names.forEach((name, i) => {
+    if (before[i] === undefined) delete process.env[name];
+    else process.env[name] = before[i];
+  }));
+  for (const name of names) delete process.env[name];
+  process.env.PUBLIC_ORIGIN = origin;
+  resetAdminAuthStore();
+  setWebAuthnAdapter({
+    async registrationOptions() {
+      return { challenge: "booth-reg", authenticatorSelection: { userVerification: "required" } };
+    },
+    async verifyRegistration() {
+      return { credentialId: "booth-cred", publicKey: "pk", counter: 0, transports: ["internal"] };
+    },
+    async authenticationOptions() {
+      return { challenge: "booth-auth", userVerification: "required" };
+    },
+    async verifyAuthentication() {
+      return { newCounter: 1 };
+    },
+  });
+  const login = await handleAdminLogin(request("/api/admin/login", { body: { password: "tkuzen" } }));
+  assert.equal(login.status, 200);
+  const cookie = cookiesFrom(login);
+  assert.equal((await handlePinSetup(request("/api/admin/auth/pin", {
+    body: { pin: "2468", confirm: "2468" }, cookie,
+  }))).status, 200);
+  assert.equal((await handleWebAuthnRegisterOptions(request("/api/admin/auth/webauthn/register/options", {
+    body: {}, cookie,
+  }))).status, 200);
+  assert.equal((await handleWebAuthnRegister(request("/api/admin/auth/webauthn/register", {
+    body: { credential: { id: "booth-cred" }, expectedChallenge: "booth-reg" }, cookie,
+  }))).status, 200);
+  await handleAdminLogout(request("/api/admin/logout", { body: {}, cookie }));
+  const deviceCookie = cookie.split("; ").find((part) => part.startsWith("__Host-club_device="));
+  const unlocked = await handlePinUnlock(request("/api/admin/auth/unlock", {
+    body: { pin: "2468" }, cookie: deviceCookie, method: "POST",
+  }));
+  assert.equal(unlocked.status, 200);
+  const pinSession = await (await handleAdminSession(request("/api/admin/session", { cookie: cookiesFrom(unlocked) }))).json();
+  assert.equal(pinSession.authenticated, true);
+  assert.equal(pinSession.method, "pin");
+  const passkey = await handleWebAuthnLogin(request("/api/admin/auth/webauthn/login", {
+    body: { credential: { id: "booth-cred" }, expectedChallenge: "booth-auth" }, cookie: deviceCookie, method: "POST",
+  }));
+  assert.equal(passkey.status, 200);
+  const passkeySession = await (await handleAdminSession(request("/api/admin/session", { cookie: cookiesFrom(passkey) }))).json();
+  assert.equal(passkeySession.authenticated, true);
+  assert.equal(passkeySession.method, "passkey");
+});
+
 test("allowed email list parses without leaking formatting noise", () => {
   assert.deepEqual([...parseAllowedEmails("admin@example.com, second@example.com \n")], ["admin@example.com", "second@example.com"]);
 });

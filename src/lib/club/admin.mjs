@@ -1,7 +1,7 @@
 // @ts-nocheck -- Admin HTTP handlers are covered by scripts/club-admin.test.mjs.
-import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, scryptSync, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
-import { adminServiceEnabled, buildSessionView, readV2Session, revokeCurrentV2Session } from "./admin-auth.mjs";
+import { adminServiceEnabled, buildSessionView, issuePasswordLogin, passwordConfig, readV2Session, revokeCurrentV2Session } from "./admin-auth.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured } from "./sheets.mjs";
 import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
@@ -236,24 +236,25 @@ export function buildDashboard(input = {}) {
 }
 
 function authConfig() {
-  const password = process.env.ADMIN_PASSWORD;
-  const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!password?.trim() || !secret || Buffer.byteLength(secret) < 32) return null;
-  return { password, secret };
+  return passwordConfig();
 }
 
-/** @param {unknown} body @param {number} [status] @param {Record<string, string>} [headers] */
+/** @param {unknown} body @param {number} [status] @param {Record<string, string | string[]>} [headers] */
 function json(body, status = 200, headers = {}) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...SECURITY_HEADERS,
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "private, no-store",
-      "vary": "Cookie",
-      ...headers,
-    },
+  const headerList = new Headers({
+    ...SECURITY_HEADERS,
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "private, no-store",
+    vary: "Cookie",
   });
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === "set-cookie") continue;
+    headerList.set(key, String(value));
+  }
+  const cookies = headers["set-cookie"];
+  if (Array.isArray(cookies)) for (const cookie of cookies) headerList.append("set-cookie", cookie);
+  else if (cookies) headerList.set("set-cookie", cookies);
+  return new Response(JSON.stringify(body), { status, headers: headerList });
 }
 
 /** @param {string} left @param {string} right */
@@ -359,7 +360,6 @@ export async function handleAdminLogin(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站登入" }, 403);
   const config = authConfig();
-  if (!config) return json({ error: "管理功能尚未啟用" }, 503);
   const ip = clientKey(request);
   if (!rateOk("login:global", 120, 60_000) || !rateOk(`login:${ip}`, 20, 60_000) ||
     !rateOk("failure:global", 90, 900_000, false) || !rateOk(`failure:${ip}`, 5, 900_000, false)) {
@@ -396,9 +396,8 @@ export async function handleAdminLogin(request) {
     return json({ error: "密碼不正確" }, 401);
   }
   limits.delete(`failure:${ip}`);
-  const iat = Math.floor(Date.now() / 1000);
-  const payload = Buffer.from(JSON.stringify({ v: 1, iat, exp: iat + SESSION_SECONDS, nonce: randomBytes(16).toString("hex") })).toString("base64url");
-  return json({ ok: true }, 200, { "set-cookie": cookie(`${payload}.${signature(payload, config)}`, SESSION_SECONDS) });
+  const cookies = await issuePasswordLogin(request);
+  return json({ ok: true }, 200, { "set-cookie": cookies });
 }
 
 /** @param {Request} request */
