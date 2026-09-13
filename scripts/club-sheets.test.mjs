@@ -277,3 +277,36 @@ test("without spreadsheet metadata, leftover GOOGLE_SHEET_TAB does not receive g
   await readSheetRows("gameResults");
   assert.equal(range, "'" + DEFAULT_TAB_TITLES.gameResults + "'");
 });
+
+test("official result writes never target 招生狀況表 or 總表", async (t) => {
+  configure(t, "game-write-only", { GOOGLE_GAME_SHEET_TAB: DEFAULT_TAB_TITLES.gameResults });
+  const ranges = [];
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: {
+      get: async () => ({
+        data: {
+          sheets: [{ properties: { title: DEFAULT_TAB_TITLES.gameResults, sheetId: EXPECTED_SHEET_IDS.gameResults } }],
+        },
+      }),
+      values: {
+        get: async (params) => {
+          ranges.push(params.range);
+          return { data: { values: [["_submissionId"]] } };
+        },
+        update: async (params) => {
+          ranges.push(params.range);
+          return { data: {} };
+        },
+        batchUpdate: async (params) => {
+          ranges.push(params.requestBody.data[0].range);
+          return { data: {} };
+        },
+      },
+    },
+  }));
+  await appendOfficialResult(result());
+  assert.ok(ranges.length > 0);
+  assert.ok(ranges.every((range) => String(range).includes(DEFAULT_TAB_TITLES.gameResults)));
+  assert.ok(ranges.every((range) => !String(range).includes("招生狀況表") && !String(range).includes("總表")));
+});

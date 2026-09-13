@@ -11,6 +11,7 @@ import {
   text,
 } from "./recruitment-identity.mjs";
 import { fieldFromAliases, formatTaipeiTimestamp, internalizedGameRow } from "./sheets.mjs";
+import { generatePrefilledFormUrl } from "./recruitment-prefill.mjs";
 
 const UNCLASSIFIED = "未分類";
 const UNKNOWN_GATEKEEPER = "未知關主";
@@ -609,29 +610,13 @@ export function buildRecruitmentDashboard(input = {}) {
 }
 
 export function buildPrefilledFormUrl(candidate, options = {}) {
-  const responder = text(options.responderUrl) || text(process.env.GOOGLE_FORM_RESPONDER_URL)
-    || "https://forms.gle/CBmNvkcvSQMzvh9X7";
-  const entries = options.entries || parsePrefillEntries(process.env.GOOGLE_FORM_PREFILL_ENTRIES);
-  if (!entries || !Object.keys(entries).length) return responder;
-  const latest = candidate.latestAttempt || candidate;
-  const params = new URLSearchParams({ usp: "pp_url" });
-  const values = {
-    name: candidate.name,
-    phone: candidate.phone || candidate.normalizedPhone,
-    department: candidate.department,
-    grade: candidate.grade,
-    departmentGrade: [candidate.department, candidate.grade].filter(Boolean).join(""),
-    gameGatekeeper: candidate.gameGatekeeper,
-    studentChoice: encodeStudentChoice(candidate),
-    submissionId: latest.submissionId,
-  };
-  for (const [key, entry] of Object.entries(entries)) {
-    if (!entry || values[key] == null || values[key] === "") continue;
-    params.set(String(entry), String(values[key]));
-  }
-  const base = responder.includes("/viewform") ? responder.split("?")[0] : responder;
-  if (!responder.includes("/viewform")) return responder;
-  return `${base}?${params.toString()}`;
+  return generatePrefilledFormUrl(candidate, {
+    responderUrl: options.responderUrl || process.env.GOOGLE_FORM_RESPONDER_URL,
+    entries: { ...parsePrefillEntries(process.env.GOOGLE_FORM_PREFILL_ENTRIES), ...options.entries },
+    recruiter: options.recruiter,
+    extraNotes: options.extraNotes,
+    recruitedAt: options.recruitedAt,
+  });
 }
 
 function parsePrefillEntries(value) {
