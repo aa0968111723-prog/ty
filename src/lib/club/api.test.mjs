@@ -146,6 +146,7 @@ describe("api", () => {
     assert.equal(calls.update.length, 1);
     assert.equal(calls.batchUpdate.length, 1);
     assert.equal(calls.get[0].spreadsheetId, "sheet-id");
+    assert.equal(String(calls.get[0].range).includes("國際生"), false);
     const headers = calls.update[0].requestBody.values[0];
     const cells = calls.batchUpdate[0].requestBody.data[0].values[0];
     const sent = Object.fromEntries(headers.map((header, index) => [header, cells[index]]));

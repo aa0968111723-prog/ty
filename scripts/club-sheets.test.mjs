@@ -11,6 +11,7 @@ import {
   invalidateSheetCache,
   readSheetRows,
   sheetsConfigured,
+  spreadsheetEditUrl,
 } from "../src/lib/club/sheets.mjs";
 import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
 import { normalizeStaffRecruitmentPayload } from "../src/lib/club/recruitment-staff-form.mjs";
@@ -278,6 +279,38 @@ test("without spreadsheet metadata, leftover GOOGLE_SHEET_TAB does not receive g
   }));
   await readSheetRows("gameResults");
   assert.equal(range, "'" + DEFAULT_TAB_TITLES.gameResults + "'");
+});
+
+test("game writes follow gid 896311128 even if GOOGLE_GAME_SHEET_TAB names a missing tab", async (t) => {
+  configure(t, "dead-explicit", {
+    GOOGLE_SHEET_TAB: "國際生專區",
+    GOOGLE_GAME_SHEET_TAB: "國際生專區",
+  });
+  invalidateSheetCache();
+  let range;
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: {
+      get: async () => ({
+        data: {
+          sheets: [
+            { properties: { title: "總表", sheetId: EXPECTED_SHEET_IDS.recruitmentMaster } },
+            { properties: { title: DEFAULT_TAB_TITLES.gameResults, sheetId: EXPECTED_SHEET_IDS.gameResults } },
+          ],
+        },
+      }),
+      values: {
+        get: async (params) => {
+          range = params.range;
+          return { data: { values: [["_submissionId"]] } };
+        },
+      },
+    },
+  }));
+  await readSheetRows("gameResults");
+  assert.equal(range, "'" + DEFAULT_TAB_TITLES.gameResults + "'");
+  assert.ok(!String(range).includes("國際生"));
+  assert.match(spreadsheetEditUrl(), /gid=896311128$/);
 });
 
 test("official result writes never target 招生狀況表 or 總表", async (t) => {

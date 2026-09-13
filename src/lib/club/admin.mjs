@@ -2,7 +2,7 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
-import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured } from "./sheets.mjs";
+import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured, spreadsheetEditUrl, EXPECTED_SHEET_IDS } from "./sheets.mjs";
 import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
 import { normalizeStaffRecruitmentPayload } from "./recruitment-staff-form.mjs";
 
@@ -599,6 +599,9 @@ export async function handleAdminRecruitment(request) {
   }));
   try {
     const diagnosis = await diagnoseSheetMappings();
+    const gameTab = diagnosis.ok
+      ? diagnosis.sheets.find((sheet) => sheet.sheetId === EXPECTED_SHEET_IDS.gameResults)
+      : null;
     dashboard.sync.tabs = diagnosis.ok
       ? {
         gameResults: diagnosis.resolved.gameResults.resolvedTab,
@@ -606,6 +609,16 @@ export async function handleAdminRecruitment(request) {
         recruitmentMaster: diagnosis.resolved.recruitmentMaster.resolvedTab,
       }
       : undefined;
+    dashboard.sync.links = {
+      game: spreadsheetEditUrl(EXPECTED_SHEET_IDS.gameResults),
+    };
+    if (diagnosis.ok && diagnosis.sheets.length > 0 && !gameTab) {
+      dashboard.sync.gameResults = {
+        ok: false,
+        stale: Boolean(dashboard.sync.gameResults?.stale),
+        error: "遊戲成績分頁不存在",
+      };
+    }
   } catch {
     /* Tab titles are optional diagnostics. */
   }

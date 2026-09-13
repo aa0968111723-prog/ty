@@ -55,6 +55,12 @@ export type RecruitmentData = {
     recruitmentMaster: SyncFlag;
     form: SyncFlag;
     updatedAt: string;
+    tabs?: {
+      gameResults?: string;
+      recruitmentResponses?: string;
+      recruitmentMaster?: string;
+    };
+    links?: { game?: string };
   };
 };
 
@@ -356,6 +362,16 @@ export function RecruitmentSync({ data }: { data: RecruitmentData }) {
       ))}
       <dt>最後同步</dt>
       <dd>{syncClock(data.sync.updatedAt)}</dd>
+      {data.sync.links?.game ? (
+        <>
+          <dt>遊戲成績表</dt>
+          <dd>
+            <a className="admin-sheet-link" href={data.sync.links.game} target="_blank" rel="noreferrer">
+              打開可寫入的遊戲分頁 <ExternalLink size={16} />
+            </a>
+          </dd>
+        </>
+      ) : null}
     </dl>
   );
 }

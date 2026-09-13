@@ -5,6 +5,7 @@ import { ScoreHUD } from "@/components/club/score-hud";
 import {
   clearPendingResult,
   readPendingResult,
+  saveKindFromResponse,
   storePendingResult,
 } from "@/lib/club/pending-result.mjs";
 import {
@@ -165,7 +166,7 @@ function BoothApp() {
         setPending((current) => (current?.submissionId === payload.submissionId ? null : current));
       }
       if (gameRef.current.submissionId === payload.submissionId)
-        setSave(body.sheetsOk === true ? "ok" : "local");
+        setSave(saveKindFromResponse(body));
     } catch {
       if (gameRef.current.submissionId === payload.submissionId) setSave("fail");
     } finally {
