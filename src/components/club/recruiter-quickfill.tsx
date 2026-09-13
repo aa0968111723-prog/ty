@@ -348,12 +348,25 @@ export function RecruiterQuickfill() {
       </header>
 
       {error ? <p role="alert" className="admin-error">{error}{stale ? " · 顯示上次名單" : ""}</p> : null}
-      {success ? <p role="status" className="admin-success">{success}</p> : null}
+      {success ? (
+        <div role="status" className="admin-success quickfill-success">
+          <span>{success}</span>
+          <a
+            className="quickfill-google"
+            href="/admin?view=recruitment"
+            target="_blank"
+            rel="noreferrer"
+            data-quickfill="open-backoffice"
+          >
+            查看招生狀況表後台 <ExternalLink size={16} />
+          </a>
+        </div>
+      ) : null}
       {stale && !error ? <p className="admin-caption">同步異常，顯示上次讀到的名單</p> : null}
 
-      <section className="admin-panel quickfill-partner" aria-label="選擇接引人">
-        <h1><UserRound size={20} /> 我是哪一位接引人</h1>
-        <p className="admin-caption">正式招生接引人會寫進招生狀況表。遊戲關主維持原現場帶關，不會被覆蓋。</p>
+      <section className="admin-panel quickfill-partner" aria-label="選擇這位有緣人的接引人">
+        <h1><UserRound size={20} /> 這位有緣人的接引人</h1>
+        <p className="admin-caption">選擇將持續關心、協助並完成這位有緣人招生資料的夥伴。遊戲關主保留原始紀錄，不會被正式接引人覆蓋。</p>
         <div className="quickfill-partners">
           {OFFICIAL_RECRUITERS.map((name) => (
             <button
@@ -383,7 +396,7 @@ export function RecruiterQuickfill() {
             />
           </label>
         ) : null}
-        {officialRecruiter ? <p className="admin-caption">目前接引人：{officialRecruiter}</p> : null}
+        {officialRecruiter ? <p className="admin-caption">目前負責接引：{officialRecruiter}</p> : null}
       </section>
 
       {!officialRecruiter ? (
@@ -469,10 +482,6 @@ export function RecruiterQuickfill() {
             />
           </label>
           <p className="admin-caption">遊戲關主是現場帶關的人，不會改成接引人「{officialRecruiter}」。</p>
-          <label>
-            submissionId
-            <input aria-label="submissionId" value={preview.submissionId || ""} onChange={(event) => setDraft({ ...preview, submissionId: event.target.value })} />
-          </label>
           <label>
             接引日期
             <input

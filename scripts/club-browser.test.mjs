@@ -315,10 +315,11 @@ test(
         return route.fulfill({ json: data });
       });
       await page.goto(`${origin}/follow-up`);
-      await page.getByRole("heading", { name: /我是哪一位接引人/ }).waitFor();
+      await page.getByRole("heading", { name: /這位有緣人的接引人/ }).waitFor();
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await page.getByRole("button", { name: "柏能", exact: true }).click();
       await page.getByRole("button", { name: "跟進這位同學" }).click();
+      assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
       const href = await page.locator("[data-quickfill=open-form]").getAttribute("href");
       assert.match(String(href), /\/viewform\?/);
       assert.doesNotMatch(String(href), /forms\.gle/);
@@ -339,11 +340,15 @@ test(
       await page.getByRole("status").waitFor();
       assert.equal(submitted.length, 1);
       assert.equal(submitted[0].recruiter, "柏能");
+      assert.equal(submitted[0].submissionId, pendingStudent._submissionId);
       assert.equal(submitted[0].gameGatekeeper, "安倢");
       assert.equal(submitted[0].tier, "S(已報名)");
       assert.ok(submitted[0].activities.includes("9/30茶會"));
       assert.equal(await page.getByRole("button", { name: "跟進這位同學" }).count(), 0);
       assert.equal(await page.locator("[data-quickfill=open-form]").count(), 0);
+      const backoffice = page.locator("[data-quickfill=open-backoffice]");
+      assert.equal(await backoffice.count(), 1);
+      assert.equal(await backoffice.getAttribute("href"), "/admin?view=recruitment");
       await capture(page, "follow-up-390");
       assert.deepEqual(errors, []);
       await context.close();
