@@ -1,8 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { LeaderboardBoard, type LeaderboardScope, type PublicLeaderboard } from "@/components/club/leaderboard-board";
-import { loadPublicLeaderboard } from "@/lib/club/leaderboard.mjs";
 import { type Language } from "@/components/club/presentation";
+
+const getPublicLeaderboard = createServerFn({ method: "GET" })
+  .validator((scope: "today" | "history") => scope)
+  .handler(async ({ data }) => {
+    const { loadPublicLeaderboard } = await import("@/lib/club/api.mjs");
+    return (await loadPublicLeaderboard(data)) as PublicLeaderboard;
+  });
 
 function scopeFromLocation(location: { href?: string; search?: unknown }) {
   const href = typeof location.href === "string" ? location.href : "";
@@ -18,7 +25,7 @@ function scopeFromLocation(location: { href?: string; search?: unknown }) {
 export const Route = createFileRoute("/leaderboard")({
   loader: async ({ location }): Promise<PublicLeaderboard | null> => {
     try {
-      const body = await loadPublicLeaderboard(scopeFromLocation(location));
+      const body = await getPublicLeaderboard({ data: scopeFromLocation(location) });
       if (body.ok !== true || !Array.isArray(body.rows)) return null;
       return body as PublicLeaderboard;
     } catch {

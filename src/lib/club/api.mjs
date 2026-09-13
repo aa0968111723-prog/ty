@@ -14,12 +14,16 @@ import {
   titleForScore,
   validatePlayer,
 } from "./runtime.mjs";
-import { appendOfficialResult as appendResultToSheet, sheetsConfigured } from "./sheets.mjs";
+import { appendOfficialResult as appendResultToSheet, readSheetRows, sheetsConfigured } from "./sheets.mjs";
 import {
+  buildPublicLeaderboard,
+  dateInTaipei,
   invalidateLeaderboardCache,
-  loadPublicLeaderboard,
+  leaderboardCacheKey,
   parseLeaderboardScope,
   publicLeaderboardHasSensitiveData,
+  readLeaderboardCache,
+  writeLeaderboardCache,
 } from "./leaderboard.mjs";
 
 export const SECURITY_HEADERS = {
@@ -62,6 +66,22 @@ function json(body, status = 200, headers = {}) {
       ...headers,
     },
   });
+}
+
+export async function loadPublicLeaderboard(scope, now = new Date()) {
+  const date = dateInTaipei(now);
+  const key = leaderboardCacheKey(scope, date);
+  const cached = readLeaderboardCache(key);
+  if (cached) return /** @type {Record<string, unknown>} */ ({ ...cached, cached: true });
+  const configured = sheetsConfigured("gameResults");
+  const rows = configured ? await readSheetRows("gameResults") : [];
+  const body = {
+    ...buildPublicLeaderboard({ rows, scope, now }),
+    source: configured ? "game-sheet" : "unconfigured",
+    cached: false,
+  };
+  writeLeaderboardCache(key, body);
+  return body;
 }
 
 export async function handleHealth() {

@@ -58,4 +58,3 @@ export function leaderboardCacheKey(scope: "today" | "history", date: string): s
 export function readLeaderboardCache(key: string, now?: number): Record<string, unknown> | null;
 export function writeLeaderboardCache(key: string, body: Record<string, unknown>, now?: number): void;
 export function invalidateLeaderboardCache(): void;
-export function loadPublicLeaderboard(scope: "today" | "history", now?: Date): Promise<Record<string, unknown>>;
