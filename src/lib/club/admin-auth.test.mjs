@@ -28,6 +28,8 @@ import {
   getAdminAuthStore,
   parseAllowedEmails,
   DEVICE_COOKIE,
+  relyingPartyId,
+  webauthnOrigin,
 } from "./admin-auth.mjs";
 
 const origin = "https://club.example.test";
@@ -93,6 +95,20 @@ async function googleLogin(t, { email = "admin@example.com", code = "ok-code", u
   assert.equal(callback.status, 302);
   return { location: callback.headers.get("location"), cookie: cookiesFrom(callback), start };
 }
+
+test("fingerprint origin follows the current page instead of PUBLIC_ORIGIN", async (t) => {
+  const previous = process.env.PUBLIC_ORIGIN;
+  t.after(() => {
+    if (previous === undefined) delete process.env.PUBLIC_ORIGIN;
+    else process.env.PUBLIC_ORIGIN = previous;
+  });
+  process.env.PUBLIC_ORIGIN = "https://live.example.app";
+  const request = new Request("https://club.internal:8080/api/admin/auth/webauthn/register", {
+    headers: { origin: "http://localhost:8080" },
+  });
+  assert.equal(webauthnOrigin(request), "http://localhost:8080");
+  assert.equal(relyingPartyId(request), "localhost");
+});
 
 test("booth password works before env is set and switches when ADMIN_PASSWORD is configured", async (t) => {
   const names = [

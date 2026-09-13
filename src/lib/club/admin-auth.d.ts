@@ -28,6 +28,8 @@ export function ensureAdminAuthStore(): Promise<unknown>;
 export function passwordConfig(): { password: string; secret: string };
 export function passwordIsConfigured(): boolean;
 export function sessionSecret(): string;
+export function webauthnOrigin(request: Request): string;
+export function relyingPartyId(request: Request): string;
 export function issuePasswordLogin(request: Request): Promise<string[]>;
 export function adminServiceEnabled(): boolean;
 export function readV2Session(request: Request): Promise<unknown>;

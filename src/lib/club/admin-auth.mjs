@@ -632,8 +632,17 @@ export function publicOrigin(request) {
   return new URL(request.url).origin;
 }
 
+export function webauthnOrigin(request) {
+  const originHeader = request.headers.get("origin");
+  if (originHeader) {
+    try { return new URL(originHeader).origin; }
+    catch { /* fall through */ }
+  }
+  return new URL(request.url).origin;
+}
+
 export function relyingPartyId(request) {
-  const host = new URL(publicOrigin(request)).hostname;
+  const host = new URL(webauthnOrigin(request)).hostname;
   return host === "127.0.0.1" ? "localhost" : host;
 }
 
@@ -1195,7 +1204,7 @@ export async function handleWebAuthnRegister(request) {
     const verified = await adapter.verifyRegistration({
       response: body.credential || body,
       expectedChallenge,
-      expectedOrigin: publicOrigin(request),
+      expectedOrigin: webauthnOrigin(request),
       expectedRPID: relyingPartyId(request),
     });
     await store.createPasskey({
@@ -1271,7 +1280,7 @@ export async function handleWebAuthnLogin(request) {
     const verified = await adapter.verifyAuthentication({
       response: credential,
       expectedChallenge,
-      expectedOrigin: publicOrigin(request),
+      expectedOrigin: webauthnOrigin(request),
       expectedRPID: relyingPartyId(request),
       credential: passkey,
     });
