@@ -391,12 +391,19 @@
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
-.admin-quick button {
+.admin-quick button,
+.admin-quick a {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
   font-size: var(--text-small);
+  min-height: 44px;
+  text-decoration: none;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
 }
 .admin-editor-heading {
   display: flex;
@@ -883,8 +890,7 @@
   margin-top: var(--space-3);
 }
 .recruitment-actions {
-  grid-template-columns: 1fr auto;
-  align-items: center;
+  grid-template-columns: 1fr;
 }
 .recruitment-actions a,
 .recruitment-sheet .admin-primary {
@@ -970,4 +976,81 @@
   .recruitment-gatekeepers {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+.quickfill-shell {
+  padding-bottom: calc(var(--space-8) + env(safe-area-inset-bottom));
+}
+.quickfill-page {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 520px;
+  margin: 0 auto;
+  padding: var(--space-4);
+  min-width: 0;
+}
+.quickfill-top {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.quickfill-top a,
+.quickfill-top strong {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.quickfill-top a {
+  color: var(--brand);
+  text-decoration: none;
+  font-size: var(--text-small);
+}
+.quickfill-partners {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.quickfill-partners button[aria-pressed="true"] {
+  background: var(--surface-selected);
+  border-color: var(--brand);
+  color: var(--text-primary);
+}
+.quickfill-preview,
+.quickfill-partner {
+  display: grid;
+  gap: var(--space-3);
+}
+.quickfill-preview label,
+.quickfill-partner label {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+}
+.quickfill-page textarea {
+  min-height: 88px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+}
+.quickfill-preview .admin-primary,
+.recruitment-pending .admin-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  text-decoration: none;
+}
+.quickfill-page h1,
+.quickfill-preview h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-h3);
 }

@@ -137,6 +137,9 @@ test("admin authentication and private read API contracts with mocked Google onl
   process.env.GOOGLE_SHEET_TAB = "results";
   process.env.GOOGLE_FORM_SHEET_TAB = "forms";
   process.env.GOOGLE_GAME_SHEET_TAB = "results";
+  process.env.GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB = "forms";
+  process.env.GOOGLE_RECRUITMENT_MASTER_SHEET_TAB = "forms";
+  process.env.GOOGLE_GAME_SHEET_TAB = "results";
   process.env.GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB = "招生狀況表";
   process.env.GOOGLE_RECRUITMENT_MASTER_SHEET_TAB = "總表";
   const calls = [];
@@ -187,6 +190,11 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.ok("pending" in recruitment);
   assert.ok("funnel" in recruitment);
   assert.ok("summary" in recruitment);
+  assert.ok(Array.isArray(recruitment.pending));
+  if (recruitment.pending.length) {
+    assert.match(String(recruitment.pending[0].prefillUrl), /\/viewform\?/);
+    assert.doesNotMatch(String(recruitment.pending[0].prefillUrl), /forms\.gle/);
+  }
   assert.equal((await handleAdminRecruitment(request("recruitment"))).status, 401);
   assert.equal((await handleAdminFormResponses(request("form-responses", { cookie }))).status, 502);
   t.mock.method(google, "sheets", () => ({
