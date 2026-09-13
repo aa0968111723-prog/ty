@@ -6,8 +6,8 @@ const manifestUrl = new URL("../public/manifest.webmanifest", import.meta.url);
 
 test("admin PWA manifest opens the pinned view and exposes operational shortcuts", async () => {
   const manifest = JSON.parse(await readFile(manifestUrl, "utf8"));
-  assert.equal(manifest.name, "禪學社戰情");
-  assert.equal(manifest.short_name, "禪學社戰情");
+  assert.equal(manifest.name, "禪學社專注力挑戰");
+  assert.equal(manifest.short_name, "禪學社專注力挑戰");
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.theme_color, "#506525");
   assert.equal(manifest.background_color, "#f7f8f4");
