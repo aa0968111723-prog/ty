@@ -137,7 +137,8 @@ function AdminDashboard() {
       const response = await fetch("/api/admin/logout", { method: "POST" });
       if (!response.ok) throw new Error();
       generation.current++;
-      setGate({ authenticated: false });
+      const nextGate = await fetch("/api/admin/session").then((res) => res.json()).catch(() => ({ authenticated: false }));
+      setGate(nextGate);
       setData(null);
     } catch {
       setError("登出失敗，請再試一次");

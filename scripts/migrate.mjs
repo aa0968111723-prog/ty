@@ -81,6 +81,10 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (err?.code === "ENOTFOUND") {
+    console.log("[migrate] DATABASE_URL host is unreachable — skipping (preview placeholder).");
+    process.exit(0);
+  }
   console.error("[migrate] failed:", err?.message || err);
   // pg errors carry the context needed to debug a bad SQL file.
   for (const key of ["code", "detail", "hint", "position", "where"]) {
