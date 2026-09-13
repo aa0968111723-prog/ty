@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ClipboardPen, ExternalLink, RefreshCw, Send, UserRound } from "lucide-react";
-import { AdminLogin } from "@/components/admin-login";
+import { AdminLogin, type AdminGate } from "@/components/admin-login";
 import {
   LIVE_ACTIVITY_CHOICES,
   LIVE_INTEREST_TOPICS,
@@ -125,6 +125,7 @@ function ChoiceRow({
 
 export function RecruiterQuickfill() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [gate, setGate] = useState<AdminGate | null>(null);
   const [data, setData] = useState<RecruitmentData | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -155,7 +156,10 @@ export function RecruiterQuickfill() {
     const controller = new AbortController();
     fetch("/api/admin/session", { signal: controller.signal })
       .then((response) => response.json())
-      .then((body) => setAuthenticated(body.authenticated === true))
+      .then((body) => {
+        setGate(body);
+        setAuthenticated(body.authenticated === true);
+      })
       .catch(() => {
         if (!controller.signal.aborted) setAuthenticated(false);
       });
@@ -333,7 +337,7 @@ export function RecruiterQuickfill() {
   }
   if (!authenticated) {
     return (
-      <AdminLogin onSuccess={() => setAuthenticated(true)} />
+      <AdminLogin gate={gate} onSuccess={() => setAuthenticated(true)} />
     );
   }
 

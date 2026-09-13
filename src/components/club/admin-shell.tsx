@@ -13,11 +13,12 @@ import {
   MoreHorizontal,
   LogOut,
   Radio,
+  Shield,
   X,
 } from "lucide-react";
 
 export type AdminView =
-  "overview" | "recruitment" | "contacts" | "results" | "podium" | "leaders" | "system" | "pinned";
+  "overview" | "recruitment" | "contacts" | "results" | "podium" | "leaders" | "system" | "pinned" | "security";
 const navigation = [
   { id: "overview", label: "總覽", mobile: "總覽", icon: BarChart3, shortcut: "today" },
   { id: "recruitment", label: "招生戰情", mobile: "戰情", icon: Radio, shortcut: "recruitment" },
@@ -27,6 +28,7 @@ const navigation = [
   { id: "leaders", label: "關主", mobile: "關主", icon: Flag, shortcut: "gatekeepers" },
   { id: "contacts", label: "Google 表單", mobile: "表單", icon: Sheet, shortcut: "form" },
   { id: "system", label: "系統", mobile: "系統", icon: Settings, shortcut: "sync" },
+  { id: "security", label: "安全與登入", mobile: "安全", icon: Shield, shortcut: "security" },
   { id: "pinned", label: "我的釘選", mobile: "釘選", icon: Pin, shortcut: "pinned" },
 ] as const;
 
@@ -94,7 +96,7 @@ export function AdminShell({
           aria-label="更多"
           aria-expanded={moreOpen}
           aria-current={
-            ["leaders", "system", "pinned"].includes(view) || forms ? "page" : undefined
+            ["leaders", "system", "security", "pinned"].includes(view) || forms ? "page" : undefined
           }
           onClick={() => setMoreOpen(true)}
         >

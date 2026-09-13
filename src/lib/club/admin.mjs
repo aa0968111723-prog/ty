@@ -1,6 +1,7 @@
 // @ts-nocheck -- Admin HTTP handlers are covered by scripts/club-admin.test.mjs.
-import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, scryptSync, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
+import { adminServiceEnabled, buildSessionView, issuePasswordLogin, passwordConfig, readV2Session, revokeCurrentV2Session } from "./admin-auth.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured, spreadsheetEditUrl, EXPECTED_SHEET_IDS } from "./sheets.mjs";
 import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
@@ -235,24 +236,25 @@ export function buildDashboard(input = {}) {
 }
 
 function authConfig() {
-  const password = process.env.ADMIN_PASSWORD;
-  const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!password?.trim() || !secret || Buffer.byteLength(secret) < 32) return null;
-  return { password, secret };
+  return passwordConfig();
 }
 
-/** @param {unknown} body @param {number} [status] @param {Record<string, string>} [headers] */
+/** @param {unknown} body @param {number} [status] @param {Record<string, string | string[]>} [headers] */
 function json(body, status = 200, headers = {}) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...SECURITY_HEADERS,
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "private, no-store",
-      "vary": "Cookie",
-      ...headers,
-    },
+  const headerList = new Headers({
+    ...SECURITY_HEADERS,
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "private, no-store",
+    vary: "Cookie",
   });
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === "set-cookie") continue;
+    headerList.set(key, String(value));
+  }
+  const cookies = headers["set-cookie"];
+  if (Array.isArray(cookies)) for (const cookie of cookies) headerList.append("set-cookie", cookie);
+  else if (cookies) headerList.set("set-cookie", cookies);
+  return new Response(JSON.stringify(body), { status, headers: headerList });
 }
 
 /** @param {string} left @param {string} right */
@@ -310,7 +312,8 @@ function sameOrigin(request) {
     expectedOrigin = new URL(request.url).origin;
   }
 
-  return origin === expectedOrigin;
+  const requestOrigin = new URL(request.url).origin;
+  return origin === expectedOrigin || origin === requestOrigin;
 }
 
 /** @param {string} payload @param {{password: string, secret: string}} config */
@@ -322,7 +325,7 @@ function signature(payload, config) {
 }
 
 /** @param {Request} request */
-function authenticated(request) {
+function passwordSession(request) {
   const config = authConfig();
   if (!config) return false;
   const cookies = (request.headers.get("cookie") || "").split(";").map((part) => part.trim());
@@ -342,6 +345,12 @@ function authenticated(request) {
   } catch { return false; }
 }
 
+/** @param {Request} request */
+async function authenticated(request) {
+  if (passwordSession(request)) return true;
+  return Boolean(await readV2Session(request));
+}
+
 /** @param {string} token @param {number} maxAge */
 function cookie(token, maxAge) {
   return `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}; Expires=${new Date(Date.now() + maxAge * 1000).toUTCString()}`;
@@ -352,7 +361,6 @@ export async function handleAdminLogin(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站登入" }, 403);
   const config = authConfig();
-  if (!config) return json({ error: "管理功能尚未啟用" }, 503);
   const ip = clientKey(request);
   if (!rateOk("login:global", 120, 60_000) || !rateOk(`login:${ip}`, 20, 60_000) ||
     !rateOk("failure:global", 90, 900_000, false) || !rateOk(`failure:${ip}`, 5, 900_000, false)) {
@@ -389,27 +397,27 @@ export async function handleAdminLogin(request) {
     return json({ error: "密碼不正確" }, 401);
   }
   limits.delete(`failure:${ip}`);
-  const iat = Math.floor(Date.now() / 1000);
-  const payload = Buffer.from(JSON.stringify({ v: 1, iat, exp: iat + SESSION_SECONDS, nonce: randomBytes(16).toString("hex") })).toString("base64url");
-  return json({ ok: true }, 200, { "set-cookie": cookie(`${payload}.${signature(payload, config)}`, SESSION_SECONDS) });
+  const cookies = await issuePasswordLogin(request);
+  return json({ ok: true }, 200, { "set-cookie": cookies });
 }
 
 /** @param {Request} request */
 export async function handleAdminLogout(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站登出" }, 403);
+  await revokeCurrentV2Session(request);
   return json({ ok: true }, 200, { "set-cookie": cookie("", 0) });
 }
 
 /** @param {Request} request */
 export async function handleAdminSession(request) {
-  return json({ authenticated: authenticated(request) });
+  return json(await buildSessionView(request, { passwordSession: passwordSession(request) }));
 }
 
 /** @param {Request} request */
-function protect(request) {
-  if (!authConfig()) return json({ error: "管理功能尚未啟用" }, 503);
-  if (!authenticated(request)) return json({ error: "請先登入管理後台" }, 401);
+async function protect(request) {
+  if (!adminServiceEnabled()) return json({ error: "管理功能尚未啟用" }, 503);
+  if (!(await authenticated(request))) return json({ error: "請先登入管理後台" }, 401);
   if (!rateOk("read:global", 360, 60_000) || !rateOk(`read:${clientKey(request)}`, 90, 60_000)) {
     return json({ error: "請稍後再試" }, 429, { "Retry-After": "60" });
   }
@@ -417,9 +425,9 @@ function protect(request) {
 }
 
 /** @param {Request} request */
-function protectWrite(request) {
-  if (!authConfig()) return json({ error: "管理功能尚未啟用" }, 503);
-  if (!authenticated(request)) return json({ error: "請先登入管理後台" }, 401);
+async function protectWrite(request) {
+  if (!adminServiceEnabled()) return json({ error: "管理功能尚未啟用" }, 503);
+  if (!(await authenticated(request))) return json({ error: "請先登入管理後台" }, 401);
   if (!sameOrigin(request)) return json({ error: "請從本站送出" }, 403);
   if (!rateOk("write:global", 60, 60_000) || !rateOk(`write:${clientKey(request)}`, 20, 60_000)) {
     return json({ error: "請稍後再試" }, 429, { "Retry-After": "60" });
@@ -479,7 +487,7 @@ function sourceStatus(result) {
 
 /** @param {Request} request */
 export async function handleAdminDashboard(request) {
-  const denied = protect(request);
+  const denied = await protect(request);
   if (denied) return denied;
   const date = queryDate(request);
   if (!date) return json({ error: "日期格式須為有效的 YYYY-MM-DD" }, 400);
@@ -501,7 +509,7 @@ function searchContacts(rows, request) {
 
 /** @param {Request} request @param {"formResponses" | "results"} action */
 async function handleRows(request, action) {
-  const denied = protect(request);
+  const denied = await protect(request);
   if (denied) return denied;
   const date = queryDate(request);
   if (!date) return json({ error: "日期格式須為有效的 YYYY-MM-DD" }, 400);
@@ -559,7 +567,7 @@ function sourceSync(result) {
 export async function handleAdminRecruitment(request) {
   if (request.method === "POST") return handleAdminRecruitmentSubmit(request);
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, { Allow: "GET, POST" });
-  const denied = protect(request);
+  const denied = await protect(request);
   if (denied) return denied;
   const date = queryDate(request);
   if (!date) return json({ error: "日期格式須為有效的 YYYY-MM-DD" }, 400);
@@ -628,7 +636,7 @@ export async function handleAdminRecruitment(request) {
 
 /** @param {Request} request */
 export async function handleAdminRecruitmentSubmit(request) {
-  const denied = protectWrite(request);
+  const denied = await protectWrite(request);
   if (denied) return denied;
   if (!sheetsConfigured("recruitmentResponses")) {
     return json({ error: "招生狀況表尚未設定" }, 503);
