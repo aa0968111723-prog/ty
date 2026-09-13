@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Flag, LayoutDashboard, ListFilter, Medal, RefreshCw, RotateCcw, Sheet, Trophy, Users } from "lucide-react";
+import { Check, ChevronDown, ClipboardPen, Flag, LayoutDashboard, ListFilter, Medal, RefreshCw, RotateCcw, Sheet, Trophy, Users } from "lucide-react";
 import { AdminShell } from "@/components/club/admin-shell";
 import { AdminLogin } from "@/components/admin-login";
 import "@/admin.css";
@@ -383,6 +383,7 @@ function AdminDashboard() {
                 <div>
                   {[
                     ["戰情", Flag, "recruitment", "recruitment"],
+                    ["填表", ClipboardPen, "follow-up", "follow-up"],
                     ["名單", Users, "contacts", "contacts"],
                     ["前三名", Medal, "podium", "ranking"],
                     ["關主", Flag, "leaders", "gatekeepers"],
@@ -390,6 +391,12 @@ function AdminDashboard() {
                     ["成績", Trophy, "results", "results"],
                     ["同步", RefreshCw, "system", "sync"],
                   ].map(([label, Icon, next, shortcut]) => (
+                    shortcut === "follow-up" ? (
+                      <a key="follow-up" href="/follow-up">
+                        <Icon size={21} />
+                        <span>{label as string}</span>
+                      </a>
+                    ) : (
                     <button
                       key={label as string}
                       onClick={() => {
@@ -400,6 +407,7 @@ function AdminDashboard() {
                       <Icon size={21} />
                       <span>{label as string}</span>
                     </button>
+                    )
                   ))}
                 </div>
               </section>

@@ -85,3 +85,4 @@ export function handleAdminDashboard(request: Request): Promise<Response>;
 export function handleAdminFormResponses(request: Request): Promise<Response>;
 export function handleAdminResults(request: Request): Promise<Response>;
 export function handleAdminRecruitment(request: Request): Promise<Response>;
+export function handleAdminRecruitmentSubmit(request: Request): Promise<Response>;
