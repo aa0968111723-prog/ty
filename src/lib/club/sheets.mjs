@@ -119,9 +119,8 @@ export function canonicalSheetAction(action = "results") {
 function envTab(action = "results") {
   const canonical = canonicalSheetAction(action);
   if (canonical === "gameResults") {
-    return configuredValue("GOOGLE_GAME_SHEET_TAB")
-      || configuredValue("GOOGLE_SHEET_TAB")
-      || DEFAULT_TAB_TITLES.gameResults;
+    // Never follow leftover GOOGLE_SHEET_TAB — that name may not exist in the workbook.
+    return configuredValue("GOOGLE_GAME_SHEET_TAB") || DEFAULT_TAB_TITLES.gameResults;
   }
   if (canonical === "recruitmentResponses") {
     return configuredValue("GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB")
@@ -316,6 +315,8 @@ async function listSheetProperties(sheets, spreadsheetId) {
 
 /**
  * Resolve tab title from env, then verify sheetId metadata when available.
+ * Game writes always follow the live gid when that sheet exists — never a
+ * leftover tab name that is missing or points elsewhere.
  * @param {import("googleapis").sheets_v4.Sheets} sheets
  * @param {string} spreadsheetId
  * @param {string} action
@@ -325,26 +326,31 @@ async function resolveTab(sheets, spreadsheetId, action) {
   const configured = envTab(canonical);
   const meta = await listSheetProperties(sheets, spreadsheetId);
   const expectedId = EXPECTED_SHEET_IDS[canonical];
-  const explicitGame = canonical === "gameResults" && configuredValue("GOOGLE_GAME_SHEET_TAB");
+  const byId = expectedId != null ? meta.find((sheet) => sheet.sheetId === expectedId) : null;
+  if (canonical === "gameResults") {
+    if (byId) return byId.title;
+    return DEFAULT_TAB_TITLES.gameResults;
+  }
   const explicitRecruitment = canonical === "recruitmentResponses"
     && configuredValue("GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB");
   const explicitMaster = canonical === "recruitmentMaster"
     && configuredValue("GOOGLE_RECRUITMENT_MASTER_SHEET_TAB");
-  const explicit = Boolean(explicitGame || explicitRecruitment || explicitMaster
+  const explicit = Boolean(explicitRecruitment || explicitMaster
     || (canonical === "formResponses" && configuredValue("GOOGLE_FORM_SHEET_TAB")));
-  if (expectedId != null && !explicit) {
-    const byId = meta.find((sheet) => sheet.sheetId === expectedId);
-    if (byId) return byId.title;
-  }
-  if (meta.length && !meta.some((sheet) => sheet.title === configured)) {
-    const byId = expectedId != null ? meta.find((sheet) => sheet.sheetId === expectedId) : null;
-    if (byId) return byId.title;
-  }
+  if (expectedId != null && !explicit && byId) return byId.title;
+  if (meta.length && !meta.some((sheet) => sheet.title === configured) && byId) return byId.title;
   const productDefault = DEFAULT_TAB_TITLES[canonical];
   if (!explicit && !meta.length && productDefault && configured !== productDefault) {
     return productDefault;
   }
   return configured;
+}
+
+/** @param {number} [sheetId] */
+export function spreadsheetEditUrl(sheetId = EXPECTED_SHEET_IDS.gameResults) {
+  const spreadsheetId = configuredValue("GOOGLE_SHEET_ID");
+  if (!spreadsheetId) return "";
+  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${sheetId}`;
 }
 
 export function invalidateSheetCache() {

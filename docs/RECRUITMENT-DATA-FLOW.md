@@ -54,7 +54,7 @@ Entry ID 於 2026-09-13 自發布頁 HTML `FB_PUBLIC_LOAD_DATA_` 讀出，**不�
 
 新名稱優先，舊名稱後備：
 
-- `GOOGLE_GAME_SHEET_TAB` → 後備 `GOOGLE_SHEET_TAB` → 預設 `09/` + `14後玩遊戲`（sheetId 896311128）
+- `GOOGLE_GAME_SHEET_TAB` → 預設 `09/` + `14後玩遊戲`（sheetId 896311128）。**不要**再用 `GOOGLE_SHEET_TAB` 當遊戲寫入目標；舊值「國際生專區」不在這本試算表裡。
 - `GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB` → 後備 `GOOGLE_FORM_SHEET_TAB`（僅舊 dashboard 表單讀取）→ 招生戰情預設 `招生狀況表`
 - `GOOGLE_RECRUITMENT_MASTER_SHEET_TAB` → 預設 `總表`
 
