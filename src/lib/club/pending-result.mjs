@@ -1,6 +1,16 @@
 const KEY = "club-focus-pending-result-v1";
 const MAX_AGE_MS = 8 * 60 * 60 * 1000;
 
+/** @param {unknown} body @returns {"ok" | "fail" | "local"} */
+export function saveKindFromResponse(body) {
+  const row = body && typeof body === "object" && !Array.isArray(body)
+    ? /** @type {Record<string, unknown>} */ (body)
+    : {};
+  if (row.sheetsOk === true) return "ok";
+  if (row.sheetsConfigured === true) return "fail";
+  return "local";
+}
+
 /** @param {Storage} storage @param {number} [now] */
 export function readPendingResult(storage, now = Date.now()) {
   try {
