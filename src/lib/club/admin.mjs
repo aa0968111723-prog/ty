@@ -2,8 +2,9 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
-import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows } from "./sheets.mjs";
+import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured } from "./sheets.mjs";
 import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
+import { normalizeStaffRecruitmentPayload } from "./recruitment-staff-form.mjs";
 
 /** @typedef {import("./admin").AdminContact} AdminContact */
 /** @typedef {import("./admin").OfficialResult} OfficialResult */
@@ -416,6 +417,45 @@ function protect(request) {
 }
 
 /** @param {Request} request */
+function protectWrite(request) {
+  if (!authConfig()) return json({ error: "管理功能尚未啟用" }, 503);
+  if (!authenticated(request)) return json({ error: "請先登入管理後台" }, 401);
+  if (!sameOrigin(request)) return json({ error: "請從本站送出" }, 403);
+  if (!rateOk("write:global", 60, 60_000) || !rateOk(`write:${clientKey(request)}`, 20, 60_000)) {
+    return json({ error: "請稍後再試" }, 429, { "Retry-After": "60" });
+  }
+  return null;
+}
+
+/** @param {Request} request @param {number} [maxBytes] */
+async function readJsonObject(request, maxBytes = 16_384) {
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+    throw new Error("format");
+  }
+  const reader = request.body?.getReader();
+  if (!reader) throw new Error("format");
+  const chunks = [];
+  let length = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.length;
+      if (length > maxBytes) {
+        await reader.cancel();
+        throw new Error("format");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("format");
+  return parsed;
+}
+
+/** @param {Request} request */
 function queryDate(request) {
   const values = new URL(request.url).searchParams.getAll("date");
   const date = values[0] ?? dateInTaipei(new Date());
@@ -517,6 +557,8 @@ function sourceSync(result) {
 
 /** @param {Request} request */
 export async function handleAdminRecruitment(request) {
+  if (request.method === "POST") return handleAdminRecruitmentSubmit(request);
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, { Allow: "GET, POST" });
   const denied = protect(request);
   if (denied) return denied;
   const date = queryDate(request);
@@ -569,4 +611,47 @@ export async function handleAdminRecruitment(request) {
   }
   recruitmentCache = { at: Date.now(), key: date, body: dashboard };
   return json(dashboard);
+}
+
+/** @param {Request} request */
+export async function handleAdminRecruitmentSubmit(request) {
+  const denied = protectWrite(request);
+  if (denied) return denied;
+  if (!sheetsConfigured("recruitmentResponses")) {
+    return json({ error: "招生狀況表尚未設定" }, 503);
+  }
+  let body;
+  try {
+    body = await readJsonObject(request);
+  } catch {
+    return json({ error: "請提供有效的招生資料" }, 400);
+  }
+  const parsed = normalizeStaffRecruitmentPayload(body, { now: new Date() });
+  if (!parsed.ok) return json({ error: parsed.errors[0] || "請檢查欄位" }, 400);
+  try {
+    const result = await appendRecruitmentResponse(parsed.payload);
+    if (result.row) {
+      lastSourceRows.recruitmentResponses = [
+        ...(lastSourceRows.recruitmentResponses || []),
+        result.row,
+      ];
+    }
+    recruitmentCache = undefined;
+    invalidateSheetCache();
+    const dashboard = buildRecruitmentDashboard({
+      date: dateInTaipei(new Date()),
+      now: new Date(),
+      gameRows: lastSourceRows.gameResults,
+      recruitmentRows: lastSourceRows.recruitmentResponses,
+      masterRows: lastSourceRows.recruitmentMaster,
+    });
+    return json({
+      ok: true,
+      duplicate: Boolean(result.duplicate),
+      saved: Boolean(result.saved && !result.duplicate),
+      pending: dashboard.pending,
+    });
+  } catch {
+    return json({ error: "無法寫入招生狀況表，請稍後重試或改用正式表單" }, 502);
+  }
 }

@@ -1,6 +1,12 @@
 // @ts-nocheck -- Sheets adapter is covered by scripts/club-sheets.test.mjs and api contract tests.
 import { google } from "googleapis";
 import { DEFAULT_SETTINGS } from "./runtime.mjs";
+import {
+  cellsForRecruitmentResponse,
+  ensureRecruitmentResponseHeaders,
+  recruitmentResponseDuplicate,
+  staffRecruitmentRecord,
+} from "./recruitment-staff-form.mjs";
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const SHEET_TIMEOUT_MS = 8_000;
@@ -604,6 +610,85 @@ export function appendOfficialResult(row) {
   const task = writeQueue.then(
     () => saveOfficialResult(row),
     () => saveOfficialResult(row),
+  );
+  writeQueue = task.then(() => undefined, () => undefined);
+  return task;
+}
+
+function assertRecruitmentResponseTab(tab, meta) {
+  if (tab === DEFAULT_TAB_TITLES.recruitmentMaster || tab === "總表") {
+    throw new Error("Staff form must not write 總表");
+  }
+  const sheet = (meta || []).find((item) => item.title === tab);
+  if (sheet?.sheetId === EXPECTED_SHEET_IDS.recruitmentMaster) {
+    throw new Error("Staff form must not write 總表");
+  }
+  if (sheet?.sheetId === EXPECTED_SHEET_IDS.gameResults) {
+    throw new Error("Staff form must not write the game tab");
+  }
+}
+
+/**
+ * Partner-initiated append onto 招生狀況表. Never writes 總表 or the game tab.
+ * @param {ReturnType<import("./recruitment-staff-form.mjs").normalizeStaffRecruitmentPayload>["payload"]} payload
+ * @returns {Promise<{ saved: boolean, duplicate: boolean, reason?: string }>}
+ */
+async function saveRecruitmentResponse(payload) {
+  const { spreadsheetId } = sheetConfig("recruitmentResponses");
+  const sheets = sheetsClient();
+  const tab = await resolveTab(sheets, spreadsheetId, "recruitmentResponses");
+  const meta = await listSheetProperties(sheets, spreadsheetId);
+  assertRecruitmentResponseTab(tab, meta);
+  const values = await getValues(sheets, spreadsheetId, tab);
+  const currentHeaders = Array.isArray(values[0])
+    ? values[0].map((value) => String(cellValue(value) ?? ""))
+    : [];
+  const rows = rowsFromValues(values);
+  const duplicate = recruitmentResponseDuplicate(rows, payload);
+  if (duplicate.duplicate) {
+    return { saved: true, duplicate: true, reason: duplicate.reason };
+  }
+
+  const headers = ensureRecruitmentResponseHeaders(currentHeaders);
+  if (headers.length !== currentHeaders.length || currentHeaders.every((header) => !header)) {
+    const range = rowRange(tab, 1, headers.length);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption: "RAW",
+      requestBody: { range, majorDimension: "ROWS", values: [headers] },
+    }, { timeout: SHEET_TIMEOUT_MS });
+  }
+
+  const record = staffRecruitmentRecord(payload);
+  const cells = cellsForRecruitmentResponse(headers, record);
+  const nextRow = Math.max(values.length + 1, 2);
+  const range = rowRange(tab, nextRow, headers.length);
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: "RAW",
+      data: [{
+        range,
+        majorDimension: "ROWS",
+        values: [cells],
+      }],
+    },
+  }, { timeout: SHEET_TIMEOUT_MS });
+  invalidateSheetCache();
+  /** @type {Record<string, unknown>} */
+  const row = {};
+  headers.forEach((header, index) => {
+    if (header) row[header] = cells[index];
+  });
+  return { saved: true, duplicate: false, reason: "new", row };
+}
+
+/** @param {ReturnType<import("./recruitment-staff-form.mjs").normalizeStaffRecruitmentPayload>["payload"]} payload */
+export function appendRecruitmentResponse(payload) {
+  const task = writeQueue.then(
+    () => saveRecruitmentResponse(payload),
+    () => saveRecruitmentResponse(payload),
   );
   writeQueue = task.then(() => undefined, () => undefined);
   return task;

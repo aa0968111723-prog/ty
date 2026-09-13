@@ -32,7 +32,22 @@ export const LIVE_PREFILL_ENTRIES = Object.freeze({
   joined: "entry.425502120",
   depositPaid: "entry.1491508611",
   depositAmount: "entry.1274494830",
+  birthday: "entry.1517130172",
+  studentId: "entry.1987771282",
+  interest: "entry.399909881",
+  interestTopics: "entry.410882616",
 });
+
+/** Live 2026招生狀況表單-上 titles and choices (published /viewform, 2026-09-13). */
+export const LIVE_NOTE_TITLE = "備註(興趣壓~愛好~喜歡那個活動~或是我們介紹的那個特質";
+export const LIVE_TIER_CHOICES = Object.freeze(["S(已報名)", "A(有興趣再考慮)", "B(還好沒興趣)"]);
+export const LIVE_ACTIVITY_CHOICES = Object.freeze([
+  "9/30茶會", "10/07演講", "社課", "體驗禪", "無(考慮中", "無(沒興趣",
+]);
+export const LIVE_YES_NO = Object.freeze(["是", "否"]);
+export const LIVE_INTEREST_TOPICS = Object.freeze([
+  "靜定力", "專注力", "時間管理", "口才表達", "領導力", "團隊合作", "獨立思考", "自我認識",
+]);
 
 const taipeiDateParts = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Taipei",
@@ -183,6 +198,37 @@ function setMonthDay(params, entry, isoDate) {
   params.set(`${key}_day`, String(Number(match[3])));
 }
 
+/** @param {URLSearchParams} params @param {unknown} entry @param {unknown} isoDate */
+function setYearMonthDay(params, entry, isoDate) {
+  const key = text(entry);
+  const match = text(isoDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!key || !match) return;
+  params.set(`${key}_year`, String(Number(match[1])));
+  params.set(`${key}_month`, String(Number(match[2])));
+  params.set(`${key}_day`, String(Number(match[3])));
+}
+
+/** @param {URLSearchParams} params @param {unknown} entry @param {unknown} values */
+function setChoices(params, entry, values) {
+  const key = text(entry);
+  if (!key || !/^entry\.\d+/.test(key)) return;
+  const list = Array.isArray(values) ? values : [values];
+  for (const value of list) setEntry(params, key, value);
+}
+
+/** @param {unknown} values */
+export function joinSheetChoices(values) {
+  const list = Array.isArray(values) ? values : [values];
+  return list.map((value) => text(value)).filter(Boolean).join(", ");
+}
+
+/** @param {unknown} isoDate */
+export function formatRecruitDateMd(isoDate) {
+  const match = text(isoDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  return `${Number(match[2])}/${Number(match[3])}`;
+}
+
 /**
  * @param {Record<string, unknown>} [candidate]
  * @param {{
@@ -191,6 +237,15 @@ function setMonthDay(params, entry, isoDate) {
  *   recruitedAt?: Date | string,
  *   responderUrl?: string,
  *   entries?: Record<string, string>,
+ *   tier?: string,
+ *   activities?: unknown,
+ *   joined?: string,
+ *   depositPaid?: string,
+ *   depositAmount?: string,
+ *   birthday?: string,
+ *   studentId?: string,
+ *   interest?: string,
+ *   interestTopics?: unknown,
  * }} [options]
  */
 export function generatePrefilledFormUrl(candidate = {}, options = {}) {
@@ -209,6 +264,15 @@ export function generatePrefilledFormUrl(candidate = {}, options = {}) {
   setEntry(params, entries.completedAt, formatCompletedAt(candidateCompletedAt(candidate)));
   setEntry(params, entries.gameGatekeeper, gameGatekeeper);
   setEntry(params, entries.submissionId, candidateSubmissionId(candidate));
+  setEntry(params, entries.tier, options.tier || candidate.tier);
+  setChoices(params, entries.activity, options.activities || candidate.activities || candidate.activity);
+  setEntry(params, entries.joined, options.joined || candidate.joined);
+  setEntry(params, entries.depositPaid, options.depositPaid || candidate.depositPaid);
+  setEntry(params, entries.depositAmount, options.depositAmount || candidate.depositAmount);
+  setYearMonthDay(params, entries.birthday, options.birthday || candidate.birthday);
+  setEntry(params, entries.studentId, options.studentId || candidate.studentId);
+  setEntry(params, entries.interest, options.interest || candidate.interest);
+  setChoices(params, entries.interestTopics, options.interestTopics || candidate.interestTopics);
   return `${base}?${params.toString()}`;
 }
 
