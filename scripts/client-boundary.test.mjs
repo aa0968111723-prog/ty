@@ -15,6 +15,7 @@ const apiRoutes = [
   "src/routes/api/admin/recruitment.ts",
   "src/routes/api/admin/results.ts",
   "src/routes/api/admin/session.ts",
+  "src/routes/api/admin/auth/$.ts",
 ];
 
 describe("client/server bundle boundaries", () => {
@@ -22,7 +23,7 @@ describe("client/server bundle boundaries", () => {
     const sources = await Promise.all(apiRoutes.map((path) => readFile(new URL(path, root), "utf8")));
     for (const source of sources) {
       assert.match(source, /createServerOnlyFn/);
-      assert.doesNotMatch(source, /from ["']@\/lib\/club\/(api|admin)\.mjs["']/);
+      assert.doesNotMatch(source, /from ["']@\/lib\/club\/(api|admin|admin-auth)\.mjs["']/);
     }
   });
 

@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { handleAdminAuth } from "@/lib/club/admin-auth.mjs";
+import { createServerOnlyFn } from "@tanstack/react-start";
+
+const handle = createServerOnlyFn(async ({ request }: { request: Request }) => {
+  const { handleAdminAuth } = await import("@/lib/club/admin-auth.mjs");
+  return handleAdminAuth(request);
+});
 
 export const Route = createFileRoute("/api/admin/auth/$")({
   server: {
     handlers: {
-      GET: ({ request }) => handleAdminAuth(request),
-      POST: ({ request }) => handleAdminAuth(request),
+      GET: handle,
+      POST: handle,
     },
   },
 });
