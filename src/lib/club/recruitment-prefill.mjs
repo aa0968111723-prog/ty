@@ -100,19 +100,29 @@ export function datetimeLocalTaipei(value) {
   return `${iso}T${clock}`;
 }
 
-function candidateSubmissionId(candidate) {
-  return text(candidate?.submissionId || candidate?.latestAttempt?.submissionId).toLowerCase();
+/** @param {Record<string, unknown>} [candidate] */
+function candidateSubmissionId(candidate = {}) {
+  const latest = candidate.latestAttempt && typeof candidate.latestAttempt === "object"
+    ? /** @type {Record<string, unknown>} */ (candidate.latestAttempt)
+    : {};
+  return text(candidate.submissionId || latest.submissionId).toLowerCase();
 }
 
-function candidateCompletedAt(candidate) {
-  return candidate?.completedAt || candidate?.latestAttempt?.completedAt || candidate?.gameCompletedAt || "";
+/** @param {Record<string, unknown>} [candidate] */
+function candidateCompletedAt(candidate = {}) {
+  const latest = candidate.latestAttempt && typeof candidate.latestAttempt === "object"
+    ? /** @type {Record<string, unknown>} */ (candidate.latestAttempt)
+    : {};
+  return candidate.completedAt || latest.completedAt || candidate.gameCompletedAt || "";
 }
 
-export function departmentGradeOf(candidate) {
-  return [text(candidate?.department), text(candidate?.grade)].filter(Boolean).join("");
+/** @param {Record<string, unknown>} [candidate] */
+export function departmentGradeOf(candidate = {}) {
+  return [text(candidate.department), text(candidate.grade)].filter(Boolean).join("");
 }
 
-export function buildGameMetadataNote(candidate, extraNotes = "") {
+/** @param {Record<string, unknown>} [candidate] @param {unknown} [extraNotes] */
+export function buildGameMetadataNote(candidate = {}, extraNotes = "") {
   const lines = [
     `遊戲完成：${formatCompletedAt(candidateCompletedAt(candidate))}`,
     `遊戲關主：${text(candidate?.gameGatekeeper)}`,
@@ -125,6 +135,7 @@ export function buildGameMetadataNote(candidate, extraNotes = "") {
   return extra ? `${lines.join("\n")}\n${extra}` : lines.join("\n");
 }
 
+/** @param {unknown} value */
 export function parseGameMetadataNote(value) {
   const raw = text(value);
   return {
@@ -134,11 +145,15 @@ export function parseGameMetadataNote(value) {
   };
 }
 
+/** @param {unknown} overrides @returns {Record<string, string>} */
 function mergeEntries(overrides) {
-  const extra = overrides && typeof overrides === "object" && !Array.isArray(overrides) ? overrides : {};
+  const extra = overrides && typeof overrides === "object" && !Array.isArray(overrides)
+    ? /** @type {Record<string, string>} */ (overrides)
+    : {};
   return { ...LIVE_PREFILL_ENTRIES, ...extra };
 }
 
+/** @param {URLSearchParams} params @param {unknown} entry @param {unknown} value */
 function setEntry(params, entry, value) {
   const key = text(entry);
   const raw = text(value);
@@ -146,6 +161,7 @@ function setEntry(params, entry, value) {
   params.set(key, raw);
 }
 
+/** @param {URLSearchParams} params @param {unknown} entry @param {unknown} recruiter */
 function setRecruiter(params, entry, recruiter) {
   const key = text(entry);
   const name = text(recruiter);
@@ -158,6 +174,7 @@ function setRecruiter(params, entry, recruiter) {
   params.append(`${key}.other_option_response`, name);
 }
 
+/** @param {URLSearchParams} params @param {unknown} entry @param {unknown} isoDate */
 function setMonthDay(params, entry, isoDate) {
   const key = text(entry);
   const match = text(isoDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -167,7 +184,7 @@ function setMonthDay(params, entry, isoDate) {
 }
 
 /**
- * @param {Record<string, unknown>} candidate
+ * @param {Record<string, unknown>} [candidate]
  * @param {{
  *   recruiter?: string,
  *   extraNotes?: string,
@@ -192,12 +209,10 @@ export function generatePrefilledFormUrl(candidate = {}, options = {}) {
   setEntry(params, entries.completedAt, formatCompletedAt(candidateCompletedAt(candidate)));
   setEntry(params, entries.gameGatekeeper, gameGatekeeper);
   setEntry(params, entries.submissionId, candidateSubmissionId(candidate));
-  if (recruiter && recruiter === gameGatekeeper) {
-    /* Recruiter may equal the booth leader; still never replace gameGatekeeper. */
-  }
   return `${base}?${params.toString()}`;
 }
 
+/** @param {unknown} url */
 export function prefillUsesViewform(url) {
   const raw = text(url);
   return /\/viewform(?:\?|$)/.test(raw) && !isFormsGleUrl(raw.split("?")[0]);

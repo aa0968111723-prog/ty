@@ -50,12 +50,12 @@ test("prefill uses the full viewform URL and live entry IDs, never forms.gle", (
   assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.recruiter), "柏能");
   assert.equal(parsed.searchParams.get(`${LIVE_PREFILL_ENTRIES.recruitDate}_month`), "9");
   assert.equal(parsed.searchParams.get(`${LIVE_PREFILL_ENTRIES.recruitDate}_day`), "14");
-  const note = parsed.searchParams.get(LIVE_PREFILL_ENTRIES.note);
+  const note = parsed.searchParams.get(LIVE_PREFILL_ENTRIES.note) || "";
   const meta = parseGameMetadataNote(note);
   assert.equal(meta.gameGatekeeper, "安倢");
   assert.equal(meta.submissionId, candidate.submissionId);
   assert.match(meta.completedAt, /2026/);
-  assert.equal(note.includes("柏能") && meta.gameGatekeeper === "柏能", false);
+  assert.match(note, /遊戲關主：安倢/);
 });
 
 test("custom recruiter uses Other; original game gatekeeper stays in notes", () => {
