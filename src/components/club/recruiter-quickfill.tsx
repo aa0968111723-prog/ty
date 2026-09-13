@@ -401,7 +401,7 @@ export function RecruiterQuickfill() {
           ) : (
             <div className="admin-person-list recruitment-pending">
               {pending.map((row) => (
-                <article key={row.personKey}>
+                <article key={row.submissionId || row.personKey}>
                   <div>
                     <strong>{row.name}</strong>
                     <span className="admin-badge">{row.gameGatekeeper || "未分類"}</span>
