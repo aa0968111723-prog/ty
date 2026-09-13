@@ -630,6 +630,10 @@ export async function handleAdminRecruitmentSubmit(request) {
   if (!parsed.ok) return json({ error: parsed.errors[0] || "請檢查欄位" }, 400);
   try {
     const result = await appendRecruitmentResponse(parsed.payload);
+    const completedAt = timestamp(parsed.payload.completedAt);
+    const effectiveDate = completedAt
+      ? dateInTaipei(new Date(completedAt))
+      : dateInTaipei(new Date());
     if (result.row) {
       lastSourceRows.recruitmentResponses = [
         ...(lastSourceRows.recruitmentResponses || []),
@@ -639,7 +643,7 @@ export async function handleAdminRecruitmentSubmit(request) {
     recruitmentCache = undefined;
     invalidateSheetCache();
     const dashboard = buildRecruitmentDashboard({
-      date: dateInTaipei(new Date()),
+      date: effectiveDate,
       now: new Date(),
       gameRows: lastSourceRows.gameResults,
       recruitmentRows: lastSourceRows.recruitmentResponses,
