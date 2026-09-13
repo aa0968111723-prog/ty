@@ -255,6 +255,9 @@ export function createMemoryStore() {
     async listAudit(userId) {
       return audit.filter((row) => !userId || row.userId === userId).map(clone);
     },
+    async ping() {
+      return true;
+    },
   };
 }
 
@@ -507,6 +510,10 @@ export function createSqlStore(query) {
         success: Boolean(row.success), createdAt: toIso(row.created_at),
       }));
     },
+    async ping() {
+      await query("select 1 from admin_users limit 0");
+      return true;
+    },
   };
 }
 
@@ -515,17 +522,21 @@ export async function ensureAdminAuthStore() {
     store ??= createMemoryStore();
     return store;
   }
-  if (store && store.__pg) return store;
+  if (store && (store.__pg || store.__memoryFallback)) return store;
   try {
     const { bindPostgresAdminAuthStore } = await import("./admin-auth-pg.ts");
     const pgStore = await bindPostgresAdminAuthStore();
     if (pgStore) {
+      await pgStore.ping();
       store = pgStore;
       store.__pg = true;
+      return store;
     }
   } catch {
-    store ??= createMemoryStore();
+    // Unreachable or unmigrated DATABASE_URL must not block booth login.
   }
+  store = createMemoryStore();
+  store.__memoryFallback = true;
   return store;
 }
 
