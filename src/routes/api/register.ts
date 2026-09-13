@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { handleRegister } from "@/lib/club/api.mjs";
+import { createServerOnlyFn } from "@tanstack/react-start";
 
-const handle = ({ request }: { request: Request }) => handleRegister(request);
+const handle = createServerOnlyFn(async ({ request }: { request: Request }) => {
+  const { handleRegister } = await import("@/lib/club/api.mjs");
+  return handleRegister(request);
+});
 
 export const Route = createFileRoute("/api/register")({
   server: { handlers: { POST: handle } },

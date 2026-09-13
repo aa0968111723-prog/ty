@@ -108,7 +108,7 @@ export function pointsForHit(combo) {
 export const CLUB_NAME = "淡江大學禪學社";
 export const CONTACT_EMAIL = "tkuzen@example.com";
 export const PRIVACY_COPY =
-  "成績與有沒有拿到手搖杯，都不會在網站公開。電話只用來聯絡得獎。資料只用於本次活動。試玩不登記、不抽獎。";
+  "公開榜只顯示遮罩姓名、分數、正確率、稱號與時間。電話與完整姓名只在管理後台查看。資料只用於本次活動。試玩不登記、不抽獎。";
 
 export const COLORS = [
   { id: "red", label: "紅", hex: "#DC2626" },

@@ -99,7 +99,7 @@ export function taipeiDate(value) {
 export function formatCompletedAt(value) {
   const date = value instanceof Date ? value : new Date(String(value ?? ""));
   if (!Number.isFinite(date.getTime())) return text(value);
-  return taipeiDateTimeParts.format(date).replace(/\//g, "/");
+  return taipeiDateTimeParts.format(date);
 }
 
 /** @param {unknown} value */

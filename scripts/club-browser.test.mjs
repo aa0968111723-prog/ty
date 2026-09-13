@@ -82,6 +82,25 @@ test(
           );
         }
         await assertScroll("register");
+        await page.route("**/api/leaderboard**", (route) =>
+          route.fulfill({
+            json: {
+              ok: true, public: true, scope: "today", date: "2026-09-13",
+              generatedAt: "2026-09-13T10:00:00.000Z", count: 1,
+              topThree: [{ rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" }],
+              rows: [{ rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" }],
+            },
+          }),
+        );
+        await page.locator("[data-leaderboard-nav]").click();
+        await page.locator("[data-leaderboard-page]").waitFor();
+        assert.equal(await page.locator("[data-scope=today]").count(), 1);
+        assert.equal(await page.locator("[data-leaderboard-podium]").count(), 1);
+        assert.equal(await page.locator("[data-leaderboard-list]").count(), 1);
+        await capture(page, `leaderboard-${width}`);
+        await assertScroll("leaderboard");
+        await page.goto(base);
+        await page.locator("[data-register=official]").waitFor();
         await page.getByRole("button", { name: "管理員登入", exact: true }).click();
         assert.equal(await page.getByRole("dialog").count(), 1);
         await capture(page, `login-${width}`);
@@ -299,10 +318,11 @@ test(
         return route.fulfill({ json: data });
       });
       await page.goto(`${origin}/follow-up`);
-      await page.getByRole("heading", { name: /我是哪一位接引人/ }).waitFor();
+      await page.getByRole("heading", { name: /這位有緣人的接引人/ }).waitFor();
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await page.getByRole("button", { name: "柏能", exact: true }).click();
       await page.getByRole("button", { name: "跟進這位同學" }).click();
+      assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
       const href = await page.locator("[data-quickfill=open-form]").getAttribute("href");
       assert.match(String(href), /\/viewform\?/);
       assert.doesNotMatch(String(href), /forms\.gle/);
@@ -323,11 +343,15 @@ test(
       await page.getByRole("status").waitFor();
       assert.equal(submitted.length, 1);
       assert.equal(submitted[0].recruiter, "柏能");
+      assert.equal(submitted[0].submissionId, pendingStudent._submissionId);
       assert.equal(submitted[0].gameGatekeeper, "安倢");
       assert.equal(submitted[0].tier, "S(已報名)");
       assert.ok(submitted[0].activities.includes("9/30茶會"));
       assert.equal(await page.getByRole("button", { name: "跟進這位同學" }).count(), 0);
       assert.equal(await page.locator("[data-quickfill=open-form]").count(), 0);
+      const backoffice = page.locator("[data-quickfill=open-backoffice]");
+      assert.equal(await backoffice.count(), 1);
+      assert.equal(await backoffice.getAttribute("href"), "/admin?view=recruitment");
       await capture(page, "follow-up-390");
       assert.deepEqual(errors, []);
       await context.close();

@@ -32,7 +32,7 @@ const taipeiTimestamp = new Intl.DateTimeFormat("zh-TW", {
 function staffTimestamp(value) {
   const raw = value instanceof Date ? value : new Date(String(value ?? ""));
   if (!Number.isFinite(raw.getTime())) return String(value ?? "");
-  return taipeiTimestamp.format(raw).replace(/\//g, "/");
+  return taipeiTimestamp.format(raw);
 }
 
 export const STAFF_FORM_SYNC_VERSION = "1";
