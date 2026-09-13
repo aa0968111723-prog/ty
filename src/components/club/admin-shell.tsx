@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { BrandLogo } from "./brand-logo";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   BarChart3,
@@ -64,7 +65,7 @@ export function AdminShell({
     <main className="admin-page">
       <aside className="admin-sidebar">
         <a className="admin-brand" href="/">
-          <img src="/club-icon-3d-192.png" alt="" width="44" height="44" />
+          <BrandLogo />
           <span>
             淡江禪學社<small>活動工作台</small>
           </span>
@@ -81,7 +82,7 @@ export function AdminShell({
       </aside>
       <div className="admin-mobile-top">
         <a className="club-brand" href="/">
-          <img src="/club-icon-3d-192.png" alt="" width="40" height="40" />
+          <BrandLogo size={40} />
           淡江禪學社
         </a>
         <span>活動工作台</span>

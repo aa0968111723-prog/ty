@@ -1,5 +1,6 @@
 import { createLiveGame, publicResult } from "@/lib/club/runtime.mjs";
 import { ClubHeader } from "./club-header";
+import { BrandLogo } from "./brand-logo";
 import {
   TEXT,
   resultTitle,
@@ -40,7 +41,7 @@ export function ResultScreen({
       <div className="result-sheet" data-result="1">
         <ClubHeader language={language} onLanguage={onLanguage} />
         <div className="result-content">
-          <img className="result-mascot" src="/club-logo.png" width="120" height="120" alt="" />
+          <BrandLogo className="result-mascot" size={120} />
           <div className="score-xl" data-result-score>
             {payload.score}
           </div>
