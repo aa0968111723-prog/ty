@@ -12,7 +12,7 @@ import { RecruitmentDashboard, RecruitmentSync, type RecruitmentData } from "@/c
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "禪學社戰情｜淡江大學禪學社" },
+      { title: "禪學社專注力挑戰｜淡江大學禪學社" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
