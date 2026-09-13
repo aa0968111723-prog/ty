@@ -82,6 +82,10 @@ function toggleValue(list: string[], value: string) {
   return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }
 
+function candidateKey(row: Pick<Candidate, "personKey" | "submissionId">) {
+  return row.submissionId || row.personKey;
+}
+
 function ChoiceRow({
   label,
   choices,
@@ -214,7 +218,7 @@ export function RecruiterQuickfill() {
 
   useEffect(() => {
     if (!selectedKey) return;
-    if (!pending.some((row) => row.personKey === selectedKey)) {
+    if (!pending.some((row) => candidateKey(row) === selectedKey)) {
       setSelectedKey("");
       setDraft(null);
     }
@@ -229,7 +233,7 @@ export function RecruiterQuickfill() {
   }
 
   const chooseStudent = useCallback((row: Candidate) => {
-    setSelectedKey(row.personKey);
+    setSelectedKey(candidateKey(row));
     setDraft({
       ...row,
       completedAt: row.completedAt || row.gameCompletedAt,
@@ -401,7 +405,7 @@ export function RecruiterQuickfill() {
           ) : (
             <div className="admin-person-list recruitment-pending">
               {pending.map((row) => (
-                <article key={row.submissionId || row.personKey}>
+                <article key={candidateKey(row)}>
                   <div>
                     <strong>{row.name}</strong>
                     <span className="admin-badge">{row.gameGatekeeper || "未分類"}</span>
