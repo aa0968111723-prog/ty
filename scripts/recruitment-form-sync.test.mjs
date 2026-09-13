@@ -11,6 +11,11 @@ test("Apps Script source exposes required handlers without service-account JSON"
   assert.match(script, /function validateRecruitmentFormStructure\(/);
   assert.match(script, /function rebuildGatekeeperSections\(/);
   assert.match(script, /function buildPrefilledFormUrl\(/);
+  assert.match(script, /\/viewform/);
+  assert.doesNotMatch(script, /forms\.gle/);
+  assert.match(script, /entry\.887514514/);
+  assert.match(script, /_gameCompletedAt/);
+  assert.match(script, /recruitParseMetadata_/);
   assert.doesNotMatch(script, /private_key/);
   assert.doesNotMatch(script, /BEGIN PRIVATE KEY/);
   assert.match(script, /PropertiesService/);

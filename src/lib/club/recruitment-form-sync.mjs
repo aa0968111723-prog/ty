@@ -172,12 +172,30 @@ export function parseSubmittedStudent(e) {
   };
   const student = pickIncludes(FORM_QUESTION_TITLES.student);
   const gatekeeper = pickIncludes(FORM_QUESTION_TITLES.gameGatekeeper)
-    || pick("接引人(可複選)");
+    || pick("遊戲關主");
+  const recruiter = pick("接引人(可複選)") || pick("接引人");
   const decoded = decodeStudentChoice(student);
+  const notes = pickIncludes("備註");
+  const fromNotes = parsePrefillMetadata(notes);
   return {
     studentChoice: student,
-    gameGatekeeper: normalizeGatekeeper(gatekeeper) || gatekeeper,
-    ...decoded,
+    officialRecruiter: recruiter,
+    gameGatekeeper: normalizeGatekeeper(gatekeeper) || fromNotes.gameGatekeeper || "",
+    notes,
+    completedAt: fromNotes.completedAt,
+    submissionId: decoded.submissionId || fromNotes.submissionId,
+    personKey: decoded.personKey,
+    placeholder: decoded.placeholder,
+    label: decoded.label,
+  };
+}
+
+export function parsePrefillMetadata(value) {
+  const raw = text(value);
+  return {
+    completedAt: (raw.match(/遊戲完成[：:]\s*([^\n]+)/u) || [])[1]?.trim() || "",
+    gameGatekeeper: (raw.match(/遊戲關主[：:]\s*([^\n]+)/u) || [])[1]?.trim() || "",
+    submissionId: ((raw.match(/submissionId[：:]\s*([0-9a-f-]{8,})/i) || [])[1] || "").toLowerCase(),
   };
 }
 

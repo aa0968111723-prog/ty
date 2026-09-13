@@ -8,6 +8,7 @@ import {
   handleAdminDashboard, handleAdminFormResponses, handleAdminResults,
   handleAdminRecruitment,
 } from "../src/lib/club/admin.mjs";
+import { DEFAULT_TAB_TITLES, EXPECTED_SHEET_IDS } from "../src/lib/club/sheets.mjs";
 import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
 
 const origin = "https://leader-dna-mcp-a7k2.zeabur.app";
@@ -137,6 +138,9 @@ test("admin authentication and private read API contracts with mocked Google onl
   process.env.GOOGLE_SHEET_TAB = "results";
   process.env.GOOGLE_FORM_SHEET_TAB = "forms";
   process.env.GOOGLE_GAME_SHEET_TAB = "results";
+  process.env.GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB = "forms";
+  process.env.GOOGLE_RECRUITMENT_MASTER_SHEET_TAB = "forms";
+  process.env.GOOGLE_GAME_SHEET_TAB = "results";
   process.env.GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB = "招生狀況表";
   process.env.GOOGLE_RECRUITMENT_MASTER_SHEET_TAB = "總表";
   const calls = [];
@@ -187,6 +191,11 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.ok("pending" in recruitment);
   assert.ok("funnel" in recruitment);
   assert.ok("summary" in recruitment);
+  assert.ok(Array.isArray(recruitment.pending));
+  if (recruitment.pending.length) {
+    assert.match(String(recruitment.pending[0].prefillUrl), /\/viewform\?/);
+    assert.doesNotMatch(String(recruitment.pending[0].prefillUrl), /forms\.gle/);
+  }
   assert.equal((await handleAdminRecruitment(request("recruitment"))).status, 401);
   assert.equal((await handleAdminFormResponses(request("form-responses", { cookie }))).status, 502);
   t.mock.method(google, "sheets", () => ({
@@ -231,4 +240,99 @@ test("admin authentication and private read API contracts with mocked Google onl
     assert.equal((await handleAdminLogin(request("login", { body: { password: "wrong" }, headers: { "x-forwarded-for": "rate-fixture" } }))).status, 401);
   }
   assert.equal((await handleAdminLogin(request("login", { body: { password: process.env.ADMIN_PASSWORD }, headers: { "x-forwarded-for": "rate-fixture" } }))).status, 429);
+});
+
+test("staff recruitment POST requires admin session and only appends 招生狀況表", async (t) => {
+  const names = ["ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "PUBLIC_ORIGIN", "GOOGLE_SERVICE_ACCOUNT_JSON",
+    "GOOGLE_SHEET_ID", "GOOGLE_GAME_SHEET_TAB", "GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB",
+    "GOOGLE_RECRUITMENT_MASTER_SHEET_TAB"];
+  const before = names.map((name) => process.env[name]);
+  t.after(() => names.forEach((name, i) => {
+    if (before[i] === undefined) delete process.env[name]; else process.env[name] = before[i];
+  }));
+  process.env.ADMIN_PASSWORD = randomBytes(24).toString("hex");
+  process.env.ADMIN_SESSION_SECRET = randomBytes(32).toString("hex");
+  process.env.PUBLIC_ORIGIN = origin;
+  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
+    client_email: "staff@example.test",
+    private_key: "test\\nkey",
+  });
+  process.env.GOOGLE_SHEET_ID = "fixture-sheet";
+  process.env.GOOGLE_GAME_SHEET_TAB = DEFAULT_TAB_TITLES.gameResults;
+  process.env.GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB = "招生狀況表";
+  process.env.GOOGLE_RECRUITMENT_MASTER_SHEET_TAB = "總表";
+  const login = await handleAdminLogin(request("login", { body: { password: process.env.ADMIN_PASSWORD } }));
+  const cookie = login.headers.get("set-cookie").split(";")[0];
+  const body = {
+    recruiter: "柏能",
+    name: "王小明",
+    phone: "0912345678",
+    department: "歷史學系",
+    grade: "大一",
+    gameGatekeeper: "安倢",
+    completedAt: "2026-09-14T06:32:00.000Z",
+    submissionId: "11111111-1111-4111-8111-111111111111",
+    tier: "S(已報名)",
+    activities: ["9/30茶會"],
+    joined: "否",
+    depositPaid: "否",
+  };
+  assert.equal((await handleAdminRecruitment(request("recruitment", { body }))).status, 401);
+  assert.equal((await handleAdminRecruitment(request("recruitment", {
+    body, cookie, omitOrigin: true,
+  }))).status, 403);
+  assert.equal((await handleAdminRecruitment(request("recruitment", {
+    body, cookie, headers: { origin: "https://evil.example.com" },
+  }))).status, 403);
+  const values = [[
+    "時間戳記", "接引人(可複選)", "同學的姓名", "同學電話/LINE", "這位同學是屬於那個分級呢:-)",
+  ]];
+  const ranges = [];
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: {
+      get: async () => ({
+        data: {
+          sheets: [
+            { properties: { title: "總表", sheetId: EXPECTED_SHEET_IDS.recruitmentMaster } },
+            { properties: { title: "招生狀況表", sheetId: EXPECTED_SHEET_IDS.recruitmentResponses } },
+            { properties: { title: DEFAULT_TAB_TITLES.gameResults, sheetId: EXPECTED_SHEET_IDS.gameResults } },
+          ],
+        },
+      }),
+      values: {
+        get: async (params) => {
+          ranges.push(params.range);
+          return { data: { values } };
+        },
+        update: async (params) => {
+          ranges.push(params.range);
+          values[0] = [...params.requestBody.values[0]];
+          return { data: {} };
+        },
+        batchUpdate: async (params) => {
+          ranges.push(params.requestBody.data[0].range);
+          values.push([...params.requestBody.data[0].values[0]]);
+          return { data: {} };
+        },
+      },
+    },
+  }));
+  const response = await handleAdminRecruitment(request("recruitment", { body, cookie }));
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.duplicate, false);
+  assert.ok(ranges.every((range) => String(range).includes("招生狀況表")));
+  assert.ok(ranges.every((range) => !String(range).includes("總表")));
+  assert.ok(ranges.every((range) => !String(range).includes(DEFAULT_TAB_TITLES.gameResults)));
+  const saved = Object.fromEntries(values[0].map((header, index) => [header, values[1][index]]));
+  assert.equal(saved["同學的姓名"], "王小明");
+  assert.equal(saved["接引人(可複選)"], "柏能");
+  assert.equal(saved._gameGatekeeper, "安倢");
+  assert.ok(!JSON.stringify(payload).includes("private_key"));
+  const missingName = await handleAdminRecruitment(request("recruitment", {
+    body: { ...body, name: "" }, cookie,
+  }));
+  assert.equal(missingName.status, 400);
 });

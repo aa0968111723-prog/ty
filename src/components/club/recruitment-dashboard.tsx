@@ -28,7 +28,14 @@ export type RecruitmentData = {
     fromStart: number | null;
     missing?: boolean;
   }>;
-  pending: Array<RecruitmentProfile & { waitMinutes: number | null; score: number; prefillUrl: string; gameGatekeeper: string }>;
+  pending: Array<RecruitmentProfile & {
+    waitMinutes: number | null;
+    score: number;
+    prefillUrl: string;
+    gameGatekeeper: string;
+    completedAt?: string;
+    submissionId?: string;
+  }>;
   profiles: RecruitmentProfile[];
   gameGatekeepers: Array<{
     name: string;
@@ -177,8 +184,9 @@ export function RecruitmentDashboard({
       <section className="admin-panel">
         <div className="admin-section-heading">
           <h2>待追蹤</h2>
-          <span className="admin-caption">{pending.length} 位尚未填招生表單</span>
+          <a className="admin-primary" href="/follow-up">接引人快速填表</a>
         </div>
+        <p className="admin-caption">{pending.length} 位尚未填招生表單 · 遊戲關主與接引人分開填</p>
         {!pending.length ? (
           <p className="admin-empty">這時段沒有待追蹤同學</p>
         ) : (
@@ -193,8 +201,11 @@ export function RecruitmentDashboard({
                 <p>{row.phone || "電話未填"}</p>
                 <small>{waitLabel(row.waitMinutes)} · {row.score?.toLocaleString?.() ?? row.score} 分</small>
                 <div className="recruitment-actions">
-                  <a className="admin-primary" href={row.prefillUrl} target="_blank" rel="noreferrer">
-                    填招生資料 <ExternalLink size={16} />
+                  <a className="admin-primary" href={`/follow-up`}>
+                    接引人快速填表
+                  </a>
+                  <a href={row.prefillUrl} target="_blank" rel="noreferrer">
+                    直接開表單 <ExternalLink size={16} />
                   </a>
                   <button type="button" onClick={() => setProfile(row)}>時間線</button>
                 </div>

@@ -262,6 +262,92 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", async (route) => {
+        if (new URL(route.request().url()).origin !== origin) {
+          await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+        } else await route.continue();
+      });
+      await page.route("**/api/result", (route) => route.fulfill({ json: { ok: true, saved: false } }));
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      const pendingStudent = {
+        姓名: "待跟進甲",
+        電話: "0911111111",
+        科系: "歷史學系",
+        年級: "大一",
+        遊戲關主: "安倢",
+        分數: 600,
+        答對: 5,
+        答錯: 0,
+        正確率: 100,
+        最佳連續: 5,
+        遊戲秒數: 60,
+        遊戲時間: "2026-09-14T06:32:00.000Z",
+        _submissionId: "11111111-1111-4111-8111-111111111111",
+        _kind: "official",
+        _skipSave: false,
+      };
+      const submitted = [];
+      await page.route("**/api/admin/recruitment**", async (route) => {
+        if (route.request().method() === "POST") {
+          submitted.push(route.request().postDataJSON());
+          return route.fulfill({ json: { ok: true, duplicate: false, pending: [] } });
+        }
+        const date = new URL(route.request().url()).searchParams.get("date");
+        const data = buildRecruitmentDashboard({
+          date,
+          gameRows: submitted.length ? [] : [pendingStudent],
+          recruitmentRows: submitted.length ? [{
+            同學的姓名: pendingStudent.姓名,
+            "同學電話/LINE": pendingStudent.電話,
+            _gameSubmissionId: pendingStudent._submissionId,
+          }] : [],
+          masterRows: [],
+        });
+        return route.fulfill({ json: data });
+      });
+      await page.goto(`${origin}/follow-up`);
+      await page.getByRole("heading", { name: /我是哪一位接引人/ }).waitFor();
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await page.getByRole("button", { name: "柏能", exact: true }).click();
+      await page.getByRole("button", { name: "跟進這位同學" }).click();
+      const href = await page.locator("[data-quickfill=open-form]").getAttribute("href");
+      assert.match(String(href), /\/viewform\?/);
+      assert.doesNotMatch(String(href), /forms\.gle/);
+      assert.match(decodeURIComponent(String(href)), /同學|王小明|待跟進甲|entry\.887514514/);
+      assert.match(decodeURIComponent(String(href)), /遊戲關主：安倢/);
+      assert.match(String(href), /entry\.1318284482=/);
+      await page.getByRole("button", { name: "這位同學是屬於那個分級呢:-) S(已報名)" }).click();
+      await page.getByRole("button", { name: "報名了那個活動 9/30茶會" }).click();
+      await page.getByRole("button", { name: "是否入社 否" }).click();
+      await page.getByRole("button", { name: "保證金是否繳費 否" }).click();
+      const submit = page.locator("[data-quickfill=submit]");
+      const tap = await submit.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        return { height: box.height, width: box.width };
+      });
+      assert.ok(tap.height >= 44);
+      await submit.click();
+      await page.getByRole("status").waitFor();
+      assert.equal(submitted.length, 1);
+      assert.equal(submitted[0].recruiter, "柏能");
+      assert.equal(submitted[0].gameGatekeeper, "安倢");
+      assert.equal(submitted[0].tier, "S(已報名)");
+      assert.ok(submitted[0].activities.includes("9/30茶會"));
+      assert.equal(await page.getByRole("button", { name: "跟進這位同學" }).count(), 0);
+      assert.equal(await page.locator("[data-quickfill=open-form]").count(), 0);
+      await capture(page, "follow-up-390");
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test(
       "warmup, pointer-only scoring, expiry, retry and reload keep a single entry ID",
       async () => {

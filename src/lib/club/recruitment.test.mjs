@@ -13,6 +13,7 @@ import {
 import {
   applyLastKnownGood,
   markSubmissionDuplicate,
+  parsePrefillMetadata,
   parseSubmittedStudent,
   planRecruitmentFormSync,
   snapshotFormStructure,
@@ -133,17 +134,25 @@ test("master rows keep 總表 schema and parse 系級-derived fields", () => {
   assert.equal(responses[0].grade, "大三");
 });
 
-test("prefill URL keeps responder fallback when entry map is absent", () => {
+test("prefill URL uses /viewform even when a forms.gle short link is configured", () => {
   const url = buildPrefilledFormUrl({
     name: "王小明",
     phone: "0912345678",
     department: "歷史學系",
     grade: "大一",
-    gameGatekeeper: "柏能",
+    gameGatekeeper: "安倢",
     latestAttempt: { submissionId: "x", completedAt: "2026-09-14T06:32:00.000Z" },
     personKey: "phone:0912345678",
-  }, { responderUrl: "https://forms.gle/CBmNvkcvSQMzvh9X7" });
-  assert.equal(url, "https://forms.gle/CBmNvkcvSQMzvh9X7");
+    submissionId: "x",
+    completedAt: "2026-09-14T06:32:00.000Z",
+  }, { responderUrl: "https://forms.gle/CBmNvkcvSQMzvh9X7", recruiter: "柏能" });
+  assert.match(url, /\/viewform\?/);
+  assert.doesNotMatch(url, /forms\.gle/);
+  assert.match(url, /entry\.887514514=/);
+  assert.match(url, /entry\.1318284482=.*%E6%9F%8F%E8%83%BD|entry\.1318284482=%E6%9F%8F%E8%83%BD/);
+  const note = decodeURIComponent(url);
+  assert.match(note, /遊戲關主：安倢/);
+  assert.doesNotMatch(note.split("遊戲關主：")[1], /^柏能/);
 });
 
 test("form plan never deletes preserved recruitment questions and keeps last-known-good on failure", () => {
@@ -187,6 +196,16 @@ test("same submission processed twice is duplicate and does not create a second 
   });
   assert.equal(parsed.submissionId, "sid-a");
   assert.equal(parsed.personKey, "phone:0912345678");
+  const mixed = parseSubmittedStudent({
+    namedValues: {
+      "接引人(可複選)": "柏能",
+      備註: "遊戲完成：2026/09/14 14:32\n遊戲關主：安倢\nsubmissionId：aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    },
+  });
+  assert.equal(mixed.officialRecruiter, "柏能");
+  assert.equal(mixed.gameGatekeeper, "安倢");
+  assert.equal(mixed.submissionId, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  assert.equal(parsePrefillMetadata(mixed.notes).gameGatekeeper, "安倢");
   const sectioned = parseSubmittedStudent({
     namedValues: {
       本次遊戲關主: ["柏能"],
@@ -195,6 +214,29 @@ test("same submission processed twice is duplicate and does not create a second 
   });
   assert.equal(sectioned.submissionId, "sid-a");
   assert.equal(sectioned.gameGatekeeper, "柏能");
+});
+
+test("phone match removes candidate even without submissionId on the form row", () => {
+  const player = game({
+    姓名: "電話去重",
+    電話: "0910000009",
+    _submissionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01",
+  });
+  const other = game({
+    姓名: "仍待跟進",
+    電話: "0910000010",
+    _submissionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee02",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [player, other],
+    recruitmentRows: [{
+      同學的姓名: "電話去重",
+      "同學電話/LINE": "0910-000-009",
+    }],
+    masterRows: [],
+  });
+  assert.deepEqual(data.pending.map((row) => row.name), ["仍待跟進"]);
 });
 
 test("practice-like rows are ignored by game attempt parser", () => {

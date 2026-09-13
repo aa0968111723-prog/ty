@@ -25,6 +25,16 @@ var PRESERVED_TITLES = [
   "生日", "學號", "興趣", "對甚麼有興趣", "是否入社", "保證金是否繳費", "繳了多少呢?"
 ];
 var HELPER_HEADERS = ["_gameSubmissionId", "_gameGatekeeper", "_gameCompletedAt", "_syncVersion", "_duplicate"];
+var OFFICIAL_VIEWFORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdzbqD9Bq4qaRu5HVfUS-pTNLSKiFcmGNs72w2lWuZ9u6TE7A/viewform";
+var LIVE_PREFILL_ENTRIES = {
+  recruiter: "entry.1318284482",
+  recruitDate: "entry.526408341",
+  name: "entry.887514514",
+  phone: "entry.1668669667",
+  departmentGrade: "entry.628075911",
+  note: "entry.88032894"
+};
+var OFFICIAL_RECRUITERS = ["安倢", "小哲", "柏能", "宛臻老師", "宜晃", "柏憲", "振泰", "慕恩", "心宇", "瑀晴"];
 var LAST_GOOD_KEY = "LAST_GOOD_CHOICES";
 var SNAPSHOT_KEY = "FORM_STRUCTURE_SNAPSHOT";
 var SYNC_VERSION = "1";
@@ -294,23 +304,45 @@ function validateRecruitmentFormStructure() {
   };
 }
 
-function buildPrefilledFormUrl(candidate) {
-  var cfg = recruitProps_();
-  var form = FormApp.openById(cfg.formId);
-  var url = form.getPublishedUrl();
-  var params = [];
-  form.getItems().forEach(function (item) {
-    var title = item.getTitle();
-    var entry = "entry." + item.getId();
-    var value = "";
-    if (title.indexOf("同學的姓名") === 0) value = candidate.name || "";
-    else if (title.indexOf("同學電話") === 0) value = candidate.phone || candidate.normalizedPhone || "";
-    else if (title.indexOf("系級") === 0) value = (candidate.department || "") + (candidate.grade || "");
-    else if (title === RECRUIT_FORM_TITLES.gameGatekeeper) value = candidate.gameGatekeeper || "";
-    else if (title === RECRUIT_FORM_TITLES.student) value = recruitEncodeChoice_(candidate);
-    if (value) params.push(encodeURIComponent(entry) + "=" + encodeURIComponent(value));
-  });
-  return url + (url.indexOf("?") >= 0 ? "&" : "?") + "usp=pp_url" + (params.length ? "&" + params.join("&") : "");
+function buildPrefilledFormUrl(candidate, recruiter) {
+  var url = OFFICIAL_VIEWFORM_URL;
+  var params = ["usp=pp_url"];
+  function add(entry, value) {
+    if (!entry || !recruitText_(value)) return;
+    params.push(encodeURIComponent(entry) + "=" + encodeURIComponent(value));
+  }
+  add(LIVE_PREFILL_ENTRIES.name, candidate.name);
+  add(LIVE_PREFILL_ENTRIES.phone, candidate.phone || candidate.normalizedPhone);
+  add(LIVE_PREFILL_ENTRIES.departmentGrade, (candidate.department || "") + (candidate.grade || ""));
+  var partner = recruitText_(recruiter);
+  if (partner) {
+    if (OFFICIAL_RECRUITERS.indexOf(partner) >= 0) add(LIVE_PREFILL_ENTRIES.recruiter, partner);
+    else {
+      add(LIVE_PREFILL_ENTRIES.recruiter, "__other_option__");
+      add(LIVE_PREFILL_ENTRIES.recruiter + ".other_option_response", partner);
+    }
+  }
+  var now = new Date();
+  var taipei = Utilities.formatDate(now, "Asia/Taipei", "M,d");
+  var md = taipei.split(",");
+  params.push(encodeURIComponent(LIVE_PREFILL_ENTRIES.recruitDate + "_month") + "=" + md[0]);
+  params.push(encodeURIComponent(LIVE_PREFILL_ENTRIES.recruitDate + "_day") + "=" + md[1]);
+  add(LIVE_PREFILL_ENTRIES.note, recruitMetadataNote_(candidate));
+  return url + "?" + params.join("&");
+}
+
+function recruitMetadataNote_(candidate) {
+  return "遊戲完成：" + recruitText_(candidate.completedAt)
+    + "\n遊戲關主：" + recruitText_(candidate.gameGatekeeper)
+    + "\nsubmissionId：" + recruitText_(candidate.submissionId);
+}
+
+function recruitParseMetadata_(value) {
+  var raw = recruitText_(value);
+  var completed = (raw.match(/遊戲完成[：:]\s*([^\n]+)/) || [])[1] || "";
+  var gatekeeper = (raw.match(/遊戲關主[：:]\s*([^\n]+)/) || [])[1] || "";
+  var submissionId = ((raw.match(/submissionId[：:]\s*([0-9a-f-]{8,})/i) || [])[1] || "").toLowerCase();
+  return { completedAt: recruitText_(completed), gameGatekeeper: recruitText_(gatekeeper), submissionId: submissionId };
 }
 
 function recruitLoadLastGood_() {
@@ -504,6 +536,12 @@ function onRecruitmentFormSubmit(e) {
   var named = (e && e.namedValues) || {};
   var student = recruitNamedValue_(named, RECRUIT_FORM_TITLES.student);
   var decoded = recruitDecodeChoice_(student);
+  var notes = recruitNamedValue_(named, "備註");
+  var meta = recruitParseMetadata_(notes);
+  var submissionId = decoded.submissionId || meta.submissionId;
+  var gameGatekeeper = recruitNamedValue_(named, RECRUIT_FORM_TITLES.gameGatekeeper)
+    || recruitNamedValue_(named, "遊戲關主")
+    || meta.gameGatekeeper;
   var spreadsheet = SpreadsheetApp.openById(cfg.spreadsheetId);
   var sheet = recruitSheetByTitleOrId_(spreadsheet, cfg.recruitmentTab, cfg.expectedRecruitmentSheetId);
   var parsed = recruitReadRows_(sheet);
@@ -516,20 +554,21 @@ function onRecruitmentFormSubmit(e) {
     var sid = recruitField_(row, ["_gameSubmissionId"]).toLowerCase();
     if (sid) existing[sid] = true;
   });
-  var duplicate = decoded.submissionId && existing[decoded.submissionId];
+  var duplicate = submissionId && existing[submissionId];
   var rowIndex = parsed.rows.length + 1;
   var headers = parsed.headers;
   function writeHelper(column, value) {
     var col = headers.indexOf(column);
     if (col >= 0) sheet.getRange(rowIndex, col + 1).setValue(value);
   }
-  writeHelper("_gameSubmissionId", decoded.submissionId || "");
-  writeHelper("_gameGatekeeper", recruitNamedValue_(named, RECRUIT_FORM_TITLES.gameGatekeeper));
+  writeHelper("_gameSubmissionId", submissionId || "");
+  writeHelper("_gameGatekeeper", gameGatekeeper);
+  writeHelper("_gameCompletedAt", meta.completedAt || "");
   writeHelper("_syncVersion", SYNC_VERSION);
   writeHelper("_duplicate", duplicate ? "TRUE" : "FALSE");
   if (last && decoded.placeholder) writeHelper("_duplicate", "TRUE");
   syncRecruitmentCandidates();
-  return { duplicate: Boolean(duplicate), submissionId: decoded.submissionId };
+  return { duplicate: Boolean(duplicate), submissionId: submissionId };
 }
 
 function recruitNamedValue_(named, fragment) {
