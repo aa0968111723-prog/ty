@@ -30,7 +30,12 @@
 import { existsSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { OG_SITE_REL_PATH, readOgSite, siteHasCustomCard } from "./grok-pwa-shared.mjs";
+import {
+  OG_SITE_REL_PATH,
+  ogCardPublicPath,
+  readOgSite,
+  siteHasCustomCard,
+} from "./grok-pwa-shared.mjs";
 
 // Over this, link scrapers (X card previews included) time out or skip the
 // image, so the card silently fails to unfurl. The og skill's JPEG contract
@@ -88,10 +93,8 @@ function brandWarningsOnDisk({
   const skillPath = join(workspaceRoot, ".grok/skills/og/SKILL.md");
   const sitePath = join(workspaceRoot, OG_SITE_REL_PATH);
   const site = readOgSite(workspaceRoot);
-  const cardPath = [
-    join(workspaceRoot, "public/og.jpg"),
-    join(workspaceRoot, "public/og.png"),
-  ].find(existsSync);
+  const cardAsset = ogCardPublicPath(workspaceRoot, site);
+  const cardPath = cardAsset ? join(workspaceRoot, "public", cardAsset.slice(1)) : undefined;
   const warnings = [];
 
   if (cardPath !== undefined) {
@@ -147,11 +150,11 @@ function brandWarningsOnDisk({
   // Games with a custom link card must also ship the 50:11 X feed card.
   // Skip while still on the og.grok.me placeholder — that pass has not started yet.
   if (hasCanvas && cardPath !== undefined) {
-    const bannerPath = join(workspaceRoot, "public/x-banner.jpg");
+    const bannerPath = join(workspaceRoot, "public", site.banner || "/x-banner.jpg");
     if (!existsSync(bannerPath)) {
       warnings.push(
         `BRAND WARNING: this looks like a game/canvas app but ${bannerPath} is missing. `
-          + "Games need a 50:11 X feed card (1200×264 JPEG) at public/x-banner.jpg — "
+          + "Games need a 50:11 X feed card (1200×264 JPEG) at the configured banner path — "
           + `open ${skillPath} and finish the brand-asset pass.`,
       );
     } else if (statSync(bannerPath).size > MAX_CARD_BYTES) {

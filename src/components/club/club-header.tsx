@@ -1,4 +1,5 @@
 import { Settings } from "lucide-react";
+import { BrandLogo } from "./brand-logo";
 import { LanguageToggle } from "./language-toggle";
 import { type Language } from "./presentation";
 
@@ -14,7 +15,7 @@ export function ClubHeader({
   return (
     <header className="club-header">
       <a className="club-brand" href="/" aria-label={language === "zh" ? "首頁" : "Home"}>
-        <img src="/club-icon-3d-192.png" width="44" height="44" alt="" />
+        <BrandLogo />
         <span>{language === "zh" ? "淡江禪學社" : "TKU Zen Club"}</span>
       </a>
       <div className="header-actions">

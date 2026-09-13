@@ -2,8 +2,7 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-r
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
-
-const APP_NAME = "淡江大學禪學社｜專注力挑戰賽";
+import brand from "@/lib/og/site.json";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -14,19 +13,19 @@ export const Route = createRootRoute({
         content:
           "width=device-width, initial-scale=1, viewport-fit=cover",
       },
-      { title: APP_NAME },
+      { title: brand.title },
       { name: "theme-color", content: "#506525" },
       { name: "apple-mobile-web-app-title", content: "禪學社專注力挑戰賽" },
       {
         name: "description",
-        content: "Tamkang University Zen Club: a 60-second Stroop focus challenge. Scores are not published online.",
+        content: brand.description,
       },
     ],
     links: [
-      { rel: "icon", type: "image/png", href: "/club-icon-3d-32.png" },
+      { rel: "icon", type: "image/png", href: brand.favicon },
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/club-icon-3d-180.png" },
+      { rel: "manifest", href: "/manifest.webmanifest?v=3d-v2" },
+      { rel: "apple-touch-icon", href: brand.appleTouchIcon },
     ],
   }),
   component: () => (

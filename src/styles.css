@@ -188,6 +188,11 @@
 .club-brand img {
   flex-shrink: 0;
 }
+.brand-logo {
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+}
 .header-actions {
   display: flex;
   align-items: center;

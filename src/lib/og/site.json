@@ -1,5 +1,12 @@
 {
   "title": "淡江大學禪學社｜專注力挑戰賽",
+  "url": "https://leader-dna-mcp-a7k2.zeabur.app/",
+  "description": "60 秒專注力挑戰，現場暖身、正式挑戰、即時查看活動狀態。",
+  "logo": "/brand/tkuzen-turtle-3d-v2.png",
+  "image": "/og/og-focus-challenge-3d-turtle-v2.jpg",
+  "banner": "/og/x-banner-3d-turtle-v2.jpg",
+  "favicon": "/brand/tkuzen-turtle-3d-icon-32-v2.png",
+  "appleTouchIcon": "/brand/tkuzen-turtle-3d-icon-180-v2.png",
   "type": "x:game",
   "card": "custom",
   "color": "506525"

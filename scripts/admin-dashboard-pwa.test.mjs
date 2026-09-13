@@ -21,5 +21,5 @@ test("admin PWA manifest opens the pinned view and exposes operational shortcuts
       ["關主統計", "/admin?view=gatekeepers"],
     ],
   );
-  assert.ok(manifest.icons.every(({ src }) => src.startsWith("/club-icon-")));
+  assert.ok(manifest.icons.every(({ src }) => src.startsWith("/brand/tkuzen-turtle-3d-icon-")));
 });

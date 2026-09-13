@@ -253,7 +253,15 @@ export function readOgSite(cwd = process.cwd()) {
 }
 
 /** Public path of an on-disk share card, or "" if neither file exists. */
-export function ogCardPublicPath(cwd = process.cwd()) {
+export function ogCardPublicPath(cwd = process.cwd(), site = readOgSite(cwd)) {
+  const configured = String(site.image ?? "").trim();
+  // Only local public assets: never stat an external URL or traverse directories.
+  if (
+    /^\/(?!\/)[a-zA-Z0-9/_-]+\.(?:png|jpg|jpeg)$/.test(configured) &&
+    existsSync(join(cwd, "public", configured.slice(1)))
+  ) {
+    return configured;
+  }
   if (existsSync(join(cwd, "public/og.jpg"))) return "/og.jpg";
   if (existsSync(join(cwd, "public/og.png"))) return "/og.png";
   return "";
@@ -268,7 +276,7 @@ function detectCustomOgCard(cwd = process.cwd(), site = {}) {
 /** Snapshot for Vite/Nitro to bake into the server bundle (Vercel has no workspace FS). */
 export function snapshotOgIdentity(cwd = process.cwd()) {
   const site = { ...readOgSite(cwd) };
-  const disk = ogCardPublicPath(cwd);
+  const disk = ogCardPublicPath(cwd, site);
   if (disk) {
     site.card = "custom";
     site.image = disk;
@@ -323,12 +331,12 @@ export function siteHasCustomCard(site = {}) {
  * Otherwise empty — caller emits the og.grok.me placeholder.
  */
 export function resolveOgCardAsset(site = {}, cwd = process.cwd()) {
-  return ogCardPublicPath(cwd) || (detectCustomOgCard(cwd, site) ? String(site.image ?? "").trim() || "/og.jpg" : "");
+  return ogCardPublicPath(cwd, site) || (detectCustomOgCard(cwd, site) ? String(site.image ?? "").trim() || "/og.jpg" : "");
 }
 
 /** Stamp `card=custom` when public/og.jpg or public/og.png is on disk. */
 function applyCustomCardFromFs(site, cwd) {
-  const disk = ogCardPublicPath(cwd);
+  const disk = ogCardPublicPath(cwd, site);
   if (!disk) return site;
   return { ...site, card: "custom", image: disk };
 }
@@ -341,19 +349,25 @@ export function grokOgHeadTags({
   cwd = process.cwd(),
 } = {}) {
   const title = resolveOgTitle(site, appName, host, documentTitle);
-  const publicHost = resolvePublicHost(host);
+  const configuredHost = /^https:\/\/([^/]+)\/?$/.exec(String(site.url ?? ""))?.[1];
+  const publicHost = publicAppHost(configuredHost) || resolvePublicHost(host);
   const tags = [
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta property="og:title" content="${escapeHtml(title)}">`,
+    `<meta name="twitter:title" content="${escapeHtml(title)}">`,
   ];
   const description = String(site.description ?? "").trim();
   if (description) {
     tags.push(`<meta property="og:description" content="${escapeHtml(description)}">`);
+    tags.push(`<meta name="twitter:description" content="${escapeHtml(description)}">`);
   }
   if (String(site.type ?? "").toLowerCase() === "x:game") {
     tags.push(`<meta property="og:type" content="x:game">`);
+  } else {
+    tags.push(`<meta property="og:type" content="website">`);
   }
   if (publicHost) {
+    tags.push(`<meta property="og:url" content="https://${escapeHtml(publicHost)}/">`);
     const asset = resolveOgCardAsset(site, cwd);
     const custom = Boolean(asset);
     let image = custom
@@ -362,6 +376,7 @@ export function grokOgHeadTags({
     const color = !custom ? placeholderCardColor(site) : "";
     if (color) image += `&color=${encodeURIComponent(color)}`;
     tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
+    tags.push(`<meta name="twitter:image" content="${escapeHtml(image)}">`);
     tags.push(`<meta property="og:image:width" content="1200">`);
     tags.push(`<meta property="og:image:height" content="630">`);
     const banner = String(site.banner ?? "").trim();
