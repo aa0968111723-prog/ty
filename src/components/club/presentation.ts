@@ -1,6 +1,6 @@
-import { COLORS } from "@/lib/club/runtime.mjs";
+import { COLORS, TUTORIAL_LESSONS, tutorialCorrectId } from "@/lib/club/runtime.mjs";
 
-export type Screen = "register" | "game" | "warmup-result" | "result";
+export type Screen = "register" | "tutorial" | "game" | "warmup-result" | "result";
 export type Language = "en" | "zh";
 export type Player = {
   name: string;
@@ -30,7 +30,7 @@ export const TEXT = {
     factPrize: "On-site bubble tea",
     officialEntry: "Official Entry",
     officialDescription:
-      "Enter your details, warm up for 15 seconds, then start a fresh 60-second challenge. Winners are announced at the booth; scores are not published online.",
+      "Learn the two rules, try two practice taps, warm up for 15 seconds, then start a fresh 60-second challenge. Winners are announced at the booth; scores are not published online.",
     practiceDescription: "Practice mode is active. This score is not entered into the prize draw.",
     name: "Name",
     department: "Department",
@@ -46,6 +46,22 @@ export const TEXT = {
     phonePlaceholder: "10-digit mobile number",
     preparing: "Preparing…",
     officialStart: "Start practice",
+    howToTitle: "How to play",
+    howToMeaningTitle: "Word meaning",
+    howToMeaningHint: "Tap the color named by the word. Ignore the ink.",
+    howToVisualTitle: "Ink color",
+    howToVisualHint: "Tap the ink color. Ignore the word.",
+    howToPick: "Tap",
+    flowFill: "Your details",
+    flowTutorial: "2 guided taps + 15s warm-up",
+    flowOfficial: "Official 60 seconds",
+    tutorialTitle: "Quick tutorial",
+    tutorialProgress: "Question",
+    tutorialCoachMeaning: "Look at the word. Tap that color.",
+    tutorialCoachVisual: "Look at the ink. Tap that color.",
+    tutorialWrong: "Check the task above, then try again.",
+    tutorialNext: "A correct tap unlocks the next rule.",
+    tutorialStartWarmup: "A correct tap starts the 15-second warm-up.",
     warmup: "Warm-up · Practice only",
     warmupComplete: "Warm-up complete",
     warmupDescription:
@@ -99,7 +115,7 @@ export const TEXT = {
     factPrize: "現場手搖杯",
     officialEntry: "正式參賽",
     officialDescription:
-      "填資料後先練習 15 秒，再開始全新的 60 秒正式挑戰。得獎現場公布，網站不公開成績。",
+      "先看懂兩種規則，再做兩題教學與 15 秒練習，然後開始全新的 60 秒正式挑戰。得獎現場公布，網站不公開成績。",
     practiceDescription: "目前是練習規則，成績不登記抽獎。",
     name: "姓名",
     department: "科系",
@@ -115,6 +131,22 @@ export const TEXT = {
     phonePlaceholder: "09xxxxxxxx",
     preparing: "準備中…",
     officialStart: "開始練習",
+    howToTitle: "怎麼玩",
+    howToMeaningTitle: "字面意思",
+    howToMeaningHint: "選文字寫的顏色，不要看墨水。",
+    howToVisualTitle: "視覺顏色",
+    howToVisualHint: "選字的實際顏色，不要看文字。",
+    howToPick: "選",
+    flowFill: "填資料",
+    flowTutorial: "兩題教學 + 15 秒練習",
+    flowOfficial: "正式 60 秒",
+    tutorialTitle: "新手教學",
+    tutorialProgress: "第",
+    tutorialCoachMeaning: "先看文字，再選那個顏色。",
+    tutorialCoachVisual: "先看墨水顏色，再選那個顏色。",
+    tutorialWrong: "再看一次上面的任務。",
+    tutorialNext: "選對才換下一題。",
+    tutorialStartWarmup: "選對後開始 15 秒練習。",
     warmup: "賽前練習 · 不計正式成績",
     warmupComplete: "賽前練習完成",
     warmupDescription:
@@ -164,6 +196,8 @@ export const TEXT = {
 } as const;
 
 export const GATEKEEPERS = ["柏能", "安倢", "小哲", "振泰"];
+
+export { TUTORIAL_LESSONS, tutorialCorrectId };
 
 const COLOR_NAMES: Record<ColorId, { en: string; zh: string }> = {
   red: { en: "Red", zh: "紅" },

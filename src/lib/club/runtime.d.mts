@@ -17,6 +17,12 @@ export const COLORS: {
   label: string;
   hex: string;
 }[];
+export const TUTORIAL_LESSONS: Array<{
+  mode: "meaning" | "visual";
+  meaning: "red" | "blue" | "green" | "yellow";
+  visual: "red" | "blue" | "green" | "yellow";
+}>;
+export function tutorialCorrectId(step: (typeof TUTORIAL_LESSONS)[number]): (typeof TUTORIAL_LESSONS)[number]["meaning"];
 export const GRADE_LIST: string[];
 export const DEPARTMENT_GROUPS: { college: string; items: string[] }[];
 export const GUEST_PLAYER: {

@@ -23,6 +23,7 @@ import {
 } from "@/lib/club/runtime.mjs";
 
 import { RegisterScreen } from "@/components/club/registration-form";
+import { TutorialScreen } from "@/components/club/tutorial-screen";
 import { ResultScreen } from "@/components/club/result-summary";
 import { LanguageToggle } from "@/components/club/language-toggle";
 import {
@@ -310,12 +311,23 @@ function BoothApp() {
     }
     startingRef.current = true;
     setErrors({});
+    const next = parsed.data as Player;
+    setPlayer(next);
+    playerRef.current = next;
     if (isOfficialSettings(settings)) {
-      launchGame(parsed.data as Player, "warmup");
-    } else {
-      launchGame(parsed.data as Player, "practice");
       startingRef.current = false;
+      setScreen("tutorial");
+      return;
     }
+    launchGame(next, "practice");
+    startingRef.current = false;
+  }
+
+  function finishTutorial() {
+    if (startingRef.current || screen !== "tutorial") return;
+    startingRef.current = true;
+    launchGame(playerRef.current, "warmup");
+    startingRef.current = false;
   }
 
   function retryWarmup() {
@@ -408,6 +420,14 @@ function BoothApp() {
               onStart={startChallenge}
             />
           </section>
+        ) : null}
+
+        {screen === "tutorial" ? (
+          <TutorialScreen
+            language={language}
+            onLanguage={setLanguage}
+            onFinished={finishTutorial}
+          />
         ) : null}
 
         {screen === "game" ? (

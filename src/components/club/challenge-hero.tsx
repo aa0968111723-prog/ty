@@ -10,7 +10,7 @@ export function ChallengeHero({ language }: { language: Language }) {
         {TEXT[language].title}
       </h1>
       <p className="hero-subtitle">
-        {zh ? "60 秒，測試你的專注反應。" : "60 seconds. Find your focus."}
+        {zh ? "先看任務，再選顏色。任務會在字面意思與視覺顏色之間切換。" : "Read the task, then tap a color. The task switches between the word and the ink."}
       </p>
       <div className="challenge-rules" aria-label={zh ? "挑戰規則" : "Challenge rules"}>
         <span className="rule-chip">

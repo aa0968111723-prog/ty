@@ -50,6 +50,7 @@ test(
         });
         await page.goto(base);
         await page.locator("[data-register=official]").waitFor();
+        assert.equal(await page.locator("[data-howto=1]").count(), 1);
         await capture(page, `register-${width}`);
         assert.equal(await page.locator("[data-settings], .settings-sheet").count(), 0);
         const header = await page.locator(".club-header").boundingBox();
@@ -203,6 +204,7 @@ test(
         : route.continue());
       await page.goto(base);
       await page.locator("[data-register=official]").waitFor();
+      assert.equal(await page.locator("[data-howto=1]").count(), 1);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await capture(page, "register-desktop");
       await page.route("**/api/admin/session", route => route.fulfill({ json: { authenticated: false } }));
@@ -268,8 +270,18 @@ test(
         await page.getByRole("button", { name: "大一", exact: true }).click();
         await page.locator("#phone").fill("0900000000");
         await page.getByRole("button", { name: "開始練習", exact: true }).click();
+        await page.locator("[data-screen=tutorial]").waitFor();
+        await capture(page, "tutorial-meaning-mobile");
+        await page.locator('[data-color="red"]').click();
+        await page.locator(".tutorial-wrong").waitFor();
+        assert.equal(submissions.length, 0);
+        await page.locator('[data-color="blue"]').click();
+        await page.locator('[data-tutorial-step="1"]').waitFor();
+        await capture(page, "tutorial-visual-mobile");
+        await page.locator('[data-color="yellow"]').click();
         await page.locator("[data-screen=game]").waitFor();
         await capture(page, "game-mobile");
+        assert.equal(submissions.length, 0);
         await page.clock.fastForward(15100);
         await page.locator("[data-screen=warmup-result]").waitFor();
         await capture(page, "warmup-result-mobile");
