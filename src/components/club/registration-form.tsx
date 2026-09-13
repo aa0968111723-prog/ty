@@ -4,6 +4,7 @@ import { AdminLogin } from "@/components/admin-login";
 import { ClubHeader } from "./club-header";
 import { ChallengeHero } from "./challenge-hero";
 import { LeaderSelector } from "./leader-selector";
+import { HowToPlay } from "./how-to-play";
 import { DEPARTMENT_GROUPS, GRADE_LIST, isOfficialSettings } from "@/lib/club/runtime.mjs";
 import {
   TEXT,
@@ -58,6 +59,7 @@ export function RegisterScreen({
         />
         <div className="registration-content">
           <ChallengeHero language={language} />
+          <HowToPlay language={language} />
           <div className="sheet-register">
             <LeaderSelector
               language={language}
@@ -70,8 +72,8 @@ export function RegisterScreen({
                 <h2>{language === "zh" ? "參賽資料" : "Your details"}</h2>
                 <p>
                   {language === "zh"
-                    ? "填妥資料，先暖身 15 秒，再挑戰正式 60 秒。"
-                    : "Enter your details. Warm up for 15 seconds, then take the 60-second challenge."}
+                    ? "填妥資料後，先做兩題教學與 15 秒練習，再挑戰正式 60 秒。"
+                    : "After your details: two guided taps, a 15-second warm-up, then the official 60 seconds."}
                 </p>
               </div>
             </div>

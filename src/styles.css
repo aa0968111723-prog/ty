@@ -277,6 +277,127 @@
   color: var(--text-muted);
   font-size: var(--text-caption);
 }
+.how-to-play {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-8) 0;
+  border-bottom: 1px solid var(--border);
+}
+.how-to-play h2 {
+  font-size: var(--text-h3);
+}
+.how-to-flow {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+.how-to-flow li {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: var(--space-3);
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+}
+.how-to-step {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: var(--text-small);
+  font-weight: 700;
+}
+.how-to-lessons {
+  display: grid;
+  gap: var(--space-3);
+}
+.how-to-card {
+  background: var(--page-bg-warm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.how-to-mode {
+  font-size: var(--text-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+.how-to-word {
+  margin: 0;
+  min-height: 3.4rem;
+  display: grid;
+  place-items: center;
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+.how-to-hint {
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+  line-height: 1.45;
+}
+.how-to-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+}
+.how-to-pick strong {
+  color: var(--text-primary);
+}
+.ans-swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+.how-to-switch {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+.screen.screen-tutorial.active {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.tutorial-board {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) max(var(--space-6), env(safe-area-inset-bottom));
+  display: grid;
+  gap: var(--space-4);
+  flex: 1;
+}
+.tutorial-board .stroop {
+  font-size: clamp(56px, 14vw, 96px);
+}
+.tutorial-wrong,
+.tutorial-next {
+  min-height: 1.4rem;
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-small);
+}
+.tutorial-wrong {
+  color: var(--danger);
+  font-weight: 700;
+}
+.tutorial-next {
+  color: var(--text-muted);
+}
 .sheet-register {
   padding-top: var(--space-8);
 }
@@ -704,6 +825,11 @@
     opacity: 1;
   }
 }
+@media (min-width: 720px) {
+  .how-to-lessons {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 @media (max-width: 600px) {
   .club-header {
     height: 60px;
@@ -721,6 +847,16 @@
   }
   .hero-title {
     font-size: var(--text-h1);
+  }
+  .how-to-play {
+    padding: var(--space-6) 0;
+    gap: var(--space-4);
+  }
+  .how-to-word {
+    min-height: 3rem;
+  }
+  .tutorial-board {
+    padding-inline: var(--space-5);
   }
   .challenge-rules {
     gap: var(--space-3);

@@ -25,6 +25,8 @@ import {
   correctId,
   isOfficialSettings,
   settingsAreValid,
+  TUTORIAL_LESSONS,
+  tutorialCorrectId,
 } from "./runtime.mjs";
 
 const snapshot = (game) => ({ mode: game.mode, seq: game.questionSeq });
@@ -391,6 +393,19 @@ describe("titles validation leaderboard", () => {
         }
       }
       assert.equal(scoreIsConsistent(row), true, JSON.stringify(row));
+    }
+  });
+});
+
+describe("beginner tutorial lessons", () => {
+  it("asks for the word first, then the ink, without matching colors", () => {
+    assert.equal(TUTORIAL_LESSONS.length, 2);
+    assert.equal(TUTORIAL_LESSONS[0].mode, "meaning");
+    assert.equal(tutorialCorrectId(TUTORIAL_LESSONS[0]), "blue");
+    assert.equal(TUTORIAL_LESSONS[1].mode, "visual");
+    assert.equal(tutorialCorrectId(TUTORIAL_LESSONS[1]), "yellow");
+    for (const lesson of TUTORIAL_LESSONS) {
+      assert.notEqual(lesson.meaning, lesson.visual);
     }
   });
 });

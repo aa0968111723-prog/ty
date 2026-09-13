@@ -117,6 +117,15 @@ export const COLORS = [
   { id: "yellow", label: "黃", hex: "#CA8A04" },
 ];
 
+export const TUTORIAL_LESSONS = [
+  { mode: "meaning", meaning: "blue", visual: "red" },
+  { mode: "visual", meaning: "green", visual: "yellow" },
+];
+
+export function tutorialCorrectId(step) {
+  return step?.mode === "meaning" ? step.meaning : step?.visual;
+}
+
 export const GRADE_LIST = ["大一", "大二", "大三", "大四", "碩士班", "博士班", "其他"];
 
 export const DEPARTMENT_GROUPS = [
