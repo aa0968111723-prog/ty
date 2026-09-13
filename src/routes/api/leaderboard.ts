@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { handleLeaderboard } from "@/lib/club/api.mjs";
+import { createServerOnlyFn } from "@tanstack/react-start";
 
-const handle = ({ request }: { request: Request }) => handleLeaderboard(request);
+const handle = createServerOnlyFn(async ({ request }: { request: Request }) => {
+  const { handleLeaderboard } = await import("@/lib/club/api.mjs");
+  return handleLeaderboard(request);
+});
 
 export const Route = createFileRoute("/api/leaderboard")({
   server: { handlers: { GET: handle } },
