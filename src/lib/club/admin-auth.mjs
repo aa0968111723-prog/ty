@@ -608,7 +608,8 @@ export function sameOrigin(request) {
   } else {
     expectedOrigin = new URL(request.url).origin;
   }
-  return origin === expectedOrigin;
+  const requestOrigin = new URL(request.url).origin;
+  return origin === expectedOrigin || origin === requestOrigin;
 }
 
 export function publicOrigin(request) {

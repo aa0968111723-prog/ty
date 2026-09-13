@@ -126,6 +126,8 @@ test("admin authentication and private read API contracts with mocked Google onl
   }))).status, 403);
   assert.equal((await handleAdminLogin(request("login", { body: { password: process.env.ADMIN_PASSWORD },
     headers: { "x-forwarded-host": "evil.example.com" } }))).status, 200);
+  assert.equal((await handleAdminLogin(request("login", { body: { password: process.env.ADMIN_PASSWORD },
+    headers: { origin: internalOrigin } }))).status, 200);
   assert.equal((await handleAdminLogin(request("login", { body: { password: "wrong" } }))).status, 401);
   const response = await login();
   assert.equal(response.status, 200);

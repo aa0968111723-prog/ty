@@ -312,7 +312,8 @@ function sameOrigin(request) {
     expectedOrigin = new URL(request.url).origin;
   }
 
-  return origin === expectedOrigin;
+  const requestOrigin = new URL(request.url).origin;
+  return origin === expectedOrigin || origin === requestOrigin;
 }
 
 /** @param {string} payload @param {{password: string, secret: string}} config */
