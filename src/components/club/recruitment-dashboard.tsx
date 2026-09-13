@@ -201,7 +201,10 @@ export function RecruitmentDashboard({
                 <p>{row.phone || "電話未填"}</p>
                 <small>{waitLabel(row.waitMinutes)} · {row.score?.toLocaleString?.() ?? row.score} 分</small>
                 <div className="recruitment-actions">
-                  <a className="admin-primary" href={`/follow-up`}>
+                  <a
+                    className="admin-primary"
+                    href={`/follow-up?personKey=${encodeURIComponent(row.personKey)}${row.submissionId ? `&submissionId=${encodeURIComponent(row.submissionId)}` : ""}`}
+                  >
                     接引人快速填表
                   </a>
                   <a href={row.prefillUrl} target="_blank" rel="noreferrer">

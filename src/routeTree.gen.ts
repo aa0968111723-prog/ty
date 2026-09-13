@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as FollowUpRouteImport } from './routes/follow-up'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiLeaderboardRouteImport } from './routes/api/leaderboard'
 import { Route as ApiRegisterRouteImport } from './routes/api/register'
@@ -37,6 +38,11 @@ const AdminRoute = AdminRouteImport.update({
 const FollowUpRoute = FollowUpRouteImport.update({
   id: '/follow-up',
   path: '/follow-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/follow-up': typeof FollowUpRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/api/health': typeof ApiHealthRoute
   '/api/leaderboard': typeof ApiLeaderboardRoute
   '/api/register': typeof ApiRegisterRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/follow-up': typeof FollowUpRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/api/health': typeof ApiHealthRoute
   '/api/leaderboard': typeof ApiLeaderboardRoute
   '/api/register': typeof ApiRegisterRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/follow-up': typeof FollowUpRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/api/health': typeof ApiHealthRoute
   '/api/leaderboard': typeof ApiLeaderboardRoute
   '/api/register': typeof ApiRegisterRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/follow-up'
+    | '/leaderboard'
     | '/api/health'
     | '/api/leaderboard'
     | '/api/register'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/follow-up'
+    | '/leaderboard'
     | '/api/health'
     | '/api/leaderboard'
     | '/api/register'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/follow-up'
+    | '/leaderboard'
     | '/api/health'
     | '/api/leaderboard'
     | '/api/register'
@@ -199,6 +211,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   FollowUpRoute: typeof FollowUpRoute
+  LeaderboardRoute: typeof LeaderboardRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiLeaderboardRoute: typeof ApiLeaderboardRoute
   ApiRegisterRoute: typeof ApiRegisterRoute
@@ -233,6 +246,13 @@ declare module '@tanstack/react-router' {
       path: '/follow-up'
       fullPath: '/follow-up'
       preLoaderRoute: typeof FollowUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -319,6 +339,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   FollowUpRoute: FollowUpRoute,
+  LeaderboardRoute: LeaderboardRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiLeaderboardRoute: ApiLeaderboardRoute,
   ApiRegisterRoute: ApiRegisterRoute,

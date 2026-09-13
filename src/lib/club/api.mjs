@@ -15,6 +15,12 @@ import {
   validatePlayer,
 } from "./runtime.mjs";
 import { appendOfficialResult as appendResultToSheet, sheetsConfigured } from "./sheets.mjs";
+import {
+  invalidateLeaderboardCache,
+  loadPublicLeaderboard,
+  parseLeaderboardScope,
+  publicLeaderboardHasSensitiveData,
+} from "./leaderboard.mjs";
 
 export const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
@@ -46,13 +52,14 @@ function clientIp(req) {
   return "local";
 }
 
-function json(body, status = 200) {
+function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       ...SECURITY_HEADERS,
+      ...headers,
     },
   });
 }
@@ -179,6 +186,7 @@ export async function handleResult(request) {
   if (!parsed.ok) return json({ error: parsed.error, errors: parsed.errors }, 400);
   const row = parsed.data;
   const result = row.skipSave ? { saved: false, duplicate: false } : await appendOfficialResult(row);
+  if (result.saved) invalidateLeaderboardCache();
   if (result.conflict) {
     return json({ ok: false, saved: false, duplicate: false, error: "這局資料與已儲存紀錄不一致" }, 409);
   }
@@ -198,13 +206,24 @@ export async function handleResult(request) {
 
 export async function handleLeaderboard(request) {
   const ip = clientIp(request);
-  if (!rateOk(ip, "lb", 180)) return json({ error: "請稍後再試" }, 429);
-  return json({
-    ok: true,
-    public: false,
-    source: "private",
-    rows: [],
-  });
+  if (!rateOk(ip, "lb", 60)) {
+    return json({ error: "請稍後再試" }, 429, { "Retry-After": "60" });
+  }
+  const parsed = parseLeaderboardScope(request);
+  if (!parsed.ok) return json({ error: parsed.error }, 400);
+  try {
+    const body = await loadPublicLeaderboard(parsed.scope);
+    if (publicLeaderboardHasSensitiveData(body)) {
+      console.error("[leaderboard] blocked a payload that contained private fields");
+      return json({ error: "目前無法讀取排行榜" }, 502);
+    }
+    return json(body, 200, {
+      "cache-control": "public, max-age=30",
+    });
+  } catch {
+    console.error("[leaderboard] failed to load public ranking");
+    return json({ error: "目前無法讀取排行榜" }, 502);
+  }
 }
 
 export { GRADE_LIST, publicResult };

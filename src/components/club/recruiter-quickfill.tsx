@@ -57,6 +57,19 @@ function readStoredRecruiter() {
   }
 }
 
+function readPreferredCandidate() {
+  if (typeof window === "undefined") return { personKey: "", submissionId: "" };
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      personKey: params.get("personKey")?.trim() || "",
+      submissionId: params.get("submissionId")?.trim().toLowerCase() || "",
+    };
+  } catch {
+    return { personKey: "", submissionId: "" };
+  }
+}
+
 function waitLabel(minutes: number | null | undefined) {
   if (minutes == null) return "時間未填";
   if (minutes < 60) return `已等 ${minutes} 分`;
@@ -67,6 +80,10 @@ function waitLabel(minutes: number | null | undefined) {
 
 function toggleValue(list: string[], value: string) {
   return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+}
+
+function candidateKey(row: Pick<Candidate, "personKey" | "submissionId">) {
+  return row.submissionId || row.personKey;
 }
 
 function ChoiceRow({
@@ -123,6 +140,7 @@ export function RecruiterQuickfill() {
   const [staff, setStaff] = useState<StaffFields>(emptyStaff);
   const [hiddenKeys, setHiddenKeys] = useState(() => new Set<string>());
   const [hiddenIds, setHiddenIds] = useState(() => new Set<string>());
+  const [{ personKey: preferredPersonKey, submissionId: preferredSubmissionId }] = useState(readPreferredCandidate);
 
   useEffect(() => {
     const stored = readStoredRecruiter();
@@ -200,11 +218,11 @@ export function RecruiterQuickfill() {
 
   useEffect(() => {
     if (!selectedKey) return;
-    if (!(data?.pending || []).some((row) => row.personKey === selectedKey)) {
+    if (!pending.some((row) => candidateKey(row) === selectedKey)) {
       setSelectedKey("");
       setDraft(null);
     }
-  }, [data, selectedKey]);
+  }, [pending, selectedKey]);
 
   function rememberRecruiter(name: string) {
     setRecruiter(name);
@@ -214,8 +232,8 @@ export function RecruiterQuickfill() {
     }
   }
 
-  function chooseStudent(row: Candidate) {
-    setSelectedKey(row.personKey);
+  const chooseStudent = useCallback((row: Candidate) => {
+    setSelectedKey(candidateKey(row));
     setDraft({
       ...row,
       completedAt: row.completedAt || row.gameCompletedAt,
@@ -225,7 +243,16 @@ export function RecruiterQuickfill() {
     setStaff(emptyStaff());
     setSuccess("");
     setError("");
-  }
+  }, []);
+
+  useEffect(() => {
+    if (selectedKey) return;
+    const matched = pending.find((row) => (
+      (preferredPersonKey && row.personKey === preferredPersonKey)
+      || (preferredSubmissionId && row.submissionId?.toLowerCase() === preferredSubmissionId)
+    ));
+    if (matched) chooseStudent(matched);
+  }, [pending, preferredPersonKey, preferredSubmissionId, selectedKey, chooseStudent]);
 
   const preview = draft ? { ...draft, extraNotes } : null;
   const prefillUrl = preview && officialRecruiter
@@ -378,7 +405,7 @@ export function RecruiterQuickfill() {
           ) : (
             <div className="admin-person-list recruitment-pending">
               {pending.map((row) => (
-                <article key={row.personKey}>
+                <article key={candidateKey(row)}>
                   <div>
                     <strong>{row.name}</strong>
                     <span className="admin-badge">{row.gameGatekeeper || "未分類"}</span>

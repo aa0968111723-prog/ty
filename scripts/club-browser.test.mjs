@@ -82,6 +82,25 @@ test(
           );
         }
         await assertScroll("register");
+        await page.route("**/api/leaderboard**", (route) =>
+          route.fulfill({
+            json: {
+              ok: true, public: true, scope: "today", date: "2026-09-13",
+              generatedAt: "2026-09-13T10:00:00.000Z", count: 1,
+              topThree: [{ rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" }],
+              rows: [{ rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" }],
+            },
+          }),
+        );
+        await page.locator("[data-leaderboard-nav]").click();
+        await page.locator("[data-leaderboard-page]").waitFor();
+        assert.equal(await page.locator("[data-scope=today]").count(), 1);
+        assert.equal(await page.locator("[data-leaderboard-podium]").count(), 1);
+        assert.equal(await page.locator("[data-leaderboard-list]").count(), 1);
+        await capture(page, `leaderboard-${width}`);
+        await assertScroll("leaderboard");
+        await page.goto(base);
+        await page.locator("[data-register=official]").waitFor();
         await page.getByRole("button", { name: "管理員登入", exact: true }).click();
         assert.equal(await page.getByRole("dialog").count(), 1);
         await capture(page, `login-${width}`);

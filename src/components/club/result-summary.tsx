@@ -67,11 +67,9 @@ export function ResultScreen({
             </div>
           </div>
           {!warmup ? (
-            <>
-              <p className="save-note" data-save={save}>
-                {saveText(save, language)}
-              </p>
-            </>
+            <p className="save-note" data-save={save}>
+              {saveText(save, language)}
+            </p>
           ) : null}
           <div className="result-actions">
             <button type="button" className="cta" onClick={warmup ? onContinue : onAgain}>
@@ -81,7 +79,11 @@ export function ResultScreen({
               <button type="button" className="cta secondary" onClick={onPracticeAgain}>
                 {ui.warmupRetry}
               </button>
-            ) : null}
+            ) : (
+              <a className="cta secondary" href="/leaderboard" data-result-leaderboard>
+                {ui.viewLeaderboard}
+              </a>
+            )}
             <button type="button" className="cta secondary" onClick={onAgain}>
               {ui.home}
             </button>
