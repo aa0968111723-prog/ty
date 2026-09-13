@@ -50,7 +50,7 @@ test(
         });
         await page.goto(base);
         await page.locator("[data-register=official]").waitFor();
-        assert.equal(await page.locator("[data-howto=1]").count(), 1);
+        assert.equal(await page.locator("[data-howto=rules]").count(), 1);
         await capture(page, `register-${width}`);
         assert.equal(await page.locator("[data-settings], .settings-sheet").count(), 0);
         const header = await page.locator(".club-header").boundingBox();
@@ -204,7 +204,7 @@ test(
         : route.continue());
       await page.goto(base);
       await page.locator("[data-register=official]").waitFor();
-      assert.equal(await page.locator("[data-howto=1]").count(), 1);
+      assert.equal(await page.locator("[data-howto=rules]").count(), 1);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await capture(page, "register-desktop");
       await page.route("**/api/admin/session", route => route.fulfill({ json: { authenticated: false } }));

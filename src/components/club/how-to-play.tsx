@@ -16,7 +16,7 @@ export function HowToPlay({ language }: { language: Language }) {
   const zh = language === "zh";
 
   return (
-    <section className="how-to-play" aria-labelledby="how-to-title" data-howto="1">
+    <section className="how-to-play" aria-labelledby="how-to-title" data-howto="rules">
       <h2 id="how-to-title">{ui.howToTitle}</h2>
       <ol className="how-to-flow">
         <li>
