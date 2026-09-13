@@ -1,7 +1,7 @@
 // @ts-nocheck -- Ranking helpers are covered by leaderboard and API contract tests.
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 import { extractTaiwanMobile, normalizeName } from "./recruitment-identity.mjs";
-import { internalizedGameRow, readSheetRows, sheetsConfigured } from "./sheets.mjs";
+import { internalizedGameRow } from "./game-row.mjs";
 
 export const LEADERBOARD_CACHE_MS = 30_000;
 export const LEADERBOARD_SCOPES = Object.freeze(["today", "history"]);
@@ -257,19 +257,4 @@ export function writeLeaderboardCache(key, body, now = Date.now()) {
 
 export function invalidateLeaderboardCache() {
   cache.clear();
-}
-
-export async function loadPublicLeaderboard(scope, now = new Date()) {
-  const date = dateInTaipei(now);
-  const key = leaderboardCacheKey(scope, date);
-  const cached = readLeaderboardCache(key);
-  if (cached) return /** @type {Record<string, unknown>} */ ({ ...cached, cached: true });
-  const rows = sheetsConfigured("gameResults") ? await readSheetRows("gameResults") : [];
-  const body = {
-    ...buildPublicLeaderboard({ rows, scope, now }),
-    source: sheetsConfigured("gameResults") ? "game-sheet" : "unconfigured",
-    cached: false,
-  };
-  writeLeaderboardCache(key, body);
-  return body;
 }
