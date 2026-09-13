@@ -143,6 +143,7 @@ export function initialView(): Tab {
         form: "contacts",
         results: "results",
         sync: "system",
+        security: "security",
       } as Record<string, Tab>
     )[view || ""] ?? "overview"
   );

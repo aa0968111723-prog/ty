@@ -47,9 +47,10 @@ Canonical：TanStack Start，`npm run dev` 綁定 0.0.0.0:8080。正式站用同
 
 ## 管理後台與 Google 整合
 
-- `/admin` 以伺服器環境變數 `ADMIN_PASSWORD` 登入；`ADMIN_SESSION_SECRET` 必須至少 32 bytes，使用獨立隨機值。未設定時拒絕啟用，不提供預設密碼。正式 Zeabur 部署另設 `PUBLIC_ORIGIN=https://leader-dna-mcp-a7k2.zeabur.app`，供伺服器在 reverse proxy 後驗證登入與登出的同源 `Origin`。
-- Cookie 使用 `__Host-`、HttpOnly、Secure、SameSite=Strict、Path=/，8 小時到期；正式部署必須 HTTPS。更換密碼或 session secret 會使既有 session 失效。登出清除瀏覽器 cookie。
-- 所有 `/api/admin/*` 資料端點要求有效 session，回應 private/no-store；登入、登出要求同源 Origin。個資與前三名不會出現在公開排行榜。
+- `/admin` 以 Google 登入為管理員身分來源。伺服器驗證 Google ID token／OAuth callback 後，email 必須在 `ADMIN_ALLOWED_EMAILS` 白名單內才會建立 admin session。`ADMIN_SESSION_SECRET` 必須至少 32 bytes。未設定 Google OAuth 與 session secret 時拒絕啟用。`ADMIN_PASSWORD` 僅保留為隱藏的緊急備用登入（`/admin?fallback=1`），UI 不預設顯示。正式部署另設 `PUBLIC_ORIGIN`，供伺服器在 reverse proxy 後驗證同源 `Origin`。
+- 已授權裝置可設定 4 碼 PIN（server-side scrypt hash）與 WebAuthn／Passkey（指紋、Face ID、裝置解鎖）。PIN 不能單獨成為新裝置密碼；新裝置必須先 Google 登入。PIN 連續錯誤由伺服器限速（5 次暫停 30 秒、10 次 5 分鐘、15 次要求重新 Google 登入）。
+- Cookie 使用 `__Host-`、HttpOnly、Secure；session 為 SameSite=Strict、8 小時到期，OAuth state 為 SameSite=Lax。正式部署必須 HTTPS。裝置撤銷會立刻讓該裝置的 PIN、Passkey 與 session 失效。登出清除瀏覽器 session cookie，仍可在信任裝置上快速解鎖。
+- 所有 `/api/admin/*` 資料端點要求有效 session，回應 private/no-store；登入、登出與 PIN／Passkey 變更要求同源 Origin。個資與前三名不會出現在公開排行榜。OAuth session、PIN hash、WebAuthn 公鑰、trusted device 與 challenge 存在伺服器資料庫，不寫入招生 Google Sheet。
 - 統計使用 Asia/Taipei 日期；Google Form 與有效正式遊戲紀錄合併，姓名經 NFKC、移除空白與大小寫正規化後去重。重複姓名保留當日最新紀錄及其關主；試玩、練習、無效成績不計入。前三名是當日有效正式成績排序。
 - 伺服器設定 `GOOGLE_SERVICE_ACCOUNT_JSON`（完整的 Service Account JSON 字串）、`GOOGLE_SHEET_ID`、`GOOGLE_GAME_SHEET_TAB`（正式成績分頁，預設 sheetId 896311128 的 09/14 後玩遊戲分頁，後備 `GOOGLE_SHEET_TAB`）、`GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB`（招生狀況表）、`GOOGLE_RECRUITMENT_MASTER_SHEET_TAB`（總表）。舊環境的 `GOOGLE_SHEET_TAB` / `GOOGLE_FORM_SHEET_TAB` 仍可後備。程式會解析 JSON 並還原 `private_key` 內以 `\n` 表示的換行，使用 `https://www.googleapis.com/auth/spreadsheets` scope；所有變數均不可使用 `VITE_` 前綴。
 - 正式遊戲只寫入 sheetId 896311128 的 09/14 後玩遊戲分頁。不要從遊戲路徑寫入「招生狀況表」或「總表」。`submissionId` / `_submissionId` 為唯一事件 ID：同 ID 同資料回 duplicate，同 ID 不同資料回 conflict，不得覆寫。

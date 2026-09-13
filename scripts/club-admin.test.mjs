@@ -122,8 +122,8 @@ test("admin authentication and private read API contracts with mocked Google onl
   }
   assert.ok(!setCookie.includes(process.env.ADMIN_PASSWORD));
   const cookie = setCookie.split(";")[0];
-  assert.deepEqual(await (await handleAdminSession(request("session", { cookie }))).json(), { authenticated: true });
-  assert.deepEqual(await (await handleAdminSession(request("session", { cookie: `${cookie}x` }))).json(), { authenticated: false });
+  assert.equal((await (await handleAdminSession(request("session", { cookie }))).json()).authenticated, true);
+  assert.equal((await (await handleAdminSession(request("session", { cookie: `${cookie}x` }))).json()).authenticated, false);
   assert.equal((await (await handleAdminSession(request("session", { cookie: `${cookie}; ${cookie}` }))).json()).authenticated, false);
   for (const handler of [handleAdminDashboard, handleAdminResults, handleAdminFormResponses, handleAdminRecruitment]) {
     assert.equal((await handler(request("dashboard"))).status, 401);

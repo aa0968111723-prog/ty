@@ -1,6 +1,7 @@
 // @ts-nocheck -- Admin HTTP handlers are covered by scripts/club-admin.test.mjs.
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
+import { adminServiceEnabled, buildSessionView, readV2Session, revokeCurrentV2Session } from "./admin-auth.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured } from "./sheets.mjs";
 import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
@@ -322,7 +323,7 @@ function signature(payload, config) {
 }
 
 /** @param {Request} request */
-function authenticated(request) {
+function passwordSession(request) {
   const config = authConfig();
   if (!config) return false;
   const cookies = (request.headers.get("cookie") || "").split(";").map((part) => part.trim());
@@ -340,6 +341,12 @@ function authenticated(request) {
       data.iat <= now && data.exp > now && data.exp - data.iat === SESSION_SECONDS &&
       typeof data.nonce === "string" && /^[a-f0-9]{32}$/.test(data.nonce);
   } catch { return false; }
+}
+
+/** @param {Request} request */
+async function authenticated(request) {
+  if (passwordSession(request)) return true;
+  return Boolean(await readV2Session(request));
 }
 
 /** @param {string} token @param {number} maxAge */
@@ -398,18 +405,19 @@ export async function handleAdminLogin(request) {
 export async function handleAdminLogout(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站登出" }, 403);
+  await revokeCurrentV2Session(request);
   return json({ ok: true }, 200, { "set-cookie": cookie("", 0) });
 }
 
 /** @param {Request} request */
 export async function handleAdminSession(request) {
-  return json({ authenticated: authenticated(request) });
+  return json(await buildSessionView(request, { passwordSession: passwordSession(request) }));
 }
 
 /** @param {Request} request */
-function protect(request) {
-  if (!authConfig()) return json({ error: "管理功能尚未啟用" }, 503);
-  if (!authenticated(request)) return json({ error: "請先登入管理後台" }, 401);
+async function protect(request) {
+  if (!adminServiceEnabled()) return json({ error: "管理功能尚未啟用" }, 503);
+  if (!(await authenticated(request))) return json({ error: "請先登入管理後台" }, 401);
   if (!rateOk("read:global", 360, 60_000) || !rateOk(`read:${clientKey(request)}`, 90, 60_000)) {
     return json({ error: "請稍後再試" }, 429, { "Retry-After": "60" });
   }
@@ -417,9 +425,9 @@ function protect(request) {
 }
 
 /** @param {Request} request */
-function protectWrite(request) {
-  if (!authConfig()) return json({ error: "管理功能尚未啟用" }, 503);
-  if (!authenticated(request)) return json({ error: "請先登入管理後台" }, 401);
+async function protectWrite(request) {
+  if (!adminServiceEnabled()) return json({ error: "管理功能尚未啟用" }, 503);
+  if (!(await authenticated(request))) return json({ error: "請先登入管理後台" }, 401);
   if (!sameOrigin(request)) return json({ error: "請從本站送出" }, 403);
   if (!rateOk("write:global", 60, 60_000) || !rateOk(`write:${clientKey(request)}`, 20, 60_000)) {
     return json({ error: "請稍後再試" }, 429, { "Retry-After": "60" });
@@ -479,7 +487,7 @@ function sourceStatus(result) {
 
 /** @param {Request} request */
 export async function handleAdminDashboard(request) {
-  const denied = protect(request);
+  const denied = await protect(request);
   if (denied) return denied;
   const date = queryDate(request);
   if (!date) return json({ error: "日期格式須為有效的 YYYY-MM-DD" }, 400);
@@ -501,7 +509,7 @@ function searchContacts(rows, request) {
 
 /** @param {Request} request @param {"formResponses" | "results"} action */
 async function handleRows(request, action) {
-  const denied = protect(request);
+  const denied = await protect(request);
   if (denied) return denied;
   const date = queryDate(request);
   if (!date) return json({ error: "日期格式須為有效的 YYYY-MM-DD" }, 400);
@@ -559,7 +567,7 @@ function sourceSync(result) {
 export async function handleAdminRecruitment(request) {
   if (request.method === "POST") return handleAdminRecruitmentSubmit(request);
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, { Allow: "GET, POST" });
-  const denied = protect(request);
+  const denied = await protect(request);
   if (denied) return denied;
   const date = queryDate(request);
   if (!date) return json({ error: "日期格式須為有效的 YYYY-MM-DD" }, 400);
@@ -615,7 +623,7 @@ export async function handleAdminRecruitment(request) {
 
 /** @param {Request} request */
 export async function handleAdminRecruitmentSubmit(request) {
-  const denied = protectWrite(request);
+  const denied = await protectWrite(request);
   if (denied) return denied;
   if (!sheetsConfigured("recruitmentResponses")) {
     return json({ error: "招生狀況表尚未設定" }, 503);

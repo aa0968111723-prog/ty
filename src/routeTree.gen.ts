@@ -23,6 +23,7 @@ import { Route as ApiAdminLogoutRouteImport } from './routes/api/admin/logout'
 import { Route as ApiAdminRecruitmentRouteImport } from './routes/api/admin/recruitment'
 import { Route as ApiAdminResultsRouteImport } from './routes/api/admin/results'
 import { Route as ApiAdminSessionRouteImport } from './routes/api/admin/session'
+import { Route as ApiAdminAuthSplatRouteImport } from './routes/api/admin/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -94,6 +95,11 @@ const ApiAdminSessionRoute = ApiAdminSessionRouteImport.update({
   path: '/api/admin/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminAuthSplatRoute = ApiAdminAuthSplatRouteImport.update({
+  id: '/api/admin/auth/$',
+  path: '/api/admin/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/recruitment': typeof ApiAdminRecruitmentRoute
   '/api/admin/results': typeof ApiAdminResultsRoute
   '/api/admin/session': typeof ApiAdminSessionRoute
+  '/api/admin/auth/$': typeof ApiAdminAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/api/admin/recruitment': typeof ApiAdminRecruitmentRoute
   '/api/admin/results': typeof ApiAdminResultsRoute
   '/api/admin/session': typeof ApiAdminSessionRoute
+  '/api/admin/auth/$': typeof ApiAdminAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/api/admin/recruitment': typeof ApiAdminRecruitmentRoute
   '/api/admin/results': typeof ApiAdminResultsRoute
   '/api/admin/session': typeof ApiAdminSessionRoute
+  '/api/admin/auth/$': typeof ApiAdminAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/api/admin/recruitment'
     | '/api/admin/results'
     | '/api/admin/session'
+    | '/api/admin/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/api/admin/recruitment'
     | '/api/admin/results'
     | '/api/admin/session'
+    | '/api/admin/auth/$'
   id:
     | '__root__'
     | '/'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/api/admin/recruitment'
     | '/api/admin/results'
     | '/api/admin/session'
+    | '/api/admin/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -210,6 +222,7 @@ export interface RootRouteChildren {
   ApiAdminRecruitmentRoute: typeof ApiAdminRecruitmentRoute
   ApiAdminResultsRoute: typeof ApiAdminResultsRoute
   ApiAdminSessionRoute: typeof ApiAdminSessionRoute
+  ApiAdminAuthSplatRoute: typeof ApiAdminAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -312,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/auth/$': {
+      id: '/api/admin/auth/$'
+      path: '/api/admin/auth/$'
+      fullPath: '/api/admin/auth/$'
+      preLoaderRoute: typeof ApiAdminAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminRecruitmentRoute: ApiAdminRecruitmentRoute,
   ApiAdminResultsRoute: ApiAdminResultsRoute,
   ApiAdminSessionRoute: ApiAdminSessionRoute,
+  ApiAdminAuthSplatRoute: ApiAdminAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, ClipboardPen, Flag, LayoutDashboard, ListFilter, Medal, RefreshCw, RotateCcw, Sheet, Trophy, Users } from "lucide-react";
+import { Check, ChevronDown, ClipboardPen, Flag, LayoutDashboard, ListFilter, Medal, RefreshCw, RotateCcw, Sheet, Shield, Trophy, Users } from "lucide-react";
 import { AdminShell } from "@/components/club/admin-shell";
-import { AdminLogin } from "@/components/admin-login";
+import { AdminLogin, type AdminGate } from "@/components/admin-login";
+import { AdminSecurity } from "@/components/club/admin-security";
 import "@/admin.css";
 import { DashboardWidget } from "@/components/club/dashboard-widget";
 import { DEFAULT_LAYOUT, STORAGE_KEY, readLayout, initialView, taipeiDate, time, type Dashboard, type Tab, type LayoutPreference, type WidgetId, type Result } from "@/components/club/admin-presentation";
@@ -20,7 +21,8 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminDashboard() {
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [gate, setGate] = useState<AdminGate | null>(null);
+  const authenticated = gate?.authenticated === true && !gate.setupRequired;
   const [date, setDate] = useState(taipeiDate);
   const [tab, setTab] = useState<Tab>(initialView);
   const [data, setData] = useState<Dashboard | null>(null);
@@ -58,9 +60,9 @@ function AdminDashboard() {
     const controller = new AbortController();
     fetch("/api/admin/session", { signal: controller.signal })
       .then((response) => response.json())
-      .then((body) => setAuthenticated(body.authenticated === true))
+      .then((body) => setGate(body))
       .catch(() => {
-        if (!controller.signal.aborted) setAuthenticated(false);
+        if (!controller.signal.aborted) setGate({ authenticated: false });
       });
     return () => controller.abort();
   }, []);
@@ -102,7 +104,7 @@ function AdminDashboard() {
     } catch (cause) {
       if (id !== generation.current) return;
       if (cause instanceof Error && cause.message === "AUTH") {
-        setAuthenticated(false);
+        setGate((current) => ({ ...(current || { authenticated: false }), authenticated: false, setupRequired: false }));
         setData(null);
         setRecruitment(null);
       } else setError(cause instanceof Error ? cause.message : "同步失敗，請重新整理");
@@ -135,7 +137,7 @@ function AdminDashboard() {
       const response = await fetch("/api/admin/logout", { method: "POST" });
       if (!response.ok) throw new Error();
       generation.current++;
-      setAuthenticated(false);
+      setGate({ authenticated: false });
       setData(null);
     } catch {
       setError("登出失敗，請再試一次");
@@ -200,7 +202,7 @@ function AdminDashboard() {
     return <DashboardWidget key={id} id={id} editor={editor} data={data} todayData={todayData} date={date} layout={layout} dragging={dragging} setDragging={setDragging} togglePinned={togglePinned} toggleVisible={toggleVisible} moveWidget={moveWidget} selectLeader={selectLeader} />;
   }
 
-  if (authenticated === null)
+  if (gate === null)
     return (
       <main className="admin-page admin-auth">
         <p role="status">正在確認登入狀態…</p>
@@ -209,7 +211,22 @@ function AdminDashboard() {
   if (!authenticated)
     return (
       <main className="admin-page admin-auth">
-        <AdminLogin onSuccess={() => setAuthenticated(true)} />
+        <AdminLogin
+          gate={gate}
+          onSuccess={() => {
+            const standalone = window.matchMedia("(display-mode: standalone)").matches
+              || ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+            const url = new URL(window.location.href);
+            if (standalone && url.searchParams.get("view") !== "pinned") {
+              url.searchParams.set("view", "pinned");
+              window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+              setTab("pinned");
+            }
+            fetch("/api/admin/session")
+              .then((response) => response.json())
+              .then((body) => setGate(body));
+          }}
+        />
       </main>
     );
   return (
@@ -242,6 +259,7 @@ function AdminDashboard() {
                 podium: "前三名",
                 leaders: "關主",
                 system: "系統",
+                security: "安全與登入",
               }[tab]
             }
           </h1>
@@ -390,6 +408,7 @@ function AdminDashboard() {
                     ["表單", Sheet, "contacts", "form"],
                     ["成績", Trophy, "results", "results"],
                     ["同步", RefreshCw, "system", "sync"],
+                    ["安全", Shield, "security", "security"],
                   ].map(([label, Icon, next, shortcut]) => (
                     shortcut === "follow-up" ? (
                       <a key="follow-up" href="/follow-up">
@@ -563,6 +582,7 @@ function AdminDashboard() {
           <Bars rows={data?.gatekeepers ?? []} onSelect={selectLeader} />
         </section>
       )}
+      {tab === "security" && <AdminSecurity />}
       {tab === "system" && (
         <section className="admin-panel">
           <h2>系統同步狀態</h2>
