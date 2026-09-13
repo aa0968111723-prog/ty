@@ -103,7 +103,7 @@ const MAX = {
   submissionId: 80,
 };
 
-/** @param {unknown} value */
+/** @param {unknown} value @param {number} max */
 function clipped(value, max) {
   return text(value).slice(0, max);
 }
@@ -204,6 +204,7 @@ export function normalizeStaffRecruitmentPayload(body = {}, options = {}) {
 
 /**
  * @param {ReturnType<typeof normalizeStaffRecruitmentPayload>["payload"]} payload
+ * @returns {Record<string, string>}
  */
 export function staffRecruitmentRecord(payload) {
   const identity = {
