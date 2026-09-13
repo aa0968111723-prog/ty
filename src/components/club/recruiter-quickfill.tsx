@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ClipboardPen, ExternalLink, RefreshCw, UserRound } from "lucide-react";
+import { ArrowLeft, ClipboardPen, ExternalLink, RefreshCw, Send, UserRound } from "lucide-react";
 import { AdminLogin } from "@/components/admin-login";
 import {
+  LIVE_ACTIVITY_CHOICES,
+  LIVE_INTEREST_TOPICS,
+  LIVE_NOTE_TITLE,
+  LIVE_TIER_CHOICES,
+  LIVE_YES_NO,
   OFFICIAL_RECRUITERS,
   RECRUITER_STORAGE_KEY,
   datetimeLocalTaipei,
   generatePrefilledFormUrl,
+  taipeiDate,
 } from "@/lib/club/recruitment-prefill.mjs";
 import type { RecruitmentData } from "./recruitment-dashboard";
 
@@ -14,6 +20,34 @@ type Candidate = RecruitmentData["pending"][number] & {
   submissionId?: string;
   extraNotes?: string;
 };
+
+type StaffFields = {
+  recruitedAt: string;
+  tier: string;
+  activities: string[];
+  joined: string;
+  depositPaid: string;
+  depositAmount: string;
+  birthday: string;
+  studentId: string;
+  interest: string;
+  interestTopics: string[];
+};
+
+function emptyStaff(): StaffFields {
+  return {
+    recruitedAt: taipeiDate(new Date()),
+    tier: "",
+    activities: [],
+    joined: "",
+    depositPaid: "",
+    depositAmount: "",
+    birthday: "",
+    studentId: "",
+    interest: "",
+    interestTopics: [],
+  };
+}
 
 function readStoredRecruiter() {
   try {
@@ -31,18 +65,64 @@ function waitLabel(minutes: number | null | undefined) {
   return rest ? `已等 ${hours} 時 ${rest} 分` : `已等 ${hours} 時`;
 }
 
+function toggleValue(list: string[], value: string) {
+  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+}
+
+function ChoiceRow({
+  label,
+  choices,
+  value,
+  multiple = false,
+  onChange,
+}: {
+  label: string;
+  choices: readonly string[];
+  value: string | string[];
+  multiple?: boolean;
+  onChange: (next: string | string[]) => void;
+}) {
+  const selected = Array.isArray(value) ? value : value ? [value] : [];
+  return (
+    <fieldset className="quickfill-choices">
+      <legend>{label}</legend>
+      <div className="quickfill-partners">
+        {choices.map((choice) => (
+          <button
+            key={choice}
+            type="button"
+            aria-pressed={selected.includes(choice)}
+            aria-label={`${label} ${choice}`}
+            onClick={() => {
+              if (multiple) onChange(toggleValue(selected, choice));
+              else onChange(selected[0] === choice ? "" : choice);
+            }}
+          >
+            {choice}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export function RecruiterQuickfill() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [data, setData] = useState<RecruitmentData | null>(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [stale, setStale] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [recruiter, setRecruiter] = useState("");
   const [customRecruiter, setCustomRecruiter] = useState("");
   const [query, setQuery] = useState("");
   const [selectedKey, setSelectedKey] = useState("");
   const [draft, setDraft] = useState<Candidate | null>(null);
   const [extraNotes, setExtraNotes] = useState("");
+  const [staff, setStaff] = useState<StaffFields>(emptyStaff);
+  const [hiddenKeys, setHiddenKeys] = useState(() => new Set<string>());
+  const [hiddenIds, setHiddenIds] = useState(() => new Set<string>());
 
   useEffect(() => {
     const stored = readStoredRecruiter();
@@ -111,10 +191,12 @@ export function RecruiterQuickfill() {
     const rows = data?.pending || [];
     const needle = query.trim();
     return rows.filter((row) => {
+      if (hiddenKeys.has(row.personKey)) return false;
+      if (row.submissionId && hiddenIds.has(row.submissionId.toLowerCase())) return false;
       if (!needle) return true;
       return `${row.name} ${row.phone} ${row.department} ${row.grade} ${row.gameGatekeeper}`.includes(needle);
     });
-  }, [data, query]);
+  }, [data, query, hiddenKeys, hiddenIds]);
 
   useEffect(() => {
     if (!selectedKey) return;
@@ -140,15 +222,84 @@ export function RecruiterQuickfill() {
       extraNotes: "",
     });
     setExtraNotes("");
+    setStaff(emptyStaff());
+    setSuccess("");
+    setError("");
   }
 
-  const preview = draft ? {
-    ...draft,
-    extraNotes,
-  } : null;
+  const preview = draft ? { ...draft, extraNotes } : null;
   const prefillUrl = preview && officialRecruiter
-    ? generatePrefilledFormUrl(preview, { recruiter: officialRecruiter, extraNotes })
+    ? generatePrefilledFormUrl(preview, {
+      recruiter: officialRecruiter,
+      extraNotes,
+      recruitedAt: staff.recruitedAt,
+      tier: staff.tier,
+      activities: staff.activities,
+      joined: staff.joined,
+      depositPaid: staff.depositPaid,
+      depositAmount: staff.depositAmount,
+      birthday: staff.birthday,
+      studentId: staff.studentId,
+      interest: staff.interest,
+      interestTopics: staff.interestTopics,
+    })
     : "";
+
+  function hideCandidate(personKey: string, submissionId: string) {
+    setHiddenKeys((current) => new Set(current).add(personKey));
+    if (submissionId) {
+      setHiddenIds((current) => new Set(current).add(submissionId.toLowerCase()));
+    }
+    setDraft(null);
+    setSelectedKey("");
+  }
+
+  async function submitStaffForm() {
+    if (!preview || !officialRecruiter || submitting) return;
+    setSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await fetch("/api/admin/recruitment", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          recruiter: officialRecruiter,
+          recruitedAt: staff.recruitedAt,
+          name: preview.name,
+          phone: preview.phone,
+          department: preview.department,
+          grade: preview.grade,
+          gameGatekeeper: preview.gameGatekeeper,
+          completedAt: preview.completedAt,
+          submissionId: preview.submissionId,
+          extraNotes,
+          tier: staff.tier,
+          activities: staff.activities,
+          joined: staff.joined,
+          depositPaid: staff.depositPaid,
+          depositAmount: staff.depositAmount,
+          birthday: staff.birthday,
+          studentId: staff.studentId,
+          interest: staff.interest,
+          interestTopics: staff.interestTopics,
+        }),
+      });
+      if (response.status === 401) {
+        setAuthenticated(false);
+        return;
+      }
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "無法送出招生資料");
+      hideCandidate(preview.personKey, preview.submissionId || "");
+      setSuccess(body.duplicate ? "這位同學已有招生紀錄，已從待跟進名單移除" : "已送出招生資料");
+      void load(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "無法送出招生資料");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (authenticated === null) {
     return <p className="admin-empty">讀取登入狀態…</p>;
@@ -170,11 +321,12 @@ export function RecruiterQuickfill() {
       </header>
 
       {error ? <p role="alert" className="admin-error">{error}{stale ? " · 顯示上次名單" : ""}</p> : null}
+      {success ? <p role="status" className="admin-success">{success}</p> : null}
       {stale && !error ? <p className="admin-caption">同步異常，顯示上次讀到的名單</p> : null}
 
       <section className="admin-panel quickfill-partner" aria-label="選擇接引人">
         <h1><UserRound size={20} /> 我是哪一位接引人</h1>
-        <p className="admin-caption">正式招生接引人會預填進表單。遊戲關主維持原現場帶關，不會被覆蓋。</p>
+        <p className="admin-caption">正式招生接引人會寫進招生狀況表。遊戲關主維持原現場帶關，不會被覆蓋。</p>
         <div className="quickfill-partners">
           {OFFICIAL_RECRUITERS.map((name) => (
             <button
@@ -213,7 +365,7 @@ export function RecruiterQuickfill() {
         <section className="admin-panel" aria-label="待跟進同學">
           <div className="admin-section-heading">
             <h2>待跟進同學</h2>
-            <span className="admin-caption">{pending.length} 位尚未送出正式表單</span>
+            <span className="admin-caption">{pending.length} 位尚未送出招生資料</span>
           </div>
           <input
             aria-label="搜尋同學"
@@ -245,21 +397,21 @@ export function RecruiterQuickfill() {
       )}
 
       {preview ? (
-        <section className="admin-panel quickfill-preview" aria-label="預填資料">
+        <section className="admin-panel quickfill-preview" aria-label="招生資料">
           <div className="admin-section-heading">
-            <h2><ClipboardPen size={20} /> 預填資料</h2>
+            <h2><ClipboardPen size={20} /> 招生資料</h2>
             <button type="button" onClick={() => { setDraft(null); setSelectedKey(""); }}>
               <ArrowLeft size={18} /> 重選
             </button>
           </div>
-          <p className="admin-caption">以下欄位會帶進正式 Google 表單，送出前都還能改。</p>
+          <p className="admin-caption">可直接在後台送出，不必再開 Google 表單。以下欄位送出前都還能改。</p>
           <label>
             同學的姓名
             <input aria-label="同學的姓名" value={preview.name || ""} onChange={(event) => setDraft({ ...preview, name: event.target.value })} />
           </label>
           <label>
-            電話
-            <input aria-label="同學電話" inputMode="tel" value={preview.phone || ""} onChange={(event) => setDraft({ ...preview, phone: event.target.value })} />
+            同學電話/LINE
+            <input aria-label="同學電話/LINE" inputMode="tel" value={preview.phone || ""} onChange={(event) => setDraft({ ...preview, phone: event.target.value })} />
           </label>
           <label>
             科系
@@ -295,9 +447,91 @@ export function RecruiterQuickfill() {
             <input aria-label="submissionId" value={preview.submissionId || ""} onChange={(event) => setDraft({ ...preview, submissionId: event.target.value })} />
           </label>
           <label>
-            接引人備註（活動、興趣等可在表單裡接著填）
+            接引日期
+            <input
+              aria-label="接引日期"
+              type="date"
+              value={staff.recruitedAt}
+              onChange={(event) => setStaff({ ...staff, recruitedAt: event.target.value })}
+            />
+          </label>
+          <ChoiceRow
+            label="這位同學是屬於那個分級呢:-)"
+            choices={LIVE_TIER_CHOICES}
+            value={staff.tier}
+            onChange={(value) => setStaff({ ...staff, tier: String(value) })}
+          />
+          <ChoiceRow
+            label="報名了那個活動"
+            choices={LIVE_ACTIVITY_CHOICES}
+            value={staff.activities}
+            multiple
+            onChange={(value) => setStaff({ ...staff, activities: Array.isArray(value) ? value : [] })}
+          />
+          <ChoiceRow
+            label="保證金是否繳費"
+            choices={LIVE_YES_NO}
+            value={staff.depositPaid}
+            onChange={(value) => setStaff({ ...staff, depositPaid: String(value) })}
+          />
+          {staff.depositPaid === "是" ? (
+            <label>
+              繳了多少呢?
+              <input
+                aria-label="繳了多少呢?"
+                inputMode="numeric"
+                value={staff.depositAmount}
+                onChange={(event) => setStaff({ ...staff, depositAmount: event.target.value })}
+              />
+            </label>
+          ) : null}
+          <ChoiceRow
+            label="是否入社"
+            choices={LIVE_YES_NO}
+            value={staff.joined}
+            onChange={(value) => setStaff({ ...staff, joined: String(value) })}
+          />
+          {staff.joined === "是" ? (
+            <div className="quickfill-join" aria-label="入社者請填寫以下資料">
+              <p className="admin-caption">入社者請填寫以下資料</p>
+              <label>
+                生日
+                <input
+                  aria-label="生日"
+                  type="date"
+                  value={staff.birthday}
+                  onChange={(event) => setStaff({ ...staff, birthday: event.target.value })}
+                />
+              </label>
+              <label>
+                學號
+                <input
+                  aria-label="學號"
+                  value={staff.studentId}
+                  onChange={(event) => setStaff({ ...staff, studentId: event.target.value })}
+                />
+              </label>
+              <label>
+                興趣
+                <input
+                  aria-label="興趣"
+                  value={staff.interest}
+                  onChange={(event) => setStaff({ ...staff, interest: event.target.value })}
+                />
+              </label>
+              <ChoiceRow
+                label="對甚麼有興趣"
+                choices={LIVE_INTEREST_TOPICS}
+                value={staff.interestTopics}
+                multiple
+                onChange={(value) => setStaff({ ...staff, interestTopics: Array.isArray(value) ? value : [] })}
+              />
+            </div>
+          ) : null}
+          <label>
+            {LIVE_NOTE_TITLE}
             <textarea
-              aria-label="接引人備註"
+              aria-label={LIVE_NOTE_TITLE}
               rows={3}
               value={extraNotes}
               onChange={(event) => setExtraNotes(event.target.value)}
@@ -307,18 +541,29 @@ export function RecruiterQuickfill() {
             <div><dt>正式招生接引人</dt><dd>{officialRecruiter}</dd></div>
             <div><dt>遊戲關主</dt><dd>{preview.gameGatekeeper || "未填"}</dd></div>
           </dl>
-          <a
-            className="admin-primary"
-            href={prefillUrl}
-            target="_blank"
-            rel="noreferrer"
-            data-quickfill="open-form"
-          >
-            打開正式招生表單 <ExternalLink size={16} />
-          </a>
-          <button type="button" onClick={() => void load(true)}>
-            我已送出表單，更新名單
-          </button>
+          <div className="quickfill-actions">
+            <button
+              type="button"
+              className="admin-primary"
+              data-quickfill="submit"
+              disabled={submitting || !preview.name}
+              onClick={() => void submitStaffForm()}
+            >
+              {submitting ? "送出中…" : <>送出招生資料 <Send size={16} /></>}
+            </button>
+            <a
+              className="quickfill-google"
+              href={prefillUrl}
+              target="_blank"
+              rel="noreferrer"
+              data-quickfill="open-form"
+            >
+              打開正式招生表單 <ExternalLink size={16} />
+            </a>
+            <button type="button" onClick={() => void load(true)}>
+              我已送出表單，更新名單
+            </button>
+          </div>
         </section>
       ) : null}
     </div>

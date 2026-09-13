@@ -7,11 +7,13 @@ import {
   GAME_SAFE_HEADERS,
   RESULT_COLUMNS,
   appendOfficialResult,
+  appendRecruitmentResponse,
   invalidateSheetCache,
   readSheetRows,
   sheetsConfigured,
 } from "../src/lib/club/sheets.mjs";
 import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
+import { normalizeStaffRecruitmentPayload } from "../src/lib/club/recruitment-staff-form.mjs";
 
 function configure(t, suffix, overrides = {}) {
   const names = [
@@ -309,4 +311,78 @@ test("official result writes never target 招生狀況表 or 總表", async (t) 
   assert.ok(ranges.length > 0);
   assert.ok(ranges.every((range) => String(range).includes(DEFAULT_TAB_TITLES.gameResults)));
   assert.ok(ranges.every((range) => !String(range).includes("招生狀況表") && !String(range).includes("總表")));
+});
+
+test("staff form appends onto 招生狀況表 and never writes 總表 or the game tab", async (t) => {
+  configure(t, "staff-write", {
+    GOOGLE_GAME_SHEET_TAB: DEFAULT_TAB_TITLES.gameResults,
+    GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB: "招生狀況表",
+    GOOGLE_RECRUITMENT_MASTER_SHEET_TAB: "總表",
+  });
+  invalidateSheetCache();
+  const values = [[
+    "時間戳記", "接引人(可複選)", "接引日期", "同學的姓名", "同學電話/LINE", "系級",
+    "這位同學是屬於那個分級呢:-)", "報名了那個活動",
+  ]];
+  const ranges = [];
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: {
+      get: async () => ({
+        data: {
+          sheets: [
+            { properties: { title: "總表", sheetId: EXPECTED_SHEET_IDS.recruitmentMaster } },
+            { properties: { title: "招生狀況表", sheetId: EXPECTED_SHEET_IDS.recruitmentResponses } },
+            { properties: { title: DEFAULT_TAB_TITLES.gameResults, sheetId: EXPECTED_SHEET_IDS.gameResults } },
+          ],
+        },
+      }),
+      values: {
+        get: async (params) => {
+          ranges.push(params.range);
+          return { data: { values } };
+        },
+        update: async (params) => {
+          ranges.push(params.range);
+          values[0] = [...params.requestBody.values[0]];
+          return { data: {} };
+        },
+        batchUpdate: async (params) => {
+          ranges.push(params.requestBody.data[0].range);
+          values.push([...params.requestBody.data[0].values[0]]);
+          return { data: {} };
+        },
+      },
+    },
+  }));
+  const parsed = normalizeStaffRecruitmentPayload({
+    recruiter: "柏能",
+    name: "王小明",
+    phone: "0912345678",
+    department: "歷史學系",
+    grade: "大一",
+    gameGatekeeper: "安倢",
+    completedAt: "2026-09-14T06:32:00.000Z",
+    submissionId: "11111111-1111-4111-8111-111111111111",
+    tier: "S(已報名)",
+    activities: ["9/30茶會"],
+    joined: "是",
+    depositPaid: "是",
+    depositAmount: "300",
+  }, { now: new Date("2026-09-14T08:00:00+08:00") });
+  const first = await appendRecruitmentResponse(parsed.payload);
+  assert.equal(first.saved, true);
+  assert.equal(first.duplicate, false);
+  assert.ok(ranges.every((range) => String(range).includes("招生狀況表")));
+  assert.ok(ranges.every((range) => !String(range).includes("總表")));
+  assert.ok(ranges.every((range) => !String(range).includes(DEFAULT_TAB_TITLES.gameResults)));
+  assert.ok(values[0].at(-1) === "_duplicate" || values[0].includes("_gameSubmissionId"));
+  const saved = Object.fromEntries(values[0].map((header, index) => [header, values[1][index]]));
+  assert.equal(saved["同學的姓名"], "王小明");
+  assert.equal(saved["接引人(可複選)"], "柏能");
+  assert.equal(saved._gameGatekeeper, "安倢");
+  assert.equal(saved._gameSubmissionId, parsed.payload.submissionId);
+  const again = await appendRecruitmentResponse(parsed.payload);
+  assert.equal(again.duplicate, true);
+  assert.equal(values.length, 2);
 });

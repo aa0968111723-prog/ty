@@ -276,16 +276,24 @@ test(
         _kind: "official",
         _skipSave: false,
       };
-      await page.route("**/api/admin/recruitment?*", (route) => {
+      const submitted = [];
+      await page.route("**/api/admin/recruitment**", async (route) => {
+        if (route.request().method() === "POST") {
+          submitted.push(route.request().postDataJSON());
+          return route.fulfill({ json: { ok: true, duplicate: false, pending: [] } });
+        }
         const date = new URL(route.request().url()).searchParams.get("date");
-        return route.fulfill({
-          json: buildRecruitmentDashboard({
-            date,
-            gameRows: [pendingStudent],
-            recruitmentRows: [],
-            masterRows: [],
-          }),
+        const data = buildRecruitmentDashboard({
+          date,
+          gameRows: submitted.length ? [] : [pendingStudent],
+          recruitmentRows: submitted.length ? [{
+            同學的姓名: pendingStudent.姓名,
+            "同學電話/LINE": pendingStudent.電話,
+            _gameSubmissionId: pendingStudent._submissionId,
+          }] : [],
+          masterRows: [],
         });
+        return route.fulfill({ json: data });
       });
       await page.goto(`${origin}/follow-up`);
       await page.getByRole("heading", { name: /我是哪一位接引人/ }).waitFor();
@@ -298,11 +306,25 @@ test(
       assert.match(decodeURIComponent(String(href)), /同學|王小明|待跟進甲|entry\.887514514/);
       assert.match(decodeURIComponent(String(href)), /遊戲關主：安倢/);
       assert.match(String(href), /entry\.1318284482=/);
-      const tap = await page.locator("[data-quickfill=open-form]").evaluate((el) => {
+      await page.getByRole("button", { name: "這位同學是屬於那個分級呢:-) S(已報名)" }).click();
+      await page.getByRole("button", { name: "報名了那個活動 9/30茶會" }).click();
+      await page.getByRole("button", { name: "是否入社 否" }).click();
+      await page.getByRole("button", { name: "保證金是否繳費 否" }).click();
+      const submit = page.locator("[data-quickfill=submit]");
+      const tap = await submit.evaluate((el) => {
         const box = el.getBoundingClientRect();
         return { height: box.height, width: box.width };
       });
       assert.ok(tap.height >= 44);
+      await submit.click();
+      await page.getByRole("status").waitFor();
+      assert.equal(submitted.length, 1);
+      assert.equal(submitted[0].recruiter, "柏能");
+      assert.equal(submitted[0].gameGatekeeper, "安倢");
+      assert.equal(submitted[0].tier, "S(已報名)");
+      assert.ok(submitted[0].activities.includes("9/30茶會"));
+      assert.equal(await page.getByRole("button", { name: "跟進這位同學" }).count(), 0);
+      assert.equal(await page.locator("[data-quickfill=open-form]").count(), 0);
       await capture(page, "follow-up-390");
       assert.deepEqual(errors, []);
       await context.close();

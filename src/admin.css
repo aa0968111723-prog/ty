@@ -541,6 +541,15 @@
   background: var(--danger-soft);
   font-size: var(--text-small);
 }
+.admin-success {
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-sm);
+  color: var(--brand);
+  background: var(--brand-soft);
+  font-size: var(--text-small);
+}
 .admin-bottom-nav {
   position: fixed;
   z-index: 30;
@@ -1011,6 +1020,11 @@
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
+.quickfill-partners button {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: var(--text-small);
+}
 .quickfill-partners button[aria-pressed="true"] {
   background: var(--surface-selected);
   border-color: var(--brand);
@@ -1045,6 +1059,39 @@
   gap: var(--space-2);
   min-height: 44px;
   text-decoration: none;
+}
+.quickfill-actions {
+  display: grid;
+  gap: var(--space-2);
+}
+.quickfill-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+}
+.quickfill-choices {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.quickfill-choices legend {
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+.quickfill-join {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
 }
 .quickfill-page h1,
 .quickfill-preview h2 {

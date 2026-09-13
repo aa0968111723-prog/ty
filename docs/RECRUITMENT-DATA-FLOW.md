@@ -1,8 +1,8 @@
 # 招生資料流
 
-學生打開 ty → 選關主、填資料 → 15 秒練習（不寫入）→ 60 秒正式遊戲 → 以 `submissionId` 寫入 Google Sheet 遊戲分頁（gid `896311128`，標題為 `09/` 接 `14後玩遊戲`）→ 已登入夥伴打開 `/follow-up`「接引人快速填表」→ 用完整 `/viewform` PREFILL 打開正式 Google Form → 提交進入「招生狀況表」（gid `1921679351`，A:Q 既有欄位不變）→ 既有「總表」（gid `0`）公式自動整理 → `/admin` 招生戰情讀總表＋遊戲分頁＋招生狀況表。
+學生打開 ty → 選關主、填資料 → 15 秒練習（不寫入）→ 60 秒正式遊戲 → 以 `submissionId` 寫入 Google Sheet 遊戲分頁（gid `896311128`，標題為 `09/` 接 `14後玩遊戲`）→ 已登入夥伴打開 `/follow-up`「接引人快速填表」→ 在後台填完招生題並「送出招生資料」，或用完整 `/viewform` PREFILL 打開正式 Google Form → 兩者都進入「招生狀況表」（gid `1921679351`，A:Q 既有欄位不變）→ 既有「總表」（gid `0`）公式自動整理 → `/admin` 招生戰情讀總表＋遊戲分頁＋招生狀況表。
 
-ty 不是第二套招生真相。Google Sheets 與現有 Google Form 仍是招生工作流核心。遊戲**只寫** gid `896311128` 那一頁，不寫「招生狀況表」或「總表」。
+ty 不是第二套招生真相。Google Sheets 與現有 Google Form 仍是招生工作流核心。遊戲**只寫** gid `896311128` 那一頁，不寫「招生狀況表」或「總表」。後台內建表單是夥伴主動送出，目的地與 Google Form 相同。
 
 ## 分頁
 
@@ -43,6 +43,12 @@ Entry ID 於 2026-09-13 自發布頁 HTML `FB_PUBLIC_LOAD_DATA_` 讀出，**不�
 夥伴在表單裡繼續填分級、活動、入社、保證金、備註其餘內容。預填欄位都可改。
 
 現行表單**沒有**獨立的「遊戲完成時間／遊戲關主／submissionId」題（沒有對應 entry ID）。這三項寫進備註前三行，Apps Script 提交時解析後寫入 `_gameCompletedAt`、`_gameGatekeeper`、`_gameSubmissionId`。若之後用表單擁有者帳號加了獨立題，把新的 `entry.xxx` 放進 `GOOGLE_FORM_PREFILL_ENTRIES` 即可，不要猜 ID。
+
+## 後台內建招生表
+
+已登入夥伴可在 `/follow-up` 直接填完正式表單其餘題目（分級、活動、入社、保證金、備註、入社後的生日／學號／興趣），按「送出招生資料」。伺服器以管理員 session（`protect`／同源 POST）呼叫 Sheets API，**append** 一列到「招生狀況表」（gid `1921679351`），欄位對應 Google Form 回應列。技術欄 `_gameSubmissionId`、`_gameGatekeeper`、`_gameCompletedAt` 只加在最後，不刪既有欄。去重與表單提交相同：同一 `submissionId` 或同一正規化電話不重複寫入，並立刻從待跟進名單移除。
+
+「打開正式招生表單」仍保留，給想繼續用 Google Form 的夥伴。遊戲路徑仍然只寫 gid `896311128`，不會寫「招生狀況表」或覆寫「總表」公式。
 
 ## 環境變數
 
