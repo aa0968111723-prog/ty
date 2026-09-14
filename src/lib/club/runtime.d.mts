@@ -23,6 +23,7 @@ export const TUTORIAL_LESSONS: Array<{
   visual: "red" | "blue" | "green" | "yellow";
 }>;
 export function tutorialCorrectId(step: (typeof TUTORIAL_LESSONS)[number]): (typeof TUTORIAL_LESSONS)[number]["meaning"];
+export function pickMode(random?: () => number): "meaning" | "visual";
 export const GRADE_LIST: string[];
 export const DEPARTMENT_GROUPS: { college: string; items: string[] }[];
 export const GUEST_PLAYER: {
