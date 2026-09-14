@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
-import { AdminLogin } from "@/components/admin-login";
 import { ClubHeader } from "./club-header";
 import { ChallengeHero } from "./challenge-hero";
 import { LeaderSelector } from "./leader-selector";
@@ -16,6 +15,10 @@ import {
   type Player,
   type GameSettings,
 } from "./presentation";
+
+const AdminLogin = lazy(() =>
+  import("@/components/admin-login").then((mod) => ({ default: mod.AdminLogin })),
+);
 
 export function RegisterScreen({
   language,
@@ -90,6 +93,7 @@ export function RegisterScreen({
                   value={player.name}
                   onChange={(e) => onChange("name", e.target.value)}
                   placeholder={ui.namePlaceholder}
+                  suppressHydrationWarning
                 />
                 <span id="name-error" className="field-err">
                   {validationText(errors.name, language)}
@@ -104,6 +108,7 @@ export function RegisterScreen({
                   aria-describedby={errors.department ? "department-error" : undefined}
                   value={player.department}
                   onChange={(e) => onChange("department", e.target.value)}
+                  suppressHydrationWarning
                 >
                   <option value="">{ui.selectDepartment}</option>
                   {DEPARTMENT_GROUPS.map((g) => (
@@ -132,6 +137,7 @@ export function RegisterScreen({
                   aria-hidden="true"
                   value={player.grade}
                   onChange={(e) => onChange("grade", e.target.value)}
+                  suppressHydrationWarning
                 >
                   <option value="">{ui.selectYear}</option>
                   {GRADE_LIST.map((g) => (
@@ -172,6 +178,7 @@ export function RegisterScreen({
                     onChange("phone", e.target.value.replace(/[^\d]/g, "").slice(0, 10))
                   }
                   placeholder={ui.phonePlaceholder}
+                  suppressHydrationWarning
                 />
                 <span id="phone-error" className="field-err">
                   {validationText(errors.phone, language)}
@@ -198,10 +205,12 @@ export function RegisterScreen({
         </div>
       </form>
       {openAdmin ? (
-        <AdminLogin
-          onClose={() => setOpenAdmin(false)}
-          onSuccess={() => window.location.assign("/admin")}
-        />
+        <Suspense fallback={null}>
+          <AdminLogin
+            onClose={() => setOpenAdmin(false)}
+            onSuccess={() => window.location.assign("/admin")}
+          />
+        </Suspense>
       ) : null}
     </>
   );

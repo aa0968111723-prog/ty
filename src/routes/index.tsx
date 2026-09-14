@@ -39,7 +39,6 @@ import {
 } from "@/components/club/presentation";
 
 export const Route = createFileRoute("/")({
-  ssr: false,
   component: BoothApp,
 });
 
