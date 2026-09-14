@@ -27,6 +27,7 @@ import {
   settingsAreValid,
   TUTORIAL_LESSONS,
   tutorialCorrectId,
+  pickMode,
 } from "./runtime.mjs";
 
 const snapshot = (game) => ({ mode: game.mode, seq: game.questionSeq });
@@ -241,14 +242,14 @@ describe("timer and answer mode", () => {
     assert.equal(g.ended, true);
   });
 
-  it("switches exactly once after each answered question", () => {
+  it("reassigns meaning or visual at random after each answered question", () => {
     const g = createLiveGame(0);
     const firstMode = g.mode;
     const firstId = correctId(g);
     const first = judgeAnswer(g, firstId, { mode: firstMode, seq: g.questionSeq }, 100);
     assert.equal(first.ok, true);
     assert.equal(first.switched, true);
-    assert.notEqual(g.mode, firstMode);
+    assert.ok(g.mode === "meaning" || g.mode === "visual");
 
     const secondMode = g.mode;
     const secondId = ["red", "blue", "green", "yellow"].find((id) => id !== correctId(g));
@@ -256,7 +257,32 @@ describe("timer and answer mode", () => {
     assert.equal(second.ok, true);
     assert.equal(second.hit, false);
     assert.equal(second.switched, true);
-    assert.notEqual(g.mode, secondMode);
+    assert.ok(g.mode === "meaning" || g.mode === "visual");
+  });
+
+  it("picks visual below half and meaning at or above half", () => {
+    assert.equal(pickMode(() => 0), "visual");
+    assert.equal(pickMode(() => 0.499), "visual");
+    assert.equal(pickMode(() => 0.5), "meaning");
+    assert.equal(pickMode(() => 0.99), "meaning");
+  });
+
+  it("can keep or change the rule after an answer", () => {
+    let stayed = 0;
+    let changed = 0;
+    const seen = new Set();
+    for (let i = 0; i < 80; i += 1) {
+      const g = createLiveGame(0);
+      const start = g.mode;
+      answer(g, 100);
+      seen.add(g.mode);
+      if (g.mode === start) stayed += 1;
+      else changed += 1;
+    }
+    assert.ok(stayed > 0, "expected some repeats");
+    assert.ok(changed > 0, "expected some changes");
+    assert.equal(seen.has("meaning"), true);
+    assert.equal(seen.has("visual"), true);
   });
 
   it("honors custom duration and tap settings", () => {

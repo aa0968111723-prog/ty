@@ -13,7 +13,6 @@ function colorHex(id: ColorId) {
 
 export function HowToPlay({ language }: { language: Language }) {
   const ui = TEXT[language];
-  const zh = language === "zh";
 
   return (
     <section className="how-to-play" aria-labelledby="how-to-title" data-howto="rules">
@@ -66,7 +65,7 @@ export function HowToPlay({ language }: { language: Language }) {
         })}
       </div>
       <p className="how-to-switch">
-        {zh ? "答完一題，任務就會換成另一種。" : "After each answer, the task switches."}
+        {ui.howToSwitch}
       </p>
     </section>
   );

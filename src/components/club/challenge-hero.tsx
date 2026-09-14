@@ -10,7 +10,7 @@ export function ChallengeHero({ language }: { language: Language }) {
         {TEXT[language].title}
       </h1>
       <p className="hero-subtitle">
-        {zh ? "先看任務，再選顏色。任務會在字面意思與視覺顏色之間切換。" : "Read the task, then tap a color. The task switches between the word and the ink."}
+        {zh ? "先看任務，再選顏色。每題會隨機是字面意思或視覺顏色。" : "Read the task, then tap a color. Each question is randomly word meaning or ink color."}
       </p>
       <div className="challenge-rules" aria-label={zh ? "挑戰規則" : "Challenge rules"}>
         <span className="rule-chip">
@@ -23,7 +23,7 @@ export function ChallengeHero({ language }: { language: Language }) {
         </span>
         <span className="rule-chip">
           <ArrowRightLeft size={16} />
-          {zh ? "每題切換" : "Switch each answer"}
+          {zh ? "每題隨機" : "Random each question"}
         </span>
       </div>
       <p className="rule-score">

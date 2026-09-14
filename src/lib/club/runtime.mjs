@@ -17,20 +17,20 @@ export const SWITCH_MIN = 1400;
 export const SWITCH_MAX = 4500;
 
 export const SPEED_PRESETS = [
-  { id: "slow", label: "慢", hint: "每答一題換規則", switchMs: 4500, comboEvery: 5, tapLockMs: 90 },
+  { id: "slow", label: "慢", hint: "每答一題隨機換規則", switchMs: 4500, comboEvery: 5, tapLockMs: 90 },
   {
     id: "normal",
     label: "一般",
-    hint: "每答一題換規則",
+    hint: "每答一題隨機換規則",
     switchMs: 3000,
     comboEvery: 3,
     tapLockMs: 64,
   },
-  { id: "fast", label: "快", hint: "每答一題換規則", switchMs: 2000, comboEvery: 3, tapLockMs: 55 },
+  { id: "fast", label: "快", hint: "每答一題隨機換規則", switchMs: 2000, comboEvery: 3, tapLockMs: 55 },
   {
     id: "rush",
     label: "極快",
-    hint: "每答一題換規則",
+    hint: "每答一題隨機換規則",
     switchMs: 1400,
     comboEvery: 2,
     tapLockMs: 48,
@@ -207,6 +207,10 @@ export function colorById(id) {
   return COLORS.find((c) => c.id === id) ?? COLORS[0];
 }
 
+export function pickMode(random = Math.random) {
+  return random() < 0.5 ? "visual" : "meaning";
+}
+
 export function nextQuestion(prev) {
   const pool = COLORS;
   let meaning = pool[Math.floor(Math.random() * pool.length)];
@@ -266,8 +270,7 @@ export function createLiveGame(now = performance.now(), opts = {}) {
   if (!Number.isFinite(now) || now < 0) throw new TypeError("Invalid game clock");
   const s = clampSettings(opts.settings);
   const skipSave = Boolean(opts.skipSave) || !isOfficialSettings(s);
-  const mode =
-    s.startMode === "random" ? (Math.random() < 0.5 ? "visual" : "meaning") : s.startMode;
+  const mode = s.startMode === "random" ? pickMode() : s.startMode;
   const question = nextQuestion(null);
   return {
     score: 0,
@@ -314,7 +317,7 @@ export function createWarmupGame(now = performance.now(), settings = {}) {
 
 function switchModeAfterAnswer(game, now) {
   if (game.ended) return false;
-  game.mode = game.mode === "meaning" ? "visual" : "meaning";
+  game.mode = pickMode();
   game.lastModeSwitch = now;
   return true;
 }
