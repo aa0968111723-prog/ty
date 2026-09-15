@@ -32,7 +32,7 @@ export const TEXT = {
     officialDescription:
       "Learn the two rules, try two practice taps, warm up for 15 seconds, then start a fresh 60-second challenge. The public board shows masked names only.",
     practiceDescription: "Practice mode is active. This score is not entered into the prize draw.",
-    name: "Name",
+    name: "Full name",
     department: "Department",
     year: "Year",
     mobile: "Mobile number",
@@ -42,7 +42,7 @@ export const TEXT = {
     customGatekeeperPlaceholder: "Enter the booth leader name",
     selectDepartment: "Select your Tamkang department",
     selectYear: "Select your year",
-    namePlaceholder: "e.g. Alex",
+    namePlaceholder: "e.g. Chen Xiaoming",
     phonePlaceholder: "10-digit mobile number",
     preparing: "Preparing…",
     officialStart: "Start practice",
@@ -131,7 +131,7 @@ export const TEXT = {
     officialDescription:
       "先看懂兩種規則，再做兩題教學與 15 秒練習，然後開始全新的 60 秒正式挑戰。公開榜只顯示遮罩姓名與成績。",
     practiceDescription: "目前是練習規則，成績不登記抽獎。",
-    name: "姓名",
+    name: "本名",
     department: "科系",
     year: "年級",
     mobile: "電話",
@@ -141,7 +141,7 @@ export const TEXT = {
     customGatekeeperPlaceholder: "輸入關主姓名",
     selectDepartment: "請選擇淡江科系",
     selectYear: "請選擇年級",
-    namePlaceholder: "例如：小華",
+    namePlaceholder: "例如：陳小明",
     phonePlaceholder: "09xxxxxxxx",
     preparing: "準備中…",
     officialStart: "開始練習",
@@ -322,7 +322,7 @@ const BLURBS_EN: Record<string, string> = {
 };
 
 const VALIDATION_EN: Record<string, string> = {
-  請填寫姓名: "Please enter your name.",
+  請填寫本名: "Please enter your full legal name.",
   "請填 1–20 字的真實姓名": "Please enter a real name between 1 and 20 characters.",
   請選擇淡江科系: "Please select your Tamkang department.",
   請從名單選擇淡江科系: "Please choose a department from the list.",
