@@ -410,7 +410,7 @@ export function validatePlayer(player) {
   const grade = String(player?.grade ?? "").trim();
   const phone = String(player?.phone ?? "").replace(/\s+/g, "");
   const gatekeeper = String(player?.gatekeeper ?? "").trim();
-  if (!name) errors.name = "請填寫姓名";
+  if (!name) errors.name = "請填寫本名";
   else if (!NAME_RE.test(name)) errors.name = "請填 1–20 字的真實姓名";
   if (!department) errors.department = "請選擇淡江科系";
   else if (!DEPARTMENT_LIST.includes(department) && department !== "現場試玩")
