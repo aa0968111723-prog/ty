@@ -616,6 +616,22 @@ test("event signup counts a person once today and once per event", () => {
     data.events.some((row) => /無|考慮中/.test(row.name) || row.people.some((person) => /09\d|submissionId/i.test(person.name))),
     false,
   );
+  const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal(partner.events.find((row) => row.name === "9/30茶會")?.count, 2);
+  assert.deepEqual(
+    partner.events.find((row) => row.name === "9/30茶會")?.people.map((row) => row.name).sort(),
+    ["乙", "甲"],
+  );
+  assert.equal(partner.kpiPeople.todayEvents.some((row) => row.name === "甲"), true);
+  assert.equal(partner.trend.length, 7);
+  const who = JSON.stringify({
+    events: partner.events,
+    kpiPeople: partner.kpiPeople,
+    trend: partner.trend,
+  });
+  assert.equal(/09\d{8}/.test(who), false);
+  assert.equal(/submissionId/i.test(who), false);
+  assert.equal(/phone:/i.test(who), false);
 });
 
 test("join and deposit counts are name-normalized unique and do not merge different phones", () => {

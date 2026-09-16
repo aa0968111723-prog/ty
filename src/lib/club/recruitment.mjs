@@ -972,6 +972,44 @@ export function recruitmentChoiceGroups(dashboard) {
   return groups;
 }
 
+/** Partner WHO chips: display name only. personKey is a hash so phones never leave the server. */
+function partnerNameChip(row = {}) {
+  const name = text(row.name) || "未填姓名";
+  const seed = String(row.personKey || name);
+  return {
+    name,
+    personKey: `who:${createHash("sha256").update(seed).digest("hex").slice(0, 16)}`,
+  };
+}
+
+function partnerEvents(events = []) {
+  return (Array.isArray(events) ? events : []).map((event) => ({
+    name: text(event.name),
+    count: Number(event.count) || 0,
+    people: Array.isArray(event.people) ? event.people.map(partnerNameChip) : [],
+  }));
+}
+
+function partnerKpiPeople(lists = {}) {
+  const empty = { todayContacts: [], allContacts: [], todayEvents: [], joined: [], deposit: [], pending: [] };
+  const source = lists && typeof lists === "object" ? lists : {};
+  /** @type {typeof empty} */
+  const out = { ...empty };
+  for (const key of Object.keys(empty)) {
+    out[key] = Array.isArray(source[key]) ? source[key].map(partnerNameChip) : [];
+  }
+  return out;
+}
+
+function partnerTrend(trend = []) {
+  return (Array.isArray(trend) ? trend : []).map((row) => ({
+    date: text(row.date),
+    contacts: Number(row.contacts) || 0,
+    signups: Number(row.signups) || 0,
+    joined: Number(row.joined) || 0,
+  }));
+}
+
 function partnerPerson(row = {}) {
   return {
     personKey: row.personKey,
@@ -1035,6 +1073,9 @@ export function toPartnerRecruitmentDashboard(dashboard = {}) {
     activities: dashboard.activities,
     daily: dashboard.daily,
     funnel: dashboard.funnel,
+    events: partnerEvents(dashboard.events),
+    trend: partnerTrend(dashboard.trend),
+    kpiPeople: partnerKpiPeople(dashboard.kpiPeople),
     pending: (dashboard.pending || []).map(partnerPerson),
     profiles: (dashboard.profiles || []).map(partnerPerson),
     gameGatekeepers: dashboard.gameGatekeepers,
