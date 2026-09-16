@@ -351,21 +351,19 @@ export function RecruitmentDashboard({
               <ChevronDown size={18} className={filtersOpen ? "is-open" : ""} />
             </button>
           </div>
+          <p className="admin-caption">
+            {pending.length} 位尚未填正式資料
+            {selfRecruiter ? ` · 優先顯示關主或接引人是「${selfRecruiter}」` : " · 先選接引人，自己的有緣人會排前面"}
+          </p>
+          <button type="button" onClick={() => setStatus(status === "handled" ? "pending" : "handled")}>
+            {status === "handled" ? "只看未處理" : "含已標記處理"}
+          </button>
           <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
             <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話" value={query} onChange={(event) => setQuery(event.target.value)} />
             <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
               <option value="">所有遊戲關主</option>
               {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}
             </select>
-          </div>
-          <div className="admin-section-heading">
-            <p className="admin-caption">
-              {pending.length} 位尚未填正式資料
-              {selfRecruiter ? ` · 優先顯示關主或接引人是「${selfRecruiter}」` : " · 先選接引人，自己的有緣人會排前面"}
-            </p>
-            <button type="button" onClick={() => setStatus(status === "handled" ? "pending" : "handled")}>
-              {status === "handled" ? "只看未處理" : "含已標記處理"}
-            </button>
           </div>
           {!pending.length ? (
             <p className="admin-empty">這時段沒有待處理同學</p>

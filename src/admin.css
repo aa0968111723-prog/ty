@@ -152,6 +152,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-3);
   margin: var(--space-5) 0;
 }
@@ -1295,6 +1296,7 @@
   font-size: var(--text-h2);
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .battle-kpi-detail {
   padding: 0 var(--space-4) var(--space-4);

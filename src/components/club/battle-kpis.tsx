@@ -39,7 +39,7 @@ type CommandData = {
 };
 
 function metric(value: number | null | undefined) {
-  if (value == null) return "資料不足";
+  if (value == null) return "—";
   return value.toLocaleString("zh-Hant");
 }
 
