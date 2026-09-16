@@ -1353,13 +1353,17 @@
   border-radius: var(--radius);
   background: var(--surface-raised);
   box-shadow: var(--shadow-card);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .recruitment-meta {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 2px var(--space-3);
   margin: var(--space-2) 0 0;
+}
+.recruitment-meta p {
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 .recruitment-card p,
 .admin-person-list article p {
