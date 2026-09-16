@@ -1075,14 +1075,10 @@
   min-width: 0;
 }
 @media (max-width: 759px) {
+  .admin-page .recruitment-pending {
+    padding-bottom: var(--admin-tabbar-clear);
+  }
   .admin-page .recruitment-pending .recruitment-actions {
-    position: sticky;
-    bottom: var(--admin-tabbar-clear);
-    z-index: 20;
-    margin-top: var(--space-3);
-    padding-top: var(--space-2);
-    padding-bottom: var(--space-2);
-    background: var(--page-bg-warm);
     scroll-margin-bottom: var(--admin-tabbar-clear);
   }
 }
