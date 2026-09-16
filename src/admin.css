@@ -1483,9 +1483,7 @@
     padding-bottom: 148px;
   }
   .battle-next {
-    position: fixed;
-    left: var(--space-5);
-    right: var(--space-5);
+    position: sticky;
     bottom: calc(76px + env(safe-area-inset-bottom));
     z-index: 6;
   }

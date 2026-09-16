@@ -160,8 +160,7 @@ export function AdminShell({
       <nav className="admin-bottom-nav" aria-label="手機後台導覽">
         {primaryNav.map((item) => {
           const Icon = item.icon;
-          const current =
-            item.id === "roster" ? view === "roster" && !forms : view === item.id && !forms;
+          const current = view === item.id && !forms;
           return (
             <button
               key={item.shortcut}
