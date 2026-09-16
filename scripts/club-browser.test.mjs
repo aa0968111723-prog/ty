@@ -6,6 +6,7 @@ import { chromium } from "playwright";
 import { buildDashboard } from "../src/lib/club/admin.mjs";
 import { buildRecruitmentDashboard } from "../src/lib/club/recruitment.mjs";
 import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
+import { OFFICIAL_FORM_EDIT_URL, OFFICIAL_VIEWFORM_URL } from "../src/lib/club/recruitment-prefill.mjs";
 
 const base = process.env.CLUB_BROWSER_URL;
 function paidDepositMasterRows() {
@@ -1169,7 +1170,19 @@ test(
       assert.equal(await page.getByRole("button", { name: "填寫正式資料" }).count(), 0);
       const backoffice = page.locator("[data-quickfill=open-backoffice]");
       assert.equal(await backoffice.count(), 1);
-      assert.equal(await backoffice.getAttribute("href"), "/admin?view=today");
+      assert.equal(await backoffice.getAttribute("href"), OFFICIAL_FORM_EDIT_URL);
+      assert.equal(await backoffice.getAttribute("target"), "_blank");
+      assert.match(String(await backoffice.getAttribute("href")), /\/forms\/d\/12fk5ubMY0fnCSSTEljFJ1l-gcao1hDMkw7F8I8qTlOw\/edit$/);
+      assert.doesNotMatch(String(await backoffice.getAttribute("href")), /view=today/);
+      const openForm = page.locator("[data-quickfill=open-form]").last();
+      assert.match(String(await openForm.getAttribute("href")), /\/viewform\?/);
+      assert.ok(String(await openForm.getAttribute("href")).startsWith(OFFICIAL_VIEWFORM_URL));
+      assert.equal(await page.getByText("分級").count(), 0);
+      assert.equal(await page.getByText("S/A/B").count(), 0);
+      await page.getByRole("status").scrollIntoViewIfNeeded();
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "follow-up-390-viewport.png") });
+      }
       await capture(page, "follow-up-390");
       assert.deepEqual(errors, []);
       await context.close();

@@ -24,6 +24,13 @@ const candidate = {
   latestAttempt: { submissionId: "11111111-1111-4111-8111-111111111111", completedAt: "2026-09-14T06:32:00.000Z" },
 };
 
+test("staff 查看招生表單後台 uses the live form /edit URL, not viewform or a new form", () => {
+  assert.equal(OFFICIAL_FORM_EDIT_URL, `https://docs.google.com/forms/d/${OFFICIAL_FORM_ID}/edit`);
+  assert.equal(OFFICIAL_FORM_ID, "12fk5ubMY0fnCSSTEljFJ1l-gcao1hDMkw7F8I8qTlOw");
+  assert.doesNotMatch(OFFICIAL_FORM_EDIT_URL, /viewform/);
+  assert.doesNotMatch(OFFICIAL_FORM_EDIT_URL, /forms\.gle/);
+});
+
 test("forms.gle and missing responder resolve to the published /viewform URL", () => {
   assert.equal(resolveViewformUrl(""), OFFICIAL_VIEWFORM_URL);
   assert.equal(resolveViewformUrl(FORMS_GLE_SHORT_URL), OFFICIAL_VIEWFORM_URL);

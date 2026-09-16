@@ -382,7 +382,9 @@ export function RecruiterQuickfill() {
             ) : null}
             <a
               className="quickfill-google"
-              href="/admin?view=today"
+              href={OFFICIAL_FORM_EDIT_URL}
+              target="_blank"
+              rel="noreferrer"
               data-quickfill="open-backoffice"
             >
               查看招生表單後台 <ExternalLink size={16} />

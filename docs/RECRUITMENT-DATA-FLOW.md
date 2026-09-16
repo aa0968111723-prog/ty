@@ -40,15 +40,15 @@ Entry ID 於 2026-09-13 自發布頁 HTML `FB_PUBLIC_LOAD_DATA_` 讀出，**不�
 | 系級 | 系級 | `entry.628075911` |
 | 遊戲完成時間、遊戲關主、submissionId | 備註（現行表單沒有獨立題） | `entry.88032894` 開頭三行 |
 
-夥伴在表單裡繼續填分級、活動、入社、保證金、備註其餘內容。預填欄位都可改。
+夥伴在表單裡繼續填「這位同學報名了哪個活動？」、入社、保證金、備註其餘內容。預填欄位都可改。後台與夥伴流程不填分級、不顯示 S/A/B。
 
 現行表單**沒有**獨立的「遊戲完成時間／遊戲關主／submissionId」題（沒有對應 entry ID）。這三項寫進備註前三行，Apps Script 提交時解析後寫入 `_gameCompletedAt`、`_gameGatekeeper`、`_gameSubmissionId`。若之後用表單擁有者帳號加了獨立題，把新的 `entry.xxx` 放進 `GOOGLE_FORM_PREFILL_ENTRIES` 即可，不要猜 ID。
 
 ## 後台內建招生表
 
-已登入夥伴可在 `/follow-up` 直接填完正式表單其餘題目（分級、活動、入社、保證金、備註、入社後的生日／學號／興趣），按「送出招生資料」。伺服器以管理員 session（`protect`／同源 POST）呼叫 Sheets API，**append** 一列到「招生狀況表」（gid `1921679351`），欄位對應 Google Form 回應列。技術欄 `_gameSubmissionId`、`_gameGatekeeper`、`_gameCompletedAt` 只加在最後，不刪既有欄。去重與表單提交相同：同一 `submissionId` 或同一正規化電話不重複寫入，並立刻從待跟進名單移除。
+已登入夥伴可在 `/follow-up` 直接填完正式表單其餘題目（「這位同學報名了哪個活動？」、入社、保證金、備註、入社後的生日／學號／興趣），按「送出招生資料」。伺服器以管理員 session（`protect`／同源 POST）呼叫 Sheets API，**append** 一列到「招生狀況表」（gid `1921679351`），欄位對應 Google Form 回應列。技術欄 `_gameSubmissionId`、`_gameGatekeeper`、`_gameCompletedAt` 只加在最後，不刪既有欄。去重與表單提交相同：同一 `submissionId` 或同一正規化電話不重複寫入，並立刻從待跟進名單移除。後台不送分級；若舊客戶端仍 POST `tier`，伺服器只當相容欄位寫入，畫面不顯示 S/A/B。
 
-「打開正式招生表單」仍保留，給想繼續用 Google Form 的夥伴。遊戲路徑仍然只寫 gid `896311128`，不會寫「招生狀況表」或覆寫「總表」公式。
+「開啟正式招生表單」仍保留，開同一張表的 `/viewform` PREFILL。填完後「查看招生表單後台」開同一張表的 `/edit`（`https://docs.google.com/forms/d/12fk5ubMY0fnCSSTEljFJ1l-gcao1hDMkw7F8I8qTlOw/edit`），不是戰情頁。遊戲路徑仍然只寫 gid `896311128`，不會寫「招生狀況表」或覆寫「總表」公式。
 
 ## 環境變數
 

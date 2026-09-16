@@ -69,7 +69,7 @@ Canonical：TanStack Start，`npm run dev` 綁定 0.0.0.0:8080。正式站用同
 - 統計使用 Asia/Taipei 日期；Google Form 與有效正式遊戲紀錄合併，姓名經 NFKC、移除空白與大小寫正規化後去重。重複姓名保留當日最新紀錄及其關主；試玩、練習、無效成績不計入。前三名是當日有效正式成績排序。
 - 伺服器設定 `GOOGLE_SERVICE_ACCOUNT_JSON`（完整的 Service Account JSON 字串）、`GOOGLE_SHEET_ID`、`GOOGLE_GAME_SHEET_TAB`（正式成績分頁，預設 sheetId 896311128 的 09/14 後玩遊戲分頁）。遊戲寫入只跟 gid `896311128`；舊環境的 `GOOGLE_SHEET_TAB`（例如不存在的「國際生專區」）不再作為遊戲寫入目標。`GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB`（招生狀況表）、`GOOGLE_RECRUITMENT_MASTER_SHEET_TAB`（總表）仍可設定。舊環境的 `GOOGLE_FORM_SHEET_TAB` 仍可後備給表單讀取。程式會解析 JSON 並還原 `private_key` 內以 `\n` 表示的換行，使用 `https://www.googleapis.com/auth/spreadsheets` scope；所有變數均不可使用 `VITE_` 前綴。
 - 正式遊戲只寫入 sheetId 896311128 的 09/14 後玩遊戲分頁。不要從遊戲路徑寫入「招生狀況表」或「總表」。`submissionId` / `_submissionId` 為唯一事件 ID：同 ID 同資料回 duplicate，同 ID 不同資料回 conflict，不得覆寫。
-- 已登入夥伴可在 `/follow-up`「接引人快速填表」直接填完分級、活動、入社、保證金等並「送出招生資料」，寫入「招生狀況表」。招生 Google Form（2026招生狀況表單-上）仍保留：同一頁可打開完整 `/viewform` PREFILL。接引人預設為目前選的夥伴，不覆蓋遊戲關主。已填過的學生不再出現。總表既有公式維持不變。
+- 已登入夥伴可在 `/follow-up`「接引人快速填表」直接填「這位同學報名了哪個活動？」、入社、保證金等並「送出招生資料」，寫入「招生狀況表」。後台不填、不顯示分級或 S/A/B（現行 Google Form 仍可能有該題，夥伴略過即可）。招生 Google Form（2026招生狀況表單-上）仍保留：同一頁可「開啟正式招生表單」（`/viewform` PREFILL）與「查看招生表單後台」（同一表單的 `/edit` 後端）。接引人預設為目前選的夥伴，不覆蓋遊戲關主。已填過的學生不再出現。總表既有公式維持不變。
 - `/api/admin/recruitment` 需有效 session，一次聚合遊戲分頁、招生狀況表與總表，供招生戰情與快速填表使用。個資不會出現在公開排行榜或 public API。
 - Service Account 必須能編輯指定試算表；伺服器直接使用 Sheets API 的 `values.get`、`values.update` 與 `values.batchUpdate`。Google Form 的回覆目的地需連至同一試算表的表單回覆分頁。
 - `GOOGLE_SCRIPT_URL`、`PASSWORD` 與 `scripts/club-google-apps-script.gs` 保留作為快速回退用途，目前執行路徑不會呼叫 Apps Script。
