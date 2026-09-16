@@ -1,5 +1,6 @@
 import { Fragment, useLayoutEffect, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Filter } from "lucide-react";
+import { isPersonHandled, markPersonHandled, readHandledPersonKeys } from "@/lib/club/pending-handled.mjs";
 import { profileTouchesTaipeiDate, rosterFilterDate } from "@/lib/club/roster-date.mjs";
 import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
 
@@ -95,13 +96,22 @@ export function PendingQueue({
   setGameGatekeeper: (value: string) => void;
 }) {
   const [profile, setProfile] = useState<RecruitmentProfile | null>(null);
+  const [handledKeys, setHandledKeys] = useState<string[]>(() =>
+    typeof window === "undefined" ? [] : readHandledPersonKeys(),
+  );
   const pending = useMemo(() => {
     return data.pending.filter((row) => {
+      if (isPersonHandled(row.personKey, handledKeys)) return false;
       if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
       return rowMatchesQuery(row, query);
     });
-  }, [data.pending, gameGatekeeper, query]);
+  }, [data.pending, gameGatekeeper, handledKeys, query]);
   const priorityKey = pending[0]?.personKey;
+
+  function markHandled(row: { personKey: string }) {
+    setHandledKeys(markPersonHandled(row.personKey));
+    setProfile((current) => (current?.personKey === row.personKey ? null : current));
+  }
 
   useLayoutEffect(() => {
     if (!priorityKey || typeof document === "undefined") return;
@@ -181,14 +191,17 @@ export function PendingQueue({
                     data-pending-action="quickfill"
                     href={`/follow-up?personKey=${encodeURIComponent(row.personKey)}${row.submissionId ? `&submissionId=${encodeURIComponent(row.submissionId)}` : ""}`}
                   >
-                    <span>接引人快速填表</span>
+                    <span>填寫正式資料</span>
                   </a>
                   <a data-pending-action="form" href={row.prefillUrl} target="_blank" rel="noreferrer">
-                    <span>打開正式表單</span>
+                    <span>開啟表單</span>
                     <ExternalLink size={16} aria-hidden="true" />
                   </a>
-                  <button type="button" onClick={() => setProfile(row)}>
-                    <span>時間線</span>
+                  <button type="button" data-pending-action="handled" onClick={() => markHandled(row)}>
+                    <span>標記已處理</span>
+                  </button>
+                  <button type="button" data-pending-action="details" onClick={() => setProfile({ ...row, handled: false })}>
+                    <span>查看詳細資料</span>
                   </button>
                 </div>
               </article>

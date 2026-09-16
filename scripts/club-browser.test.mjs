@@ -41,32 +41,27 @@ async function capture(page, name) {
 }
 
 async function assertPendingActionButtons(page) {
-  const pendingActions = page.locator("[data-pending-action]");
-  assert.equal(await pendingActions.count(), 2);
+  const card = page.locator(".recruitment-pending article").first();
+  await card.waitFor();
   await page.waitForFunction(() => {
     const nav = document.querySelector(".admin-bottom-nav");
-    const card = document.querySelector(".recruitment-pending article");
-    if (!card) return false;
-    const pending = [...card.querySelectorAll("[data-pending-action]")];
-    const actions = [...card.querySelectorAll(".recruitment-actions a, .recruitment-actions button")];
-    if (pending.length < 2 || actions.length < 3) return false;
+    const article = document.querySelector(".recruitment-pending article");
+    if (!article) return false;
+    const actions = [...article.querySelectorAll(".recruitment-actions a, .recruitment-actions button")];
+    if (actions.length < 4) return false;
     if (!nav || getComputedStyle(nav).display === "none") return true;
     const navTop = nav.getBoundingClientRect().top;
-    const nameBox = card.querySelector("strong")?.getBoundingClientRect();
-    const captionBox = card.querySelector(".admin-caption")?.getBoundingClientRect();
-    const actionsOk = actions.every((el) => {
+    return actions.every((el) => {
       const box = el.getBoundingClientRect();
-      return box.height >= 44 && box.top >= 0 && box.bottom <= navTop + 1;
+      return box.height >= 44 && box.bottom <= navTop + 1;
     });
-    const nameOk = !nameBox || (nameBox.top >= 0 && nameBox.bottom <= navTop + 1);
-    const captionOk = !captionBox || (captionBox.top >= 0 && captionBox.bottom <= navTop + 1);
-    return actionsOk && nameOk && captionOk;
   });
   const actionMetrics = await page.evaluate(() => {
     const nav = document.querySelector(".admin-bottom-nav");
     const navHidden = !nav || getComputedStyle(nav).display === "none";
     const navTop = navHidden ? null : nav.getBoundingClientRect().top;
-    return [...document.querySelectorAll("[data-pending-action]")].map((el) => {
+    const article = document.querySelector(".recruitment-pending article");
+    return [...(article?.querySelectorAll(".recruitment-actions a, .recruitment-actions button") ?? [])].map((el) => {
       const box = el.getBoundingClientRect();
       const parent = el.parentElement?.getBoundingClientRect();
       const label = el.querySelector("span");
@@ -75,16 +70,22 @@ async function assertPendingActionButtons(page) {
       return {
         height: box.height,
         width: box.width,
+        top: box.top,
         bottom: box.bottom,
         parentWidth: parent?.width ?? 0,
         labelHeight: labelBox?.height ?? 0,
         nowrap: style.whiteSpace === "nowrap",
-        text: label?.textContent || el.textContent || "",
+        text: (label?.textContent || el.textContent || "").replace(/\s+/g, ""),
         navTop,
         clearsNav: navTop == null || box.bottom <= navTop + 1,
+        fullyOnScreen: box.top >= 0 && box.bottom <= innerHeight + 1,
       };
     });
   });
+  assert.deepEqual(
+    actionMetrics.map((row) => row.text),
+    ["填寫正式資料", "開啟表單", "標記已處理", "查看詳細資料"],
+  );
   for (const row of actionMetrics) {
     assert.ok(row.height >= 44, `${row.text} height ${row.height}`);
     assert.ok(row.width + 1 >= row.parentWidth, `${row.text} width ${row.width} / ${row.parentWidth}`);
@@ -92,36 +93,9 @@ async function assertPendingActionButtons(page) {
     assert.equal(row.nowrap, true);
     assert.equal(row.clearsNav, true, `${row.text} overlaps tab bar ${row.bottom} > ${row.navTop}`);
   }
-  assert.equal(actionMetrics.map((row) => row.text).join(), "接引人快速填表,打開正式表單");
-  const cardMetrics = await page.evaluate(() => {
-    const nav = document.querySelector(".admin-bottom-nav");
-    const navHidden = !nav || getComputedStyle(nav).display === "none";
-    const navTop = navHidden ? null : nav.getBoundingClientRect().top;
-    const card = document.querySelector(".recruitment-pending article");
-    const timeline = [...(card?.querySelectorAll(".recruitment-actions button") ?? [])]
-      .find((el) => (el.querySelector("span")?.textContent || el.textContent || "").includes("時間線"));
-    const box = timeline?.getBoundingClientRect();
-    const nameBox = card?.querySelector("strong")?.getBoundingClientRect();
-    const captionBox = card?.querySelector(".admin-caption")?.getBoundingClientRect();
-    const clears = (rect) => !rect || navTop == null || (rect.top >= 0 && rect.bottom <= navTop + 1);
-    return {
-      found: Boolean(timeline),
-      height: box?.height ?? 0,
-      bottom: box?.bottom ?? 0,
-      top: box?.top ?? 0,
-      navTop,
-      clearsNav: navTop == null || (box != null && box.bottom <= navTop + 1),
-      fullyOnScreen: box != null && box.top >= 0 && box.bottom <= innerHeight + 1,
-      nameClearsNav: clears(nameBox),
-      captionClearsNav: clears(captionBox),
-    };
-  });
-  assert.equal(cardMetrics.found, true);
-  assert.ok(cardMetrics.height >= 44, `時間線 height ${cardMetrics.height}`);
-  assert.equal(cardMetrics.clearsNav, true, `時間線 overlaps tab bar ${cardMetrics.bottom} > ${cardMetrics.navTop}`);
-  assert.equal(cardMetrics.fullyOnScreen, true, `時間線 off screen ${cardMetrics.top}-${cardMetrics.bottom}`);
-  assert.equal(cardMetrics.nameClearsNav, true, "pending card name covered by tab bar");
-  assert.equal(cardMetrics.captionClearsNav, true, "pending card caption covered by tab bar");
+  const last = actionMetrics.at(-1);
+  assert.ok(last, "missing 查看詳細資料");
+  assert.equal(last.fullyOnScreen, true, `查看詳細資料 off screen ${last.top}-${last.bottom}`);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
 }
 async function assertWarCardLabels(page) {
@@ -831,6 +805,91 @@ test(
       ]) {
         await runPending(width, height, navName, shot);
       }
+    });
+    await t.test("admin pending details and local handled tracking do not write sheets", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      const writes = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("request", (request) => {
+        if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method())) {
+          writes.push(`${request.method()} ${request.url()}`);
+        }
+      });
+      await page.route("**/*", (route) =>
+        new URL(route.request().url()).origin !== origin
+          ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+          : route.continue(),
+      );
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+        return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date,
+            gameRows: [{
+              姓名: "唐同學",
+              電話: "0917777174",
+              科系: "歷史學系",
+              年級: "大一",
+              遊戲關主: "安倢",
+              分數: 3600,
+              遊戲時間: `${date}T01:00:00.000Z`,
+              _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+              _kind: "official",
+              _skipSave: false,
+            }],
+            recruitmentRows: [{
+              時間戳記: `${date} 09:00:00`,
+              同學的姓名: "陳同學甲乙丙",
+              "同學電話/LINE": "0917777174",
+              "接引人(可複選)": "柏能",
+              是否入社: "否",
+              保證金是否繳費: "是",
+            }],
+            masterRows: [],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.locator("[data-war-room=home]").waitFor();
+      await page.getByRole("navigation", { name: "手機後台導覽", exact: true }).getByRole("button", { name: "待處理", exact: true }).click();
+      await page.getByText("唐同學", { exact: true }).waitFor();
+      await page.getByRole("button", { name: "查看詳細資料" }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("heading", { name: "詳細資料" }).waitFor();
+      for (const label of ["姓名", "科系系級", "電話", "遊戲完成時間", "遊戲關主", "正式招生接引人", "活動", "入社", "保證金", "處理狀態"]) {
+        assert.ok(await dialog.getByText(label, { exact: true }).count(), `missing ${label}`);
+      }
+      assert.ok(await dialog.getByText("唐同學").count());
+      assert.ok(await dialog.getByText("0917777174").count());
+      assert.ok(await dialog.getByText("需確認").count());
+      const dialogText = await dialog.innerText();
+      assert.equal(/submissionId/i.test(dialogText), false);
+      assert.equal(dialogText.includes("分級"), false);
+      assert.equal(dialogText.includes("S／A／B"), false);
+      assert.equal(dialogText.includes("3600"), false);
+      await capture(page, "admin-pending-details-390");
+      await dialog.getByRole("button", { name: "關閉" }).click();
+      await page.getByRole("button", { name: "標記已處理" }).click();
+      await page.getByText("這時段沒有待填的同學").waitFor();
+      const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("club-admin-pending-handled") || "[]"));
+      assert.equal(Array.isArray(stored), true);
+      assert.equal(stored.length, 1);
+      assert.equal(typeof stored[0], "string");
+      assert.equal(writes.length, 0);
+      await capture(page, "admin-pending-handled-390");
+      assert.deepEqual(errors, []);
+      await context.close();
     });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
