@@ -17,11 +17,11 @@ function metric(value: number | null | undefined) {
   return value.toLocaleString("zh-Hant");
 }
 
-/** Missing payload → em dash. Loaded empty sheets still show 0. */
-function kpiCount(value: number | null | undefined, ready: boolean, busy: boolean) {
+/** A real 0 stays 0. Missing / sync-fail counts stay an em dash, never a fake zero. */
+function kpiCount(value: number | null | undefined, _ready: boolean, busy: boolean) {
   if (typeof value === "number") return value;
   if (busy) return "…";
-  return ready ? 0 : "—";
+  return "—";
 }
 
 function Ring({
@@ -230,7 +230,7 @@ export function WarRoom({
           details={
             <NamePeek
               names={lists?.todayContacts || []}
-              missing={!ready}
+              missing={!ready || typeof summary?.playedToday !== "number"}
               empty="今天還沒有新的接觸"
               actionLabel="到名單"
               onAction={() => onOpenRoster()}
@@ -246,7 +246,7 @@ export function WarRoom({
           details={
             <NamePeek
               names={lists?.allContacts || []}
-              missing={!ready}
+              missing={!ready || typeof summary?.playedAll !== "number"}
               empty="尚無正式遊戲接觸"
               actionLabel="到名單"
               onAction={() => onOpenRoster()}
@@ -308,11 +308,11 @@ export function WarRoom({
           value={pending}
           hint="玩過遊戲尚未填表"
           icon={<ClipboardList size={22} />}
-          tone={typeof pending === "number" && pending ? "warn" : ready ? "ok" : "plain"}
+          tone={typeof pending === "number" && pending ? "warn" : typeof pending === "number" ? "ok" : "plain"}
           details={
             <NamePeek
               names={lists?.pending || []}
-              missing={!ready}
+              missing={!ready || typeof summary?.pending !== "number"}
               empty={summary?.conflicts ? `${summary.conflicts} 筆需要確認，不會自動合併。` : "目前沒有待填正式資料"}
               actionLabel="去待處理"
               onAction={onOpenPending}

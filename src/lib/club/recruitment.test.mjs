@@ -625,6 +625,7 @@ test("event signup counts a person once today and once per event", () => {
   assert.equal(partner.summary.playedToday, data.summary.playedToday);
   assert.equal(partner.summary.conflicts, data.summary.conflicts);
   assert.equal(typeof partner.summary.playedAll, "number");
+  assert.notEqual(partner.summary.playedAll, null);
   assert.equal(partner.events.find((row) => row.name === "9/30茶會")?.count, 2);
   assert.deepEqual(
     partner.events.find((row) => row.name === "9/30茶會")?.people.map((row) => row.name).sort(),
@@ -713,12 +714,171 @@ test("empty sheets report zero unique people, not missing counts", () => {
   assert.equal(data.summary.playedToday, 0);
   assert.equal(data.summary.playedAll, 0);
   assert.equal(data.summary.pending, 0);
+  assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 0);
+  assert.equal(data.summary.activity, null);
   assert.equal(data.summary.activityToday, null);
+  assert.equal(data.summary.joined, null);
+  assert.equal(data.summary.depositPaid, null);
+  assert.equal(data.funnel.find((layer) => layer.id === "activity")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "joined")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "deposit")?.missing, true);
   assert.equal(data.trend.length, 7);
   assert.equal(data.trend.every((row) => row.contacts === 0 && row.signups === 0 && row.joined === 0), true);
   assert.deepEqual(data.kpiPeople.todayContacts, []);
   assert.deepEqual(data.kpiPeople.pending, []);
   assert.deepEqual(data.kpiPeople.allContacts, []);
+});
+
+test("空資料: blank form fields are 資料不足, not 0 people", () => {
+  const player = game({ _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa31" });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T12:00:00+08:00"),
+    gameRows: [player],
+    recruitmentRows: [{
+      時間戳記: "2026/9/14 10:00:00",
+      同學的姓名: "王小明",
+      "同學電話/LINE": "0912345678",
+      報名了那個活動: "   ",
+      是否入社: "",
+      保證金是否繳費: "  ",
+      _gameSubmissionId: player._submissionId,
+    }],
+    masterRows: [],
+  });
+  assert.equal(data.summary.playedAll, 1);
+  assert.equal(data.summary.pending, 0);
+  assert.equal(data.summary.activity, null);
+  assert.equal(data.summary.joined, null);
+  assert.equal(data.summary.depositPaid, null);
+  assert.notEqual(data.summary.activity, 0);
+  assert.notEqual(data.summary.joined, 0);
+  assert.notEqual(data.summary.depositPaid, 0);
+  assert.equal(data.funnel.find((layer) => layer.id === "activity")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "joined")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "deposit")?.missing, true);
+});
+
+test("重複提交: same game submissionId does not create a second row", () => {
+  const sid = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa41";
+  const first = game({ _submissionId: sid, 分數: 600 });
+  const dup = game({
+    _submissionId: sid.toUpperCase(),
+    分數: 999,
+    遊戲時間: "2026-09-14T09:00:00.000Z",
+  });
+  const parsed = parseGameAttempts([first, dup]);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].score, 600);
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T12:00:00+08:00"),
+    gameRows: [first, dup],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.summary.playedAll, 1);
+  assert.equal(data.summary.playedToday, 1);
+  assert.equal(data.pending.length, 1);
+  assert.equal(data.profiles.length, 1);
+});
+
+test("重複提交: flagged duplicate recruitment row does not create a second student", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T12:00:00+08:00"),
+    gameRows: [],
+    recruitmentRows: [
+      {
+        時間戳記: "2026/9/14 10:00:00",
+        同學的姓名: "王小明",
+        "同學電話/LINE": "0912345678",
+        是否入社: "是",
+        保證金是否繳費: "是",
+        報名了那個活動: "9/30茶會",
+        _duplicate: false,
+      },
+      {
+        時間戳記: "2026/9/14 10:01:00",
+        同學的姓名: "王小明",
+        "同學電話/LINE": "0912345678",
+        是否入社: "是",
+        保證金是否繳費: "是",
+        報名了那個活動: "9/30茶會",
+        _duplicate: true,
+      },
+    ],
+    masterRows: [],
+  });
+  assert.equal(data.duplicates, 1);
+  assert.equal(data.summary.joined, 1);
+  assert.equal(data.summary.depositPaid, 1);
+  assert.equal(data.summary.activity, 1);
+  assert.equal(data.kpiPeople.joined.length, 1);
+  assert.equal(data.profiles.length, 1);
+});
+
+test("同步失敗: failed empty sheets are 資料不足, not zeros", () => {
+  const failed = { ok: false, stale: false, error: "無法讀取資料，請稍後重試" };
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T12:00:00+08:00"),
+    gameRows: [],
+    recruitmentRows: [],
+    masterRows: [],
+    sync: {
+      gameResults: failed,
+      recruitmentResponses: failed,
+      recruitmentMaster: failed,
+      form: failed,
+      updatedAt: "2026-09-14T04:00:00.000Z",
+    },
+  });
+  assert.equal(data.sync.gameResults.ok, false);
+  assert.equal(data.summary.playedToday, null);
+  assert.equal(data.summary.playedAll, null);
+  assert.equal(data.summary.pending, null);
+  assert.equal(data.summary.activity, null);
+  assert.equal(data.summary.joined, null);
+  assert.equal(data.summary.depositPaid, null);
+  assert.notEqual(data.summary.playedToday, 0);
+  assert.notEqual(data.summary.playedAll, 0);
+  assert.notEqual(data.summary.pending, 0);
+  assert.equal(data.funnel.find((layer) => layer.id === "played")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, null);
+  assert.equal(data.funnel.find((layer) => layer.id === "activity")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "joined")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "deposit")?.missing, true);
+  const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal(partner.summary.playedToday, null);
+  assert.equal(partner.summary.playedAll, null);
+  assert.equal(partner.summary.playedTotal, null);
+  assert.equal(partner.sync.gameResults.ok, false);
+});
+
+test("同步失敗: stale last-known-good still shows people, not a fake zero", () => {
+  const player = game({ _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa51" });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T12:00:00+08:00"),
+    gameRows: [player],
+    recruitmentRows: [],
+    masterRows: [],
+    sync: {
+      gameResults: { ok: false, stale: true, error: "無法讀取資料，請稍後重試" },
+      recruitmentResponses: { ok: false, stale: false },
+      recruitmentMaster: { ok: false, stale: false },
+      form: { ok: false },
+      updatedAt: "2026-09-14T04:00:00.000Z",
+    },
+  });
+  assert.equal(data.summary.playedAll, 1);
+  assert.equal(data.summary.playedToday, 1);
+  assert.equal(data.summary.pending, 1);
+  assert.equal(data.funnel.find((layer) => layer.id === "played")?.missing, undefined);
+  assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 1);
+  assert.equal(data.summary.activity, null);
+  assert.equal(data.funnel.find((layer) => layer.id === "joined")?.missing, true);
 });
 
 test("Form 選擇學生 labels never include submissionId or #s:", () => {

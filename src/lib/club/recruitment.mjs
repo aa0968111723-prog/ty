@@ -550,6 +550,11 @@ function presentUnique(rows, hasField, predicate) {
   return uniqueCount(rows, predicate);
 }
 
+/** Failed live read with no last-known-good rows: missing, not a fake zero. */
+function sourceUnavailable(flag) {
+  return Boolean(flag && flag.ok === false && !flag.stale);
+}
+
 function isYes(value) {
   return text(value) === "是" || text(value).toLowerCase() === "yes" || text(value) === "Y";
 }
@@ -796,14 +801,14 @@ export function buildRecruitmentDashboard(input = {}) {
     return Math.round((part / whole) * 1000) / 10;
   }
 
-  const funnelPlayed = people.length;
+  const gameUnavailable = sourceUnavailable(input.sync?.gameResults) && attempts.length === 0;
+  const funnelPlayed = gameUnavailable ? null : people.length;
   const funnel = [
     { id: "played", label: "遊戲接觸", count: funnelPlayed, fromPrevious: null, fromStart: funnelPlayed ? 100 : null },
     { id: "activity", label: "活動報名", count: activityCount, fromPrevious: rate(activityCount, funnelPlayed), fromStart: rate(activityCount, funnelPlayed) },
     { id: "joined", label: "入社", count: joinedCount, fromPrevious: rate(joinedCount, activityCount), fromStart: rate(joinedCount, funnelPlayed) },
     { id: "deposit", label: "保證金", count: depositCount, fromPrevious: rate(depositCount, joinedCount), fromStart: rate(depositCount, funnelPlayed) },
-  ].map((layer, index) => {
-    if (index === 0) return layer;
+  ].map((layer) => {
     if (layer.count == null) {
       return { ...layer, fromPrevious: null, fromStart: null, missing: true };
     }
@@ -899,11 +904,11 @@ export function buildRecruitmentDashboard(input = {}) {
     ok: true,
     date,
     summary: {
-      playedToday: todayPeople.length,
-      playedOnDate: played,
-      playedAll: people.length,
-      pending: pending.length,
-      pendingToday,
+      playedToday: gameUnavailable ? null : todayPeople.length,
+      playedOnDate: gameUnavailable ? null : played,
+      playedAll: gameUnavailable ? null : people.length,
+      pending: gameUnavailable ? null : pending.length,
+      pendingToday: gameUnavailable ? null : pendingToday,
       recruited: uniqueByIdentity(completed).length,
       recruitedToday: completedToday,
       activity: activityCount,
@@ -1058,8 +1063,8 @@ export function toPartnerRecruitmentDashboard(dashboard = {}) {
     summary: {
       playedToday: summary.playedToday,
       playedOnDate: summary.playedOnDate,
-      playedAll: summary.playedAll ?? summary.playedTotal,
-      playedTotal: summary.playedTotal ?? summary.playedAll,
+      playedAll: summary.playedAll !== undefined ? summary.playedAll : summary.playedTotal,
+      playedTotal: summary.playedTotal !== undefined ? summary.playedTotal : summary.playedAll,
       pending: summary.pending,
       pendingToday: summary.pendingToday,
       recruited: summary.recruited,

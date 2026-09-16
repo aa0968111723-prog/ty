@@ -16,11 +16,11 @@ export type KpiPersonChip = { name: string; personKey: string };
 export type RecruitmentData = {
   date: string;
   summary: {
-    playedToday: number;
-    playedOnDate?: number;
-    playedAll?: number;
-    pending: number;
-    pendingToday?: number;
+    playedToday: number | null;
+    playedOnDate?: number | null;
+    playedAll?: number | null;
+    pending: number | null;
+    pendingToday?: number | null;
     recruited: number;
     recruitedToday?: number;
     activity: number | null;

@@ -106,11 +106,24 @@ KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內
 
 ---
 
-## 7. 測試 / gates（產品 SHA `a046eb0`）
+## 7. 測試 / gates（產品 SHA `a046eb0`；本回合補 Phase-8 測試）
 
-日誌在本回合產物，不進 git。
+日誌在本回合產物，不進 git。先前寫「沒有發現未修的 spec 洞」已過時：客觀點名的四洞裡，空資料 / 同步失敗 / 重複提交 的 dashboard 斷言太弱或缺失，本回合已補。今日/歷史（Taipei）既有測試已足夠，未再加一筆。
 
-| Gate | 結果 |
+本回合新增 / 加強（`src/lib/club/recruitment.test.mjs`）：
+
+| 洞 | 測試名 | 斷言 |
+| --- | --- | --- |
+| 空資料 | `empty sheets…` 加強；`空資料: blank form fields are 資料不足, not 0 people` | 空遊戲表接觸=0（真的沒人）；空白入社/活動/保證金欄 → null / funnel `missing`，不是 0 |
+| 同步失敗 | `同步失敗: failed empty sheets are 資料不足, not zeros`；`同步失敗: stale last-known-good still shows people, not a fake zero` | 失敗且無 last-known-good → played/pending null、漏斗 資料不足；stale 列仍顯示人數 |
+| 重複提交 | `重複提交: same game submissionId does not create a second row`；`重複提交: flagged duplicate recruitment row does not create a second student` | 同 submissionId 只留一列；`_duplicate` 招生列不第二人 |
+| 今日/歷史 | **未新增** | 既有 `today vs history contacts exclude practice…` 與 `war-room today vs history contacts use Asia/Taipei midnight, not UTC` |
+
+`node --test src/lib/club/recruitment.test.mjs scripts/club-admin.test.mjs`：38 pass / 0 fail。`node --test src/lib/club/*.test.mjs`：121 pass / 0 fail。未重跑完整 live 16 項。
+
+未跑全量 `npm test` / typecheck / build（只動測試與同步失敗空表的 missing 計數；KPI 對 null 顯示 —）。
+
+| Gate（上一份回報，產品 `a046eb0`） | 結果 |
 | --- | --- |
 | `npm run typecheck` | pass（`tsc --noEmit`） |
 | `npm test` | 361 pass / 0 fail / 1 skip（`official game completion writes the game sheet immediately`）+ typed 55 pass / 0 fail |
@@ -118,8 +131,6 @@ KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內
 | `npm run build` | pass；client `admin-kJvX4yw0.js` |
 | club-browser | 17 pass / 0 fail |
 | prod smoke | desktop+mobile 200，無 console/page error，`horizontalOverflow: false` |
-
-寫這份回報時沒有發現未修的 spec 洞，因此沒有再跑完整敵對 UI audit。
 
 ---
 
