@@ -4,6 +4,7 @@ import { isPersonHandled, markPersonHandled, readHandledPersonKeys } from "@/lib
 import { profileTouchesTaipeiDate, rosterFilterDate } from "@/lib/club/roster-date.mjs";
 import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
 import { LIVE_ACTIVITY_CHOICES } from "@/lib/club/recruitment-prefill.mjs";
+import { IDENTITY_CONFIRM_LABEL, needsIdentityConfirm } from "@/lib/club/recruitment-identity.mjs";
 
 export type SyncFlag = { ok: boolean; stale?: boolean; error?: string };
 export type RecruitmentTrendPoint = {
@@ -250,8 +251,12 @@ export function PendingQueue({
               <article key={row.personKey}>
                 <div>
                   <strong>{row.name}</strong>
-                  <span className="admin-badge">
-                    {row.status === "ambiguous" ? "姓名需確認" : handled.has(row.personKey) ? "已處理" : "尚未填寫正式資料"}
+                  <span className={`admin-badge${needsIdentityConfirm(row.status) ? " is-confirm" : ""}`}>
+                    {needsIdentityConfirm(row.status)
+                      ? IDENTITY_CONFIRM_LABEL
+                      : handled.has(row.personKey)
+                        ? "已處理"
+                        : "尚未填寫正式資料"}
                   </span>
                 </div>
                 <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
@@ -426,7 +431,13 @@ export function RosterList({
               <article key={row.personKey}>
                 <div>
                   <strong>{row.name}</strong>
-                  <span className="admin-badge">{row.pending ? "尚未填表" : "已填正式資料"}</span>
+                  <span className={`admin-badge${needsIdentityConfirm(row.status) ? " is-confirm" : ""}`}>
+                    {needsIdentityConfirm(row.status)
+                      ? IDENTITY_CONFIRM_LABEL
+                      : row.pending
+                        ? "尚未填表"
+                        : "已填正式資料"}
+                  </span>
                 </div>
                 <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
                 <p>{row.phone || "電話未填"}</p>

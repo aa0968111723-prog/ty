@@ -77,6 +77,37 @@ test("two plays by one student become one pending candidate under the game gatek
   assert.equal(peng.choiceLabel.includes(first._submissionId), false);
 });
 
+test("name or phone collisions stay separate or flagged, never a silent merge", () => {
+  const linA = game({ 姓名: "林同學", 電話: "0911111111", _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa11" });
+  const linB = game({ 姓名: "林同學", 電話: "0922222222", _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa12" });
+  const mixed = game({
+    姓名: "王小明",
+    電話: "0933333333",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa13",
+  });
+  const mixedOther = game({
+    姓名: "李小華",
+    電話: "0933333333",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa14",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T08:00:00+08:00"),
+    gameRows: [linA, linB, mixed, mixedOther],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  const lins = data.pending.filter((row) => row.name === "林同學");
+  assert.equal(lins.length, 2);
+  assert.equal(lins.every((row) => row.status === "ambiguous"), true);
+  assert.notEqual(lins[0].phone, lins[1].phone);
+  const phoneShare = data.pending.filter((row) => row.normalizedPhone === "0933333333");
+  assert.equal(phoneShare.length, 1);
+  assert.equal(phoneShare[0].status, "ambiguous");
+  assert.equal(data.summary.conflicts >= 3, true);
+  assert.equal(data.pending.some((row) => row.status !== "ambiguous"), false);
+});
+
 test("filled recruitment form removes the candidate and keeps another student", () => {
   const a1 = game({ 姓名: "A1", 電話: "0910000001", _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" });
   const a2 = game({ 姓名: "A2", 電話: "0910000002", _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });

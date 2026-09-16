@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ExternalLink, X } from "lucide-react";
+import { IDENTITY_CONFIRM_LABEL, needsIdentityConfirm } from "@/lib/club/recruitment-identity.mjs";
 
 export type RecruitmentProfile = {
   personKey: string;
@@ -75,8 +76,15 @@ export function RecruitmentProfileSheet({
       <Dialog.Portal>
         <Dialog.Overlay className="admin-overlay" />
         <Dialog.Content className="admin-more-dialog recruitment-sheet" aria-describedby={undefined}>
-          <Dialog.Title>詳細資料</Dialog.Title>
-          <p className="admin-caption">僅工作人員可見 · 不改表單或總表</p>
+          <Dialog.Title>{profile?.name || "同學"}</Dialog.Title>
+          {needsIdentityConfirm(profile?.status) ? (
+            <p className="admin-caption war-conflict" role="status">
+              {IDENTITY_CONFIRM_LABEL} · 姓名或電話與其他資料重疊，不會自動合併。
+            </p>
+          ) : null}
+          <p className="admin-caption">
+            {profile?.department || "科系未填"} · {profile?.grade || "年級未填"} · {profile?.phone || "電話未填"}
+          </p>
           <Dialog.Close className="admin-close" aria-label="關閉">
             <X size={20} />
           </Dialog.Close>

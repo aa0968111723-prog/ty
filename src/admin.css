@@ -524,13 +524,9 @@
   font-size: var(--text-caption);
   font-weight: 400;
 }
-.admin-badge.is-review {
+.admin-badge.is-confirm {
   background: var(--warning-soft);
   color: var(--warning);
-}
-.admin-badge.is-priority {
-  background: var(--brand-soft);
-  color: var(--brand);
 }
 .admin-table-wrap {
   display: none;

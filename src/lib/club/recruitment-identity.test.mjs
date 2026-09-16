@@ -2,10 +2,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  IDENTITY_CONFIRM_LABEL,
   clusterGamePeople,
   extractTaiwanMobile,
   identityFields,
   matchIncomingRecruitment,
+  needsIdentityConfirm,
   normalizeDepartment,
   normalizeGrade,
   normalizeName,
@@ -55,6 +57,8 @@ test("same student playing twice is one person; same name different phones stay 
   ]);
   assert.equal(sameName.length, 2);
   assert.equal(sameName.every((person) => person.personKey.startsWith("phone:")), true);
+  assert.equal(sameName.every((person) => person.status === "ambiguous"), true);
+  assert.equal(IDENTITY_CONFIRM_LABEL, "需要確認");
 });
 
 test("same name same department different phones stay two people", () => {
@@ -64,6 +68,29 @@ test("same name same department different phones stay two people", () => {
   ]);
   assert.equal(people.length, 2);
   assert.equal(people.every((person) => person.personKey.startsWith("phone:")), true);
+  assert.equal(people.every((person) => needsIdentityConfirm(person.status)), true);
+});
+
+test("same phone with two names stays one person and is flagged, not silently renamed", () => {
+  const people = clusterGamePeople([
+    { name: "王小明", phone: "0912345678", department: "歷史學系", grade: "大一", submissionId: "j" },
+    { name: "李小華", phone: "0912345678", department: "歷史學系", grade: "大一", submissionId: "k" },
+  ]);
+  assert.equal(people.length, 1);
+  assert.equal(people[0].personKey, "phone:0912345678");
+  assert.equal(people[0].status, "ambiguous");
+  assert.equal(people[0].reason, "ambiguous-phone-names");
+  assert.equal(people[0].attempts.length, 2);
+});
+
+test("phoneless same-name rows stay two flagged people, not one merged card", () => {
+  const people = clusterGamePeople([
+    { name: "同名", department: "歷史學系", grade: "大一", phone: "", submissionId: "m" },
+    { name: "同名", department: "歷史學系", grade: "大一", phone: "", submissionId: "n" },
+  ]);
+  assert.equal(people.length, 2);
+  assert.equal(people.every((person) => person.status === "ambiguous"), true);
+  assert.notEqual(people[0].personKey, people[1].personKey);
 });
 
 test("unique name without phone matches; ambiguous same-name without phones does not merge", () => {

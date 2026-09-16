@@ -226,7 +226,14 @@ export function clusterGamePeople(attempts) {
   /** @type {Array<ReturnType<typeof personFromRows>>} */
   const people = [];
   for (const [phone, group] of byPhone) {
-    people.push(personFromRows(group, `phone:${phone}`, "matched", "normalizedPhone"));
+    const names = new Set(group.map((row) => row.identity.normalizedName).filter(Boolean));
+    const conflict = names.size > 1;
+    people.push(personFromRows(
+      group,
+      `phone:${phone}`,
+      conflict ? "ambiguous" : "matched",
+      conflict ? "ambiguous-phone-names" : "normalizedPhone",
+    ));
   }
 
   /** @type {Map<string, typeof rows>} */
@@ -244,49 +251,62 @@ export function clusterGamePeople(attempts) {
 
   for (const [name, group] of byName) {
     if (group.length === 1) {
-      const phoneHit = people.find((person) =>
-        person.normalizedName === name && profileConsistent(person, group[0].identity));
+      const phoneHit = people.find((person) => person.normalizedName === name);
       if (phoneHit) {
-        phoneHit.attempts.push(group[0].attempt);
+        people.push(personFromRows(
+          group,
+          unmatchedKey(group[0]),
+          "ambiguous",
+          "name-conflicts-with-phone-identity",
+        ));
         continue;
       }
-      const uniqueAcrossPhones = !people.some((person) => person.normalizedName === name);
-      people.push(personFromRows(
-        group,
-        uniqueAcrossPhones ? `name:${name}` : unmatchedKey(group[0]),
-        uniqueAcrossPhones ? "matched" : "unmatched",
-        uniqueAcrossPhones ? "unique-name" : "name-conflicts-with-phone-identity",
-      ));
+      people.push(personFromRows(group, `name:${name}`, "matched", "unique-name"));
       continue;
     }
-    const buckets = [];
     for (const row of group) {
-      const bucket = buckets.find((item) => profileConsistent(item.identity, row.identity));
-      if (bucket) bucket.rows.push(row);
-      else buckets.push({ identity: row.identity, rows: [row] });
+      people.push(personFromRows([row], unmatchedKey(row), "ambiguous", "ambiguous-same-name"));
     }
-    const phoneCollides = people.some((person) => person.normalizedName === name);
-    if (buckets.length === 1 && !phoneCollides) {
-      const identity = buckets[0].identity;
-      const key = identity.department || identity.grade
-        ? `name:${name}|dept:${identity.department}|grade:${identity.grade}`
-        : `name:${name}`;
-      people.push(personFromRows(buckets[0].rows, key, "matched", "name-and-profile"));
-      continue;
+  }
+  return flagIdentityCollisions(people);
+}
+
+export const IDENTITY_CONFIRM_LABEL = "需要確認";
+
+/** @param {string | undefined} status */
+export function needsIdentityConfirm(status) {
+  return status === "ambiguous";
+}
+
+/**
+ * Same name on more than one person, or mixed names on one phone, is a flag —
+ * never a silent merge of the wrong people.
+ * @param {Array<ReturnType<typeof personFromRows>>} people
+ */
+export function flagIdentityCollisions(people) {
+  const byName = new Map();
+  for (const person of people) {
+    const names = new Set(
+      (person.attempts || [])
+        .map((attempt) => normalizeName(attempt.name || attempt.normalizedName))
+        .filter(Boolean),
+    );
+    if (person.normalizedName) names.add(person.normalizedName);
+    if (names.size > 1) {
+      person.status = "ambiguous";
+      person.reason = "ambiguous-phone-names";
     }
-    for (const bucket of buckets) {
-      const reason = phoneCollides || buckets.length > 1
-        ? "ambiguous-same-name"
-        : "name-and-profile";
-      const status = reason === "ambiguous-same-name" ? "ambiguous" : "matched";
-      for (const row of status === "ambiguous" ? bucket.rows : [bucket.rows[0]]) {
-        if (status === "ambiguous") {
-          people.push(personFromRows([row], unmatchedKey(row), "ambiguous", reason));
-        }
-      }
-      if (status !== "ambiguous") {
-        people.push(personFromRows(bucket.rows, `name:${name}|dept:${bucket.identity.department}|grade:${bucket.identity.grade}`, "matched", "name-and-profile"));
-      }
+    if (person.normalizedName) {
+      const list = byName.get(person.normalizedName) || [];
+      list.push(person);
+      byName.set(person.normalizedName, list);
+    }
+  }
+  for (const group of byName.values()) {
+    if (group.length < 2) continue;
+    for (const person of group) {
+      if (person.status !== "ambiguous") person.reason = "ambiguous-same-name";
+      person.status = "ambiguous";
     }
   }
   return people;

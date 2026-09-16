@@ -1300,6 +1300,88 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("name and phone collisions show 需要確認 on pending, roster and detail", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route((url) => {
+        try { return new URL(url).origin !== origin; } catch { return false; }
+      }, async (route) => {
+        await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+      });
+      const taipeiToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+      function row(name, phone, id) {
+        return {
+          姓名: name,
+          電話: phone,
+          科系: "歷史學系",
+          年級: "大一",
+          遊戲關主: "柏能",
+          分數: 600,
+          答對: 5,
+          答錯: 0,
+          正確率: 100,
+          最佳連續: 5,
+          遊戲秒數: 60,
+          遊戲時間: `${taipeiToday}T04:00:00.000Z`,
+          _submissionId: id,
+          _kind: "official",
+          _skipSave: false,
+        };
+      }
+      const gameRows = [
+        row("林同學", "0911111111", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21"),
+        row("林同學", "0922222222", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa22"),
+      ];
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date,
+            now: new Date(`${taipeiToday}T12:00:00+08:00`),
+            gameRows,
+            recruitmentRows: [],
+            masterRows: [],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.getByText("2 筆需要確認，不會自動合併。").waitFor();
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
+      await page.getByRole("heading", { name: "待處理有緣人" }).waitFor();
+      const pendingCards = page.locator(".admin-person-list article");
+      assert.equal(await pendingCards.count(), 2);
+      assert.equal(await page.getByText("需要確認", { exact: true }).count(), 2);
+      await pendingCards.first().getByRole("button", { name: "查看詳細資料" }).click();
+      const sheet = page.getByRole("dialog");
+      await sheet.waitFor();
+      assert.equal(await sheet.getByText("需要確認").count() >= 1, true);
+      assert.equal(await sheet.getByText("submissionId").count(), 0);
+      await sheet.getByRole("button", { name: "關閉" }).click();
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
+      await page.getByRole("heading", { name: "名單" }).first().waitFor();
+      assert.equal(await page.locator(".admin-person-list article").count(), 2);
+      assert.equal(await page.getByText("需要確認", { exact: true }).count(), 2);
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "identity-confirm-390-viewport.png") });
+      }
+      await capture(page, "identity-confirm-390");
+      assert.equal(await page.getByText("分級").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

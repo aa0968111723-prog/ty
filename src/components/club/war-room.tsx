@@ -313,7 +313,7 @@ export function WarRoom({
             <NamePeek
               names={lists?.pending || []}
               missing={!ready}
-              empty={summary?.conflicts ? `${summary.conflicts} 筆姓名需現場確認，不會自動合併。` : "目前沒有待填正式資料"}
+              empty={summary?.conflicts ? `${summary.conflicts} 筆需要確認，不會自動合併。` : "目前沒有待填正式資料"}
               actionLabel="去待處理"
               onAction={onOpenPending}
             />
@@ -441,7 +441,7 @@ export function WarRoom({
 
       {summary?.conflicts ? (
         <p className="admin-caption war-conflict">
-          <CircleAlert size={16} aria-hidden="true" /> {summary.conflicts} 筆同名資料需確認，不會自動合併。
+          <CircleAlert size={16} aria-hidden="true" /> {summary.conflicts} 筆需要確認，不會自動合併。
         </p>
       ) : null}
     </div>

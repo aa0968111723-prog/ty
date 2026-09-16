@@ -14,6 +14,7 @@ import {
   generatePrefilledFormUrl,
   taipeiDate,
 } from "@/lib/club/recruitment-prefill.mjs";
+import { IDENTITY_CONFIRM_LABEL, needsIdentityConfirm } from "@/lib/club/recruitment-identity.mjs";
 import type { RecruitmentData } from "./recruitment-dashboard";
 
 type Candidate = RecruitmentData["pending"][number] & {
@@ -451,7 +452,11 @@ export function RecruiterQuickfill() {
                 <article key={candidateKey(row)}>
                   <div>
                     <strong>{row.name}</strong>
-                    <span className="admin-badge">{row.gameGatekeeper || "未分類"}</span>
+                    {needsIdentityConfirm(row.status) ? (
+                      <span className="admin-badge is-confirm">{IDENTITY_CONFIRM_LABEL}</span>
+                    ) : (
+                      <span className="admin-badge">{row.gameGatekeeper || "未分類"}</span>
+                    )}
                   </div>
                   <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
                   <p>{row.phone || "電話未填"}</p>
@@ -475,6 +480,11 @@ export function RecruiterQuickfill() {
             </button>
           </div>
           <p className="admin-caption">可直接在後台送出，不必再開 Google 表單。以下欄位送出前都還能改。</p>
+          {needsIdentityConfirm(preview.status) ? (
+            <p className="admin-caption war-conflict" role="status">
+              {IDENTITY_CONFIRM_LABEL} · 姓名或電話與其他資料重疊，請核對後再送出。
+            </p>
+          ) : null}
           <label>
             同學的姓名
             <input aria-label="同學的姓名" value={preview.name || ""} onChange={(event) => setDraft({ ...preview, name: event.target.value })} />
