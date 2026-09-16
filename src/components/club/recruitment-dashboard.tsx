@@ -241,6 +241,23 @@ function NamePhoneSearch({
   );
 }
 
+function nextUpRemainderCaption(
+  rows: Array<{ needsConfirmation?: boolean; confirmationReason?: string }>,
+) {
+  if (rows.length <= 1) return "";
+  const rest = rows.length - 1;
+  const flagged = rows.filter((row) => row.needsConfirmation);
+  if (flagged.length <= 1) return `還有 ${rest} 位待處理`;
+  const reasons = flagged.map((row) => row.confirmationReason || "");
+  if (reasons.every((reason) => reason.includes("同名不同電話"))) {
+    return `還有 ${rest} 位同名待確認`;
+  }
+  if (reasons.every((reason) => reason.includes("同電話不同姓名"))) {
+    return `還有 ${rest} 位同電話待確認`;
+  }
+  return `還有 ${rest} 位需要確認`;
+}
+
 function NextUpCard({
   row,
   featured,
@@ -475,9 +492,7 @@ export function RecruitmentDashboard({
               </div>
               {relatedPending.length > 1 ? (
                 <p className="admin-caption" role="status">
-                  {relatedPending.filter((row) => row.needsConfirmation).length > 1
-                    ? `還有 ${relatedPending.length - 1} 位同名待確認`
-                    : `還有 ${relatedPending.length - 1} 位待處理`}
+                  {nextUpRemainderCaption(relatedPending)}
                 </p>
               ) : null}
             </>

@@ -1146,7 +1146,9 @@ test(
       assert.equal(await page.getByText("需要確認").count() >= 2, true);
       await page.getByText("0911111111").waitFor();
       await page.getByText("0922222222").waitFor();
-      await page.getByRole("status").getByText("還有 1 位同名待確認").waitFor();
+      await page.getByRole("status").getByText("還有 1 位同名待確認", { exact: true }).waitFor();
+      assert.equal(await page.getByText("同電話待確認").count(), 0);
+      await capture(page, "dup-name-next-390");
       const secondBox = await cards.nth(1).boundingBox();
       assert.ok(secondBox.y + secondBox.height <= 760, `second card ${JSON.stringify(secondBox)}`);
       assert.equal(await page.locator("text=submissionId").count(), 0);
@@ -1196,6 +1198,8 @@ test(
       assert.equal(await liCard.count(), 1);
       assert.equal(await page.getByText("需要確認").count() >= 2, true);
       await page.getByText("0911111111").first().waitFor();
+      await page.getByRole("status").getByText("還有 1 位同電話待確認", { exact: true }).waitFor();
+      assert.equal(await page.getByText("同名待確認").count(), 0);
       await capture(page, "dup-phone-next-390");
       assert.equal(await page.locator("text=submissionId").count(), 0);
       await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
