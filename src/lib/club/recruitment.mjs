@@ -465,6 +465,76 @@ function isYes(value) {
   return text(value) === "是" || text(value).toLowerCase() === "yes" || text(value) === "Y";
 }
 
+function depositPersonKey(row, index) {
+  const name = text(row?.normalizedName);
+  const phone = text(row?.normalizedPhone);
+  if (name && phone) return `name:${name}|phone:${phone}`;
+  if (name) return `name:${name}|nophone`;
+  if (phone) return `phone:${phone}`;
+  return `row:${index}`;
+}
+
+/** Paid-deposit people: official form 是, unique by name+phone. Never phone-only merge. */
+export function summarizePaidDeposit(rows) {
+  const list = rows || [];
+  if (!list.length) {
+    return {
+      count: null,
+      needsReview: false,
+      rowCount: 0,
+      nameCount: 0,
+      phoneCount: 0,
+      conflictNames: [],
+      conflictPhones: [],
+    };
+  }
+  const known = list.filter((row) => Boolean(text(row.depositPaid)));
+  if (!known.length) {
+    return {
+      count: null,
+      needsReview: false,
+      rowCount: 0,
+      nameCount: 0,
+      phoneCount: 0,
+      conflictNames: [],
+      conflictPhones: [],
+    };
+  }
+  const yes = list.filter((row) => isYes(row.depositPaid));
+  const keys = new Set();
+  /** @type {Map<string, Set<string>>} */
+  const byName = new Map();
+  /** @type {Map<string, Set<string>>} */
+  const byPhone = new Map();
+  yes.forEach((row, index) => {
+    const key = depositPersonKey(row, index);
+    keys.add(key);
+    const name = text(row.normalizedName);
+    const phone = text(row.normalizedPhone);
+    if (name) {
+      const set = byName.get(name) || new Set();
+      set.add(key);
+      byName.set(name, set);
+    }
+    if (phone) {
+      const set = byPhone.get(phone) || new Set();
+      set.add(key);
+      byPhone.set(phone, set);
+    }
+  });
+  const conflictNames = [...byName.entries()].filter(([, set]) => set.size > 1).map(([name]) => name);
+  const conflictPhones = [...byPhone.entries()].filter(([, set]) => set.size > 1).map(([phone]) => phone);
+  return {
+    count: keys.size,
+    needsReview: Boolean(conflictNames.length || conflictPhones.length || yes.length > keys.size),
+    rowCount: yes.length,
+    nameCount: byName.size,
+    phoneCount: byPhone.size,
+    conflictNames,
+    conflictPhones,
+  };
+}
+
 function amount(value) {
   const n = number(String(value).replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
@@ -549,9 +619,6 @@ export function buildRecruitmentDashboard(input = {}) {
   }));
   appendUnmatchedRoster(profiles, master, { prefix: "master" });
   appendUnmatchedRoster(profiles, recruits, { prefix: "recruit", pending: false });
-  for (const row of profiles) {
-    if (row.needsReview == null) row.needsReview = row.status === "ambiguous" || reviewKeys.has(row.personKey);
-  }
 
   const completed = master.length ? master : recruits;
   function presentCount(rows, hasField, predicate) {
@@ -563,7 +630,18 @@ export function buildRecruitmentDashboard(input = {}) {
   const activityKnown = completed.some((row) => Boolean(text(row.activity)));
   const activityCount = !completed.length || !activityKnown ? null : uniqueActivityPeople(completed);
   const joinedCount = presentCount(completed, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
-  const depositCount = presentCount(completed, (row) => Boolean(text(row.depositPaid)), (row) => isYes(row.depositPaid));
+  const deposit = summarizePaidDeposit(completed);
+  const depositCount = deposit.count;
+  const conflictNames = new Set(deposit.conflictNames);
+  const conflictPhones = new Set(deposit.conflictPhones);
+  for (const row of profiles) {
+    if (row.needsReview == null) {
+      row.needsReview = row.status === "ambiguous" || reviewKeys.has(row.personKey);
+    }
+    const nameHit = Boolean(normalizeName(row.name) && conflictNames.has(normalizeName(row.name)));
+    const phoneHit = Boolean(row.normalizedPhone && conflictPhones.has(row.normalizedPhone));
+    if (nameHit || phoneHit) row.needsReview = true;
+  }
   const depositKnown = completed.filter((row) => text(row.depositAmount) !== "" || isYes(row.depositPaid));
   const depositTotal = !completed.length || !depositKnown.length
     ? null
@@ -670,6 +748,7 @@ export function buildRecruitmentDashboard(input = {}) {
       activityToday,
       joined: joinedCount,
       depositPaid: depositCount,
+      depositNeedsReview: deposit.needsReview,
       depositTotal,
       roster: master.length || completed.length,
     },
@@ -784,6 +863,7 @@ export function toPartnerRecruitmentDashboard(dashboard = {}) {
       activityToday: summary.activityToday,
       joined: summary.joined,
       depositPaid: summary.depositPaid,
+      depositNeedsReview: Boolean(summary.depositNeedsReview),
       depositTotal: summary.depositTotal,
       roster: summary.roster,
     },

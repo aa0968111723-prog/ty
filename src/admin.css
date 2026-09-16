@@ -1339,6 +1339,9 @@
 .war-card.is-action {
   background: var(--surface-highlight);
 }
+.war-card.is-warn {
+  background: var(--warning-soft);
+}
 .war-card > button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

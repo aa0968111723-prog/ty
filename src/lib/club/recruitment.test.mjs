@@ -10,6 +10,7 @@ import {
   parseMasterRows,
   parseRecruitmentResponses,
   toPartnerRecruitmentDashboard,
+  summarizePaidDeposit,
 } from "./recruitment.mjs";
 import {
   applyLastKnownGood,
@@ -428,6 +429,125 @@ test("same name different phones is flagged for review and not silently merged",
   assert.equal(data.summary.playedToday, 2);
   assert.equal(data.pending.length, 2);
   assert.equal(data.pending.every((row) => row.needsReview), true);
+});
+
+function paidDeposit(name, phone, extra = {}) {
+  return {
+    接引日期: "9/14",
+    "接引人(可複選)": "安倢",
+    同學的姓名: name,
+    科系: "歷史學系",
+    年級: "大一",
+    是否入社: "否",
+    保證金是否繳費: "是",
+    繳了多少: extra.amount ?? "300",
+    "同學電話/LINE": phone,
+    ...extra,
+  };
+}
+
+test("deposit people are unique by name and phone, not form row count", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [],
+    recruitmentRows: [],
+    masterRows: [
+      paidDeposit("甲", "0910000001"),
+      paidDeposit("乙", "0910000002"),
+      paidDeposit("甲", "0910000001", { 繳了多少: "0" }),
+    ],
+  });
+  assert.equal(data.summary.depositPaid, 2);
+  assert.equal(data.summary.depositNeedsReview, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "deposit")?.count, 2);
+  const summarized = summarizePaidDeposit(parseMasterRows([
+    paidDeposit("甲", "0910000001"),
+    paidDeposit("乙", "0910000002"),
+    paidDeposit("甲", "0910000001"),
+  ]));
+  assert.equal(summarized.rowCount, 3);
+  assert.equal(summarized.count, 2);
+  assert.equal(summarized.nameCount, 2);
+  assert.equal(summarized.phoneCount, 2);
+});
+
+test("same-name different-phone deposit rows stay two people and need review", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [],
+    recruitmentRows: [],
+    masterRows: [
+      paidDeposit("林同學", "0911111111"),
+      paidDeposit("林同學", "0922222222"),
+    ],
+  });
+  assert.equal(data.summary.depositPaid, 2);
+  assert.equal(data.summary.depositNeedsReview, true);
+  assert.equal(data.summary.depositPaid === 1, false);
+  assert.ok(data.profiles.filter((row) => row.depositPaid === "是").every((row) => row.needsReview));
+  const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal(partner.summary.depositPaid, 2);
+  assert.equal(partner.summary.depositNeedsReview, true);
+});
+
+test("same-phone different-name deposit rows stay two people and need review", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [],
+    recruitmentRows: [],
+    masterRows: [
+      paidDeposit("唐同學", "0917777174"),
+      paidDeposit("陳同學甲乙丙", "0917777174"),
+    ],
+  });
+  assert.equal(data.summary.depositPaid, 2);
+  assert.equal(data.summary.depositNeedsReview, true);
+  const summarized = summarizePaidDeposit(parseMasterRows([
+    paidDeposit("唐同學", "0917777174"),
+    paidDeposit("陳同學甲乙丙", "0917777174"),
+  ]));
+  assert.equal(summarized.phoneCount, 1);
+  assert.equal(summarized.nameCount, 2);
+  assert.equal(summarized.count, 2);
+  assert.ok(data.profiles.some((row) => row.needsReview && row.depositPaid === "是"));
+});
+
+test("deposit count ignores game scores and does not use phone unique as the only key", () => {
+  const scored = game({
+    姓名: "高分生",
+    電話: "0910000099",
+    分數: 3600,
+    _submissionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01",
+  });
+  const rows = [
+    paidDeposit("高分生", "0910000099"),
+    paidDeposit("高分生", ""),
+    paidDeposit("甲", "0910000001"),
+    paidDeposit("乙", "0910000002"),
+    paidDeposit("丙", "0910000003"),
+    paidDeposit("丁", "0910000004"),
+    paidDeposit("戊", "0910000005"),
+    paidDeposit("己", "0910000006"),
+    paidDeposit("庚", "0910000007"),
+    paidDeposit("唐同學", "0917777174"),
+    paidDeposit("陳同學甲乙丙", "0917777174"),
+  ];
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [scored],
+    recruitmentRows: [],
+    masterRows: rows,
+  });
+  const summarized = summarizePaidDeposit(parseMasterRows(rows));
+  assert.equal(data.summary.depositPaid, 11);
+  assert.equal(data.summary.depositNeedsReview, true);
+  assert.equal(summarized.rowCount, 11);
+  assert.equal(summarized.nameCount, 10);
+  assert.equal(summarized.phoneCount, 9);
+  assert.notEqual(data.summary.depositPaid, summarized.phoneCount);
+  assert.notEqual(data.summary.depositPaid, summarized.nameCount);
+  assert.ok(data.profiles.some((row) => row.name === "高分生" && row.score === 3600));
+  assert.equal(toPartnerRecruitmentDashboard(data).profiles.find((row) => row.name === "高分生")?.score, undefined);
 });
 
 test("partner dashboard hides grading, scores, and form choice tokens", () => {

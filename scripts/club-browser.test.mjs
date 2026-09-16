@@ -103,6 +103,7 @@ async function assertWarCardLabels(page) {
   assert.equal(hints[1]?.text, "報名");
   assert.equal(hints[2]?.text, "招生表");
   assert.equal(hints[3]?.text, "$600");
+  assert.notEqual(hints[3]?.text, "需確認");
   assert.equal(hints[3]?.nowrap, true);
   assert.equal(hints[3]?.clipped, false);
   for (const row of [hints[1], hints[2], hints[3]]) {

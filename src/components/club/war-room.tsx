@@ -175,14 +175,30 @@ export function WarRoom({
           icon={Wallet}
           label="保證金"
           value={summary?.depositPaid == null ? "資料不足" : metric(summary.depositPaid)}
-          hint={summary?.depositTotal == null ? "無金額" : `$${metric(summary.depositTotal)}`}
+          hint={
+            summary?.depositNeedsReview
+              ? "需確認"
+              : summary?.depositTotal == null ? "無金額" : `$${metric(summary.depositTotal)}`
+          }
+          tone={summary?.depositNeedsReview ? "warn" : undefined}
           expanded={expanded}
           onToggle={toggle}
         >
-          <p>已繳保證金的人數。保證金以正式表單勾選為準。金額僅供現場對帳，不會公開到前台。</p>
+          <p>
+            {summary?.depositNeedsReview
+              ? "已繳人數依正式表單「保證金＝是」，用姓名＋電話去重。同名不同號或同號不同名會分開算並標需確認，不會用遊戲分數或只靠電話合併。"
+              : "已繳保證金的人數。保證金以正式表單勾選為準。金額僅供現場對帳，不會公開到前台。"}
+          </p>
+          {summary?.depositNeedsReview && summary?.depositTotal != null ? (
+            <p>對帳金額 ${metric(summary.depositTotal)}。</p>
+          ) : null}
         </ExpandCard>
       </section>
-      <p className="admin-caption">保證金以正式表單勾選為準，與是否入社分開計算。</p>
+      <p className="admin-caption">
+        {summary?.depositNeedsReview
+          ? "有姓名或電話重複，保證金人數需確認。以正式表單勾選為準，與是否入社分開計算。"
+          : "保證金以正式表單勾選為準，與是否入社分開計算。"}
+      </p>
 
       <section className="war-panel" aria-label="各活動報名">
         <div className="admin-section-heading">

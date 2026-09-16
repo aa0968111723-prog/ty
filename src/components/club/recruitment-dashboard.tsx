@@ -16,6 +16,7 @@ export type RecruitmentData = {
     activityToday?: number;
     joined: number | null;
     depositPaid: number | null;
+    depositNeedsReview?: boolean;
     depositTotal: number | null;
     roster: number;
   };
