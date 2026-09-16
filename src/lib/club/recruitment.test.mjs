@@ -466,3 +466,32 @@ test("same name different phones stay separate and are flagged for confirmation"
   assert.doesNotMatch(JSON.stringify(data.summary), /"s":|"a":|"b":/);
 });
 
+test("empty game and form sheets stay at zero without inventing funnel counts", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T12:00:00+08:00"),
+    gameRows: [],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.summary.contactsToday, 0);
+  assert.equal(data.summary.contactsTotal, 0);
+  assert.equal(data.summary.playedToday, 0);
+  assert.equal(data.summary.pending, 0);
+  assert.equal(data.summary.recruited, 0);
+  assert.equal(data.summary.roster, 0);
+  assert.equal(data.summary.activity, null);
+  assert.equal(data.summary.joined, null);
+  assert.equal(data.summary.depositPaid, null);
+  assert.equal(data.pending.length, 0);
+  assert.equal(data.profiles.length, 0);
+  assert.equal(data.recruiters.length, 0);
+  assert.equal(data.gameGatekeepers.length, 0);
+  assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 0);
+  assert.equal(data.funnel.find((layer) => layer.id === "activity")?.missing, true);
+  assert.equal(data.summary.s, undefined);
+  assert.equal(data.dailyTrend.at(-1)?.date, "2026-09-14");
+  assert.equal(data.dailyTrend.at(-1)?.contacts, 0);
+  assert.doesNotMatch(JSON.stringify(data), /googleapis|submissionId/);
+});
+
