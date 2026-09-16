@@ -1,5 +1,6 @@
 import { Fragment, useLayoutEffect, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Filter } from "lucide-react";
+import { profileTouchesTaipeiDate, rosterFilterDate } from "@/lib/club/roster-date.mjs";
 import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
 
 export type SyncFlag = { ok: boolean; stale?: boolean; error?: string };
@@ -223,11 +224,13 @@ export function RosterList({
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [profile, setProfile] = useState<RecruitmentProfile | null>(null);
+  const [dateScope, setDateScope] = useState<"all" | "today" | "yesterday" | "custom">("all");
   const [department, setDepartment] = useState("");
   const [grade, setGrade] = useState("");
   const [activity, setActivity] = useState("");
   const [joined, setJoined] = useState("");
   const [deposit, setDeposit] = useState("");
+  const dateTarget = rosterFilterDate(dateScope, data.date);
   const departments = useMemo(
     () => [...new Set(data.profiles.map((row) => row.department).filter(Boolean))],
     [data.profiles],
@@ -242,6 +245,7 @@ export function RosterList({
   );
   const people = useMemo(() => {
     return data.profiles.filter((row) => {
+      if (dateTarget && !profileTouchesTaipeiDate(row, dateTarget)) return false;
       if (status === "pending" && !row.pending) return false;
       if (status === "done" && row.pending) return false;
       if (status === "review" && !row.needsReview) return false;
@@ -256,7 +260,7 @@ export function RosterList({
       if (deposit === "no" && row.depositPaid === "是") return false;
       return rowMatchesQuery(row, query);
     });
-  }, [data.profiles, status, gameGatekeeper, recruiter, department, grade, activity, joined, deposit, query]);
+  }, [data.profiles, dateTarget, status, gameGatekeeper, recruiter, department, grade, activity, joined, deposit, query]);
 
   return (
     <div className="recruitment-board">
@@ -270,6 +274,12 @@ export function RosterList({
         </div>
         <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
           <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話、科系" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <select aria-label="篩選日期" value={dateScope} onChange={(event) => setDateScope(event.target.value as typeof dateScope)}>
+            <option value="all">歷史全部</option>
+            <option value="today">今日</option>
+            <option value="yesterday">昨日</option>
+            <option value="custom">指定日期</option>
+          </select>
           <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
             <option value="">所有遊戲關主</option>
             {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}
@@ -307,6 +317,9 @@ export function RosterList({
             <option value="no">未繳</option>
           </select>
         </div>
+        {dateScope === "custom" ? (
+          <p className="admin-caption">依上方查詢日期 {data.date.replaceAll("-", ".")}</p>
+        ) : null}
         <p className="admin-caption">{people.length} 位 · 僅工作人員可見</p>
         {!people.length ? (
           <p className="admin-empty" data-empty="roster">

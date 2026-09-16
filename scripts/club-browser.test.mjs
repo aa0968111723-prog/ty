@@ -638,6 +638,122 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("admin roster date filters start collapsed and cover today yesterday custom and history", async () => {
+      const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Taipei",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+      const [year, month, day] = today.split("-").map(Number);
+      const yesterday = new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) =>
+        new URL(route.request().url()).origin !== origin
+          ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+          : route.continue(),
+      );
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || today;
+        return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || today;
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date,
+            gameRows: [
+              {
+                姓名: "今日接觸生",
+                電話: "0918000001",
+                科系: "歷史學系",
+                年級: "大一",
+                遊戲關主: "柏能",
+                遊戲時間: `${today}T01:00:00.000Z`,
+                _submissionId: "cccccccc-cccc-4ccc-8ccc-ccccccccccc1",
+                _kind: "official",
+                _skipSave: false,
+              },
+              {
+                姓名: "昨日接觸生",
+                電話: "0918000002",
+                科系: "資訊工程學系",
+                年級: "大二",
+                遊戲關主: "安倢",
+                遊戲時間: `${yesterday}T01:00:00.000Z`,
+                _submissionId: "cccccccc-cccc-4ccc-8ccc-ccccccccccc2",
+                _kind: "official",
+                _skipSave: false,
+              },
+            ],
+            recruitmentRows: [],
+            masterRows: [{
+              接引日期: "9/12",
+              "接引人(可複選)": "安倢",
+              同學的姓名: "指定日期生",
+              科系: "歷史學系",
+              年級: "大一",
+              是否入社: "是",
+              保證金是否繳費: "是",
+              繳了多少: "300",
+              "同學電話/LINE": "0918000003",
+            }],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.locator("[data-war-room=home]").waitFor();
+      await page.getByRole("navigation", { name: "手機後台導覽", exact: true }).getByRole("button", { name: "名單", exact: true }).click();
+      await page.getByRole("heading", { name: "名單", level: 1 }).waitFor();
+      await page.getByText("今日接觸生", { exact: true }).waitFor();
+      assert.equal(await page.getByRole("button", { name: "篩選" }).getAttribute("aria-expanded"), "false");
+      assert.equal(
+        await page.evaluate(() => getComputedStyle(document.querySelector(".recruitment-filters")).display),
+        "none",
+      );
+      assert.equal(await page.locator(".admin-person-list article").count(), 3);
+      await page.getByRole("button", { name: "篩選" }).click();
+      assert.equal(await page.getByRole("button", { name: "篩選" }).getAttribute("aria-expanded"), "true");
+      await page.getByLabel("篩選日期").waitFor();
+      assert.deepEqual(
+        await page.getByLabel("篩選日期").locator("option").allTextContents(),
+        ["歷史全部", "今日", "昨日", "指定日期"],
+      );
+      await page.getByLabel("篩選遊戲關主").waitFor();
+      await page.getByLabel("篩選這位有緣人的接引人").waitFor();
+      await page.getByLabel("待追蹤或已完成").waitFor();
+      await page.getByLabel("篩選活動").waitFor();
+      await page.getByLabel("是否入社").waitFor();
+      await page.getByLabel("是否繳保證金").waitFor();
+      assert.equal(await page.getByLabel("待追蹤或已完成").locator("option[value=done]").textContent(), "已填正式資料");
+      await page.getByLabel("篩選日期").selectOption("today");
+      assert.equal(await page.locator(".admin-person-list article").count(), 1);
+      assert.equal(await page.getByText("今日接觸生", { exact: true }).count(), 1);
+      await page.getByLabel("篩選日期").selectOption("yesterday");
+      assert.equal(await page.locator(".admin-person-list article").count(), 1);
+      assert.equal(await page.getByText("昨日接觸生", { exact: true }).count(), 1);
+      await page.getByLabel("查詢日期").fill("2026-09-12");
+      await page.getByText("招生戰情 / 2026.09.12").waitFor();
+      if ((await page.getByRole("button", { name: "篩選" }).getAttribute("aria-expanded")) !== "true") {
+        await page.getByRole("button", { name: "篩選" }).click();
+      }
+      await page.getByLabel("篩選日期").selectOption("custom");
+      await page.getByText("指定日期生", { exact: true }).waitFor();
+      assert.equal(await page.locator(".admin-person-list article").count(), 1);
+      await page.getByLabel("篩選日期").selectOption("all");
+      assert.equal(await page.locator(".admin-person-list article").count(), 3);
+      await capture(page, "admin-roster-date-filters-390");
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("admin pending keeps same-phone different-name students for review", async () => {
       const board = (date) => buildRecruitmentDashboard({
         date,
