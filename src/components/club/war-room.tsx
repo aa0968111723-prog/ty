@@ -220,7 +220,7 @@ function NextPendingCard({
         {reason === "assigned" ? `接引人是你${recruiter ? `（${recruiter}）` : ""}` : "尚未指定接引人"}
         {next.gameGatekeeper ? ` · 遊戲關主 ${next.gameGatekeeper}` : ""}
       </p>
-      <a className="admin-primary" href={followUpHref(next.personKey)}>
+      <a className="admin-primary" href={followUpHref(next.personKey || "")}>
         填寫正式資料
       </a>
     </section>
