@@ -332,9 +332,9 @@ function buildPrefilledFormUrl(candidate, recruiter) {
 }
 
 function recruitMetadataNote_(candidate) {
+  // Partner-visible 備註 only. submissionId stays on `_gameSubmissionId`.
   return "遊戲完成：" + recruitText_(candidate.completedAt)
-    + "\n遊戲關主：" + recruitText_(candidate.gameGatekeeper)
-    + "\nsubmissionId：" + recruitText_(candidate.submissionId);
+    + "\n遊戲關主：" + recruitText_(candidate.gameGatekeeper);
 }
 
 function recruitParseMetadata_(value) {
