@@ -169,7 +169,7 @@ test(
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待填正式資料" }).waitFor();
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
-        await page.getByRole("heading", { name: "名單" }).waitFor();
+        await page.getByRole("heading", { name: "名單", level: 1 }).waitFor();
         await page.getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "表單資料" }).click();
         await page.getByLabel("篩選來源").selectOption("Google Form");
@@ -224,7 +224,8 @@ test(
       assert.equal(await page.locator("[data-howto=rules]").count(), 1);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await capture(page, "register-desktop");
-      await page.route("**/api/admin/session", route => route.fulfill({ json: { authenticated: false, passwordEnabled: true, googleEnabled: true } }));
+      const session = { authenticated: false, passwordEnabled: true, googleEnabled: true };
+      await page.route("**/api/admin/session", route => route.fulfill({ json: session }));
       await page.route("**/api/admin/login", route => route.fulfill({ status: 401, json: { error: "密碼錯誤" } }));
       await page.goto(`${origin}/admin`);
       await page.getByRole("heading", { name: "管理員登入" }).waitFor();
@@ -234,6 +235,7 @@ test(
       await page.getByLabel("管理員密碼").fill("ui-test-only");
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("alert").waitFor();
+      session.authenticated = true;
       await page.route("**/api/admin/login", route => route.fulfill({ json: { ok: true } }));
       await page.route("**/api/admin/dashboard?*", route => {
         const date = new URL(route.request().url()).searchParams.get("date");
@@ -258,7 +260,7 @@ test(
       await page.getByRole("dialog").getByRole("button", { name: "表單資料" }).click();
       assert.equal(await page.getByLabel("篩選來源").inputValue(), "Google Form");
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "名單" }).click();
-      assert.equal(await page.getByRole("heading", { name: "名單" }).count(), 1);
+      assert.equal(await page.getByRole("heading", { name: "名單", level: 1 }).count(), 1);
       assert.deepEqual(errors, []);
       await context.close();
     });
