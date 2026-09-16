@@ -107,21 +107,16 @@ export function PendingQueue({
     if (!window.matchMedia("(max-width: 759px)").matches) return;
 
     const revealPendingActions = () => {
-      const form = document.querySelector(
-        ".recruitment-pending article.is-priority [data-pending-action=form]",
-      );
-      const quickfill = document.querySelector(
-        ".recruitment-pending article.is-priority [data-pending-action=quickfill]",
-      );
+      const card = document.querySelector(".recruitment-pending article.is-priority");
       const nav = document.querySelector(".admin-bottom-nav");
-      if (!(form instanceof HTMLElement) || !(quickfill instanceof HTMLElement)) return;
+      if (!(card instanceof HTMLElement)) return;
       if (!(nav instanceof HTMLElement) || getComputedStyle(nav).display === "none") return;
-      form.scrollIntoView({ block: "end", inline: "nearest" });
+      const actions = [...card.querySelectorAll(".recruitment-actions a, .recruitment-actions button")]
+        .filter((el): el is HTMLElement => el instanceof HTMLElement);
+      if (!actions.length) return;
+      actions[actions.length - 1].scrollIntoView({ block: "end", inline: "nearest" });
       const navTop = nav.getBoundingClientRect().top;
-      const lowest = Math.max(
-        form.getBoundingClientRect().bottom,
-        quickfill.getBoundingClientRect().bottom,
-      );
+      const lowest = Math.max(...actions.map((el) => el.getBoundingClientRect().bottom));
       const overlap = lowest - navTop;
       if (overlap > 0) window.scrollBy({ top: overlap + 2, left: 0, behavior: "auto" });
     };

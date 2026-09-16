@@ -45,14 +45,22 @@ async function assertPendingActionButtons(page) {
   assert.equal(await pendingActions.count(), 2);
   await page.waitForFunction(() => {
     const nav = document.querySelector(".admin-bottom-nav");
-    const buttons = [...document.querySelectorAll("[data-pending-action]")];
-    if (buttons.length < 2) return false;
+    const card = document.querySelector(".recruitment-pending article");
+    if (!card) return false;
+    const pending = [...card.querySelectorAll("[data-pending-action]")];
+    const actions = [...card.querySelectorAll(".recruitment-actions a, .recruitment-actions button")];
+    if (pending.length < 2 || actions.length < 3) return false;
     if (!nav || getComputedStyle(nav).display === "none") return true;
     const navTop = nav.getBoundingClientRect().top;
-    return buttons.every((el) => {
+    const nameBox = card.querySelector("strong")?.getBoundingClientRect();
+    const captionBox = card.querySelector(".admin-caption")?.getBoundingClientRect();
+    const actionsOk = actions.every((el) => {
       const box = el.getBoundingClientRect();
       return box.height >= 44 && box.top >= 0 && box.bottom <= navTop + 1;
     });
+    const nameOk = !nameBox || (nameBox.top >= 0 && nameBox.bottom <= navTop + 1);
+    const captionOk = !captionBox || (captionBox.top >= 0 && captionBox.bottom <= navTop + 1);
+    return actionsOk && nameOk && captionOk;
   });
   const actionMetrics = await page.evaluate(() => {
     const nav = document.querySelector(".admin-bottom-nav");
@@ -85,6 +93,35 @@ async function assertPendingActionButtons(page) {
     assert.equal(row.clearsNav, true, `${row.text} overlaps tab bar ${row.bottom} > ${row.navTop}`);
   }
   assert.equal(actionMetrics.map((row) => row.text).join(), "接引人快速填表,打開正式表單");
+  const cardMetrics = await page.evaluate(() => {
+    const nav = document.querySelector(".admin-bottom-nav");
+    const navHidden = !nav || getComputedStyle(nav).display === "none";
+    const navTop = navHidden ? null : nav.getBoundingClientRect().top;
+    const card = document.querySelector(".recruitment-pending article");
+    const timeline = [...(card?.querySelectorAll(".recruitment-actions button") ?? [])]
+      .find((el) => (el.querySelector("span")?.textContent || el.textContent || "").includes("時間線"));
+    const box = timeline?.getBoundingClientRect();
+    const nameBox = card?.querySelector("strong")?.getBoundingClientRect();
+    const captionBox = card?.querySelector(".admin-caption")?.getBoundingClientRect();
+    const clears = (rect) => !rect || navTop == null || (rect.top >= 0 && rect.bottom <= navTop + 1);
+    return {
+      found: Boolean(timeline),
+      height: box?.height ?? 0,
+      bottom: box?.bottom ?? 0,
+      top: box?.top ?? 0,
+      navTop,
+      clearsNav: navTop == null || (box != null && box.bottom <= navTop + 1),
+      fullyOnScreen: box != null && box.top >= 0 && box.bottom <= innerHeight + 1,
+      nameClearsNav: clears(nameBox),
+      captionClearsNav: clears(captionBox),
+    };
+  });
+  assert.equal(cardMetrics.found, true);
+  assert.ok(cardMetrics.height >= 44, `時間線 height ${cardMetrics.height}`);
+  assert.equal(cardMetrics.clearsNav, true, `時間線 overlaps tab bar ${cardMetrics.bottom} > ${cardMetrics.navTop}`);
+  assert.equal(cardMetrics.fullyOnScreen, true, `時間線 off screen ${cardMetrics.top}-${cardMetrics.bottom}`);
+  assert.equal(cardMetrics.nameClearsNav, true, "pending card name covered by tab bar");
+  assert.equal(cardMetrics.captionClearsNav, true, "pending card caption covered by tab bar");
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
 }
 async function assertWarCardLabels(page) {

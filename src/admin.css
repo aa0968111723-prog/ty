@@ -1081,7 +1081,8 @@
   .admin-page .recruitment-pending article.is-priority {
     padding-bottom: var(--admin-tabbar-clear);
   }
-  .admin-page .recruitment-pending [data-pending-action] {
+  .admin-page .recruitment-pending .recruitment-actions a,
+  .admin-page .recruitment-pending .recruitment-actions button {
     scroll-margin-bottom: var(--admin-tabbar-clear);
   }
 }
