@@ -165,7 +165,7 @@ test(
         await capture(page, `recruitment-${width}`);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
-        await page.getByRole("heading", { name: "待處理", exact: true }).waitFor();
+        await page.getByRole("heading", { level: 1, name: "待處理" }).waitFor();
         await page.getByRole("link", { name: "填寫正式資料" }).waitFor();
         assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
         assert.match(await page.locator(".recruitment-pending").innerText(), /遊戲關主/);
@@ -248,6 +248,7 @@ test(
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("alert").waitFor();
       await page.route("**/api/admin/login", route => route.fulfill({ json: { ok: true } }));
+      await page.route("**/api/admin/session", route => route.fulfill({ json: { authenticated: true } }));
       await page.route("**/api/admin/dashboard?*", route => {
         const date = new URL(route.request().url()).searchParams.get("date");
         return route.fulfill({ json: buildDashboard({
@@ -269,7 +270,7 @@ test(
       await page.getByRole("navigation", { name: "更多後台導覽", exact: true }).getByRole("button", { name: "表單資料" }).click();
       assert.equal(await page.getByLabel("篩選來源").inputValue(), "Google Form");
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "名單" }).click();
-      await page.getByRole("heading", { name: "名單" }).waitFor();
+      await page.getByRole("heading", { level: 1, name: "名單" }).waitFor();
       assert.equal(await page.getByLabel("篩選來源").count(), 0);
       assert.deepEqual(errors, []);
       await context.close();

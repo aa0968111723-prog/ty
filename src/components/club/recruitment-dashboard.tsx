@@ -255,7 +255,7 @@ export function RecruitmentDashboard({
         </section>
         <section className="admin-panel">
           <div className="admin-section-heading">
-            <h2>待處理</h2>
+            <h2>需要你處理的同學</h2>
             <span className="admin-caption">{pending.length + followUps.length} 位</span>
           </div>
           <input
@@ -320,7 +320,7 @@ export function RecruitmentDashboard({
     <div className="recruitment-board">
       <section className="admin-panel">
         <div className="admin-section-heading">
-          <h2>名單</h2>
+          <h2>同學名單</h2>
           <button type="button" className="admin-more-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}>
             <span><Filter size={18} /> 篩選</span>
             <ChevronDown size={18} className={filtersOpen ? "is-open" : ""} />
