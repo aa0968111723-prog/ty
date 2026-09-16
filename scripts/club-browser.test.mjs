@@ -630,6 +630,11 @@ test(
         _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
         遊戲時間: "2026-09-14T01:00:00.000Z",
       };
+      const teaTwo = {
+        姓名: "茶會同學乙", 電話: "0910000103", 科系: "中國文學學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:30:00.000Z",
+      };
       const talk = {
         姓名: "演講同學", 電話: "0910000102", 科系: "會計學系", 年級: "大二", 遊戲關主: "安倢",
         _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
@@ -638,7 +643,7 @@ test(
       await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
         json: buildRecruitmentDashboard({
           date: "2026-09-14",
-          gameRows: [tea, talk],
+          gameRows: [tea, teaTwo, talk],
           recruitmentRows: [{
             時間戳記: "2026/9/14 下午 3:00:00",
             同學的姓名: tea.姓名,
@@ -647,6 +652,14 @@ test(
             是否入社: "否",
             保證金是否繳費: "否",
             _gameSubmissionId: tea._submissionId,
+          }, {
+            時間戳記: "2026/9/14 下午 3:30:00",
+            同學的姓名: teaTwo.姓名,
+            "同學電話/LINE": teaTwo.電話,
+            報名了那個活動: "9/30茶會",
+            是否入社: "否",
+            保證金是否繳費: "否",
+            _gameSubmissionId: teaTwo._submissionId,
           }, {
             時間戳記: "2026/9/14 下午 3:00:00",
             同學的姓名: talk.姓名,
@@ -671,7 +684,10 @@ test(
       await activityDetail.getByText("10/07演講").waitFor();
       await activityDetail.getByText("社課").waitFor();
       await activityDetail.getByText("體驗禪").waitFor();
-      await activityDetail.locator("li", { hasText: "9/30茶會" }).getByText("1", { exact: true }).first().waitFor();
+      assert.equal(await activityDetail.locator("li", { hasText: "9/30茶會" }).locator("b").innerText(), "2");
+      assert.equal(await activityDetail.locator("li", { hasText: "10/07演講" }).locator("b").innerText(), "1");
+      assert.equal(await activityDetail.locator("li", { hasText: "社課" }).locator("b").innerText(), "1");
+      assert.equal(await activityDetail.locator("li", { hasText: "體驗禪" }).locator("b").innerText(), "0");
       await capture(page, "command-activity-expand-390");
       await popular.click();
       assert.equal(await popular.getAttribute("aria-expanded"), "true");
