@@ -364,7 +364,6 @@ export function RecruitmentDashboard({
   status,
   setStatus,
   date,
-  setDate,
   onOpenQueue,
   onOpenRoster,
 }: {
@@ -390,6 +389,7 @@ export function RecruitmentDashboard({
   const [deposit, setDeposit] = useState("");
   const [filled, setFilled] = useState("");
   const [range, setRange] = useState<"today" | "yesterday" | "date" | "all">("all");
+  const [pickedDate, setPickedDate] = useState("");
   const [handled, setHandled] = useState<Set<string>>(readHandled);
   const [selfRecruiter, setSelfRecruiter] = useState(() => recruiter || readRecruiter());
   const [showAllPending, setShowAllPending] = useState(false);
@@ -430,7 +430,10 @@ export function RecruitmentDashboard({
       const day = completed ? taipeiDate(completed) : "";
       if (range === "today" && day && day !== today) return false;
       if (range === "yesterday" && day && day !== yesterday) return false;
-      if (range === "date" && date && day && day !== date) return false;
+      if (range === "date") {
+        const target = pickedDate || today;
+        if (!target || day !== target) return false;
+      }
       if (filled === "yes" && row.pending) return false;
       if (filled === "no" && !row.pending) return false;
       if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
@@ -442,7 +445,7 @@ export function RecruitmentDashboard({
       if (deposit === "no" && row.depositPaid === "是") return false;
       return rowMatchesQuery(row, query);
     });
-  }, [data.profiles, data.date, range, date, filled, gameGatekeeper, recruiter, activity, joined, deposit, query]);
+  }, [data.profiles, data.date, range, pickedDate, filled, gameGatekeeper, recruiter, activity, joined, deposit, query]);
 
   function rememberRecruiter(name: string) {
     setSelfRecruiter(name);
@@ -590,14 +593,29 @@ export function RecruitmentDashboard({
         </div>
         <NamePhoneSearch query={query} setQuery={setQuery} />
         <div id="roster-filters" className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
-          <select aria-label="日期範圍" value={range} onChange={(event) => setRange(event.target.value as typeof range)}>
+          <select
+            aria-label="日期範圍"
+            value={range}
+            onChange={(event) => {
+              const next = event.target.value as typeof range;
+              setRange(next);
+              if (next === "date") {
+                setPickedDate((current) => current || data.date || date || "");
+              }
+            }}
+          >
             <option value="today">今日</option>
             <option value="yesterday">昨日</option>
             <option value="date">指定日期</option>
             <option value="all">歷史全部</option>
           </select>
-          {range === "date" && setDate ? (
-            <input aria-label="指定日期" type="date" value={date} onChange={(event) => event.target.value && setDate(event.target.value)} />
+          {range === "date" ? (
+            <input
+              aria-label="指定日期"
+              type="date"
+              value={pickedDate}
+              onChange={(event) => event.target.value && setPickedDate(event.target.value)}
+            />
           ) : null}
           <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
             <option value="">所有遊戲關主</option>
