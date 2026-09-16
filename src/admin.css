@@ -1,9 +1,11 @@
 /* Operations workspace: shares the public application's design tokens. */
 .admin-page {
+  --admin-tabbar-clear: calc(88px + env(safe-area-inset-bottom));
   min-height: 100dvh;
   background: var(--page-bg-warm);
   color: var(--text-primary);
-  padding: 0 0 calc(88px + env(safe-area-inset-bottom));
+  padding: 0 0 var(--admin-tabbar-clear);
+  scroll-padding-bottom: var(--admin-tabbar-clear);
 }
 .admin-page button,
 .admin-login button,
@@ -1071,6 +1073,18 @@
   align-items: stretch;
   width: 100%;
   min-width: 0;
+}
+@media (max-width: 759px) {
+  .admin-page .recruitment-pending .recruitment-actions {
+    position: sticky;
+    bottom: var(--admin-tabbar-clear);
+    z-index: 20;
+    margin-top: var(--space-3);
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    background: var(--page-bg-warm);
+    scroll-margin-bottom: var(--admin-tabbar-clear);
+  }
 }
 .admin-page .recruitment-pending .recruitment-actions a,
 .admin-page .recruitment-pending .recruitment-actions button {

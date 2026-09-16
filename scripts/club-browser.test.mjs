@@ -43,8 +43,11 @@ async function capture(page, name) {
 async function assertPendingActionButtons(page) {
   const pendingActions = page.locator("[data-pending-action]");
   assert.equal(await pendingActions.count(), 2);
-  const actionMetrics = await pendingActions.evaluateAll((els) =>
-    els.map((el) => {
+  const actionMetrics = await page.evaluate(() => {
+    const nav = document.querySelector(".admin-bottom-nav");
+    const navHidden = !nav || getComputedStyle(nav).display === "none";
+    const navTop = navHidden ? null : nav.getBoundingClientRect().top;
+    return [...document.querySelectorAll("[data-pending-action]")].map((el) => {
       const box = el.getBoundingClientRect();
       const parent = el.parentElement?.getBoundingClientRect();
       const label = el.querySelector("span");
@@ -53,18 +56,22 @@ async function assertPendingActionButtons(page) {
       return {
         height: box.height,
         width: box.width,
+        bottom: box.bottom,
         parentWidth: parent?.width ?? 0,
         labelHeight: labelBox?.height ?? 0,
         nowrap: style.whiteSpace === "nowrap",
         text: label?.textContent || el.textContent || "",
+        navTop,
+        clearsNav: navTop == null || box.bottom <= navTop + 1,
       };
-    }),
-  );
+    });
+  });
   for (const row of actionMetrics) {
     assert.ok(row.height >= 44, `${row.text} height ${row.height}`);
     assert.ok(row.width + 1 >= row.parentWidth, `${row.text} width ${row.width} / ${row.parentWidth}`);
     assert.ok(row.labelHeight <= 28, `${row.text} wrapped at ${row.labelHeight}px`);
     assert.equal(row.nowrap, true);
+    assert.equal(row.clearsNav, true, `${row.text} overlaps tab bar ${row.bottom} > ${row.navTop}`);
   }
   assert.equal(actionMetrics.map((row) => row.text).join(), "接引人快速填表,打開正式表單");
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
@@ -325,7 +332,7 @@ test(
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待填正式資料" }).waitFor();
-        await page.locator("[data-pending-action=form]").scrollIntoViewIfNeeded();
+        await page.locator("[data-pending-action=form]").waitFor();
         await assertPendingActionButtons(page);
         await capture(page, `pending-${width}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
@@ -642,14 +649,24 @@ test(
         assert.ok(await page.getByText("1 位尚未填正式招生資料").count());
         assert.ok(await page.getByText("遊戲關主 安倢").count());
         assert.equal(await page.getByText("3600").count(), 0);
+        await page.locator("[data-pending-action=form]").waitFor();
+        await assertPendingActionButtons(page);
         await assertAdminSafeCopy(page);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await capture(page, shot);
         assert.deepEqual(errors, []);
         await context.close();
       };
-      await runPending(390, 844, "手機後台導覽", "admin-pending-review-390");
-      await runPending(1280, 800, "後台導覽", "admin-pending-review-desktop");
+      for (const [width, height, navName, shot] of [
+        [360, 800, "手機後台導覽", "admin-pending-review-360"],
+        [375, 812, "手機後台導覽", "admin-pending-review-375"],
+        [390, 844, "手機後台導覽", "admin-pending-review-390"],
+        [412, 915, "手機後台導覽", "admin-pending-review-412"],
+        [430, 932, "手機後台導覽", "admin-pending-review-430"],
+        [1280, 800, "後台導覽", "admin-pending-review-desktop"],
+      ]) {
+        await runPending(width, height, navName, shot);
+      }
     });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
