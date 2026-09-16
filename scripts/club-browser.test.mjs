@@ -829,7 +829,7 @@ test(
       assert.ok(ctaBox.y + ctaBox.height <= 844, "next-person CTA must be in the first 390 viewport");
       assert.match(await cta.getAttribute("href") || "", /personKey=/);
       assert.equal(await nextCard.getByText("分級").count(), 0);
-      await page.getByLabel("這位有緣人的接引人").selectOption("柏能");
+      await page.locator(".partner-picker.is-compact select").selectOption("柏能");
       assert.equal(await nextCard.getAttribute("data-next-reason"), "unassigned");
       assert.equal((await nextCard.locator(".war-next-name").innerText()).trim(), "測試同學");
       assert.ok(await nextCard.getByText("尚未指定接引人").count());
