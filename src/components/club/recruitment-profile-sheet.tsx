@@ -73,11 +73,13 @@ export function RecruitmentProfileSheet({
   recruiter?: string;
   onClose: () => void;
 }) {
-  const formUrl = profile && (profile.pending || profile.prefillUrl)
+  const formUrl = profile
     ? officialFormUrl({
       ...profile,
       completedAt: profile.gameCompletedAt,
-    }, recruiter)
+    }, recruiter || profile.recruiterList?.[0] || "")
+    || profile.prefillUrl
+    || ""
     : "";
   return (
     <Dialog.Root open={Boolean(profile)} onOpenChange={(open) => !open && onClose()}>
@@ -118,9 +120,9 @@ export function RecruitmentProfileSheet({
               </li>
             )}
           </ol>
-          {profile?.pending || formUrl ? (
+          {profile ? (
             <div className="recruitment-sheet-actions">
-              {profile?.pending ? (
+              {profile.pending ? (
                 <a
                   className="admin-primary"
                   href={profile.followUpPath || `/follow-up?personKey=${encodeURIComponent(profile.personKey)}`}
@@ -139,6 +141,15 @@ export function RecruitmentProfileSheet({
                   開啟正式招生表單 <ExternalLink size={16} />
                 </a>
               ) : null}
+              <a
+                className="quickfill-google"
+                href="/admin?view=form"
+                target="_blank"
+                rel="noreferrer"
+                data-prefill="open-backoffice"
+              >
+                查看招生表單後台 <ExternalLink size={16} />
+              </a>
             </div>
           ) : null}
         </Dialog.Content>

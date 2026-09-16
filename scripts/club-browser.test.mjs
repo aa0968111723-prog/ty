@@ -520,6 +520,7 @@ test(
       assert.match(await sheet.locator("dd").filter({ hasText: "安倢" }).innerText(), /安倢/);
       const sheetForm = sheet.getByRole("link", { name: /開啟正式招生表單/ });
       const sheetFill = sheet.getByRole("link", { name: "填寫正式資料" });
+      const sheetBackoffice = sheet.getByRole("link", { name: /查看招生表單後台/ });
       const sheetHref = decodeURIComponent(String(await sheetForm.getAttribute("href")));
       assert.match(sheetHref, /\/viewform\?/);
       assert.doesNotMatch(sheetHref, /forms\.gle/);
@@ -527,11 +528,17 @@ test(
       assert.match(sheetHref, /遊戲關主：安倢/);
       assert.doesNotMatch(sheetHref, /entry\.1318284482=安倢/);
       assert.doesNotMatch(await sheet.innerText(), /submissionId/);
+      assert.equal(await sheetBackoffice.getAttribute("href"), "/admin?view=form");
       const sheetTap = await sheetForm.boundingBox();
       const fillTap = await sheetFill.boundingBox();
+      const backTap = await sheetBackoffice.boundingBox();
       assert.ok(
         sheetTap && sheetTap.height >= 43.5 && sheetTap.width >= 43.5,
         `sheet open-form tap ${JSON.stringify(sheetTap)}`,
+      );
+      assert.ok(
+        backTap && backTap.height >= 43.5 && backTap.width >= 43.5,
+        `sheet backoffice tap ${JSON.stringify(backTap)}`,
       );
       assert.ok(
         fillTap && sheetTap && fillTap.y + fillTap.height <= sheetTap.y + 1,
@@ -849,7 +856,18 @@ test(
       await page.getByLabel("篩選正式接引人").selectOption("小哲");
       assert.equal(await page.getByRole("article").filter({ hasText: "已填乙" }).count(), 1);
       assert.equal(await page.getByRole("article").filter({ hasText: "待填甲" }).count(), 0);
-      assert.equal(await page.locator("text=submissionId").count(), 0);
+      await page.getByRole("article").filter({ hasText: "已填乙" }).getByRole("button", { name: "查看詳細" }).click();
+      const filledSheet = page.getByRole("dialog");
+      await filledSheet.getByRole("heading", { name: "已填乙" }).waitFor();
+      const filledForm = filledSheet.getByRole("link", { name: /開啟正式招生表單/ });
+      const filledBackoffice = filledSheet.getByRole("link", { name: /查看招生表單後台/ });
+      assert.equal(await filledForm.count(), 1);
+      assert.equal(await filledBackoffice.count(), 1);
+      assert.match(decodeURIComponent(String(await filledForm.getAttribute("href"))), /\/viewform\?/);
+      assert.doesNotMatch(decodeURIComponent(String(await filledForm.getAttribute("href"))), /entry\.1318284482=安倢/);
+      assert.equal(await filledBackoffice.getAttribute("href"), "/admin?view=form");
+      assert.doesNotMatch(await filledSheet.innerText(), /submissionId/);
+      await capture(page, "sheet-filled-links-390");
       await capture(page, "roster-from-command-390");
       assert.deepEqual(errors, []);
       await context.close();
