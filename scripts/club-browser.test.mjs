@@ -1162,6 +1162,57 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("same phone different names stay two people and show 需要確認", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const first = {
+        姓名: "王小明", 電話: "0911111111", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z",
+      };
+      const second = {
+        姓名: "李小華", 電話: "0911111111", 科系: "會計學系", 年級: "大二", 遊戲關主: "柏能",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T02:00:00.000Z",
+      };
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({ date: "2026-09-14", gameRows: [first, second], recruitmentRows: [], masterRows: [] }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.getByLabel("這位有緣人的接引人").selectOption("柏能");
+      const wangCard = page.locator(".battle-next-card").filter({ hasText: "王小明" });
+      const liCard = page.locator(".battle-next-card").filter({ hasText: "李小華" });
+      assert.equal(await wangCard.count(), 1);
+      assert.equal(await liCard.count(), 1);
+      assert.equal(await page.getByText("需要確認").count() >= 2, true);
+      await page.getByText("0911111111").first().waitFor();
+      await capture(page, "dup-phone-next-390");
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
+      await page.getByRole("heading", { name: "待填正式招生資料" }).waitFor();
+      assert.equal(await page.getByRole("article").filter({ hasText: "王小明" }).count(), 1);
+      assert.equal(await page.getByRole("article").filter({ hasText: "李小華" }).count(), 1);
+      assert.equal(await page.getByText("同電話不同姓名，需要確認").count() >= 2, true);
+      await capture(page, "dup-phone-queue-390");
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
+      await page.getByRole("heading", { name: "招生名單" }).waitFor();
+      assert.equal(await page.getByRole("article").filter({ hasText: "王小明" }).count(), 1);
+      assert.equal(await page.getByRole("article").filter({ hasText: "李小華" }).count(), 1);
+      assert.equal(await page.getByText("需要確認").count() >= 2, true);
+      await capture(page, "dup-phone-roster-390");
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("roster search stays visible while extra filters stay collapsed", async () => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const page = await context.newPage();

@@ -466,6 +466,53 @@ test("same name different phones stay separate and are flagged for confirmation"
   assert.doesNotMatch(JSON.stringify(data.summary), /"s":|"a":|"b":/);
 });
 
+test("same phone different names stay separate and are flagged for confirmation", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [
+      game({ 姓名: "王小明", 電話: "0911111111", _submissionId: "dup-p1" }),
+      game({ 姓名: "李小華", 電話: "0911111111", 科系: "會計學系", 年級: "大二", _submissionId: "dup-p2" }),
+    ],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.pending.length, 2);
+  assert.equal(data.summary.contactsToday, 2);
+  assert.ok(data.pending.every((row) => row.needsConfirmation));
+  assert.ok(data.profiles.every((row) => row.needsConfirmation));
+  assert.ok(data.pending.every((row) => row.confirmationReason === "同電話不同姓名，需要確認"));
+  assert.deepEqual(data.pending.map((row) => row.name).sort(), ["李小華", "王小明"]);
+  assert.notEqual(data.pending[0].personKey, data.pending[1].personKey);
+  assert.doesNotMatch(JSON.stringify(data.summary), /"s":|"a":|"b":/);
+});
+
+test("official form for one name on a shared phone leaves the other person pending", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [
+      game({ 姓名: "王小明", 電話: "0911111111", _submissionId: "keep-p1" }),
+      game({ 姓名: "李小華", 電話: "0911111111", 科系: "會計學系", 年級: "大二", _submissionId: "keep-p2" }),
+    ],
+    recruitmentRows: [{
+      時間戳記: "2026/9/14 下午 3:00:00",
+      同學的姓名: "王小明",
+      "同學電話/LINE": "0911111111",
+      報名了那個活動: "無",
+      是否入社: "否",
+      保證金是否繳費: "否",
+      _gameSubmissionId: "keep-p1",
+    }],
+    masterRows: [],
+  });
+  assert.equal(data.pending.length, 1);
+  assert.equal(data.pending[0].name, "李小華");
+  assert.equal(data.pending[0].needsConfirmation, true);
+  assert.equal(data.pending[0].confirmationReason, "同電話不同姓名，需要確認");
+  const wang = data.profiles.find((row) => row.name === "王小明");
+  assert.equal(wang?.pending, false);
+  assert.equal(wang?.needsConfirmation, true);
+});
+
 test("empty game and form sheets stay at zero without inventing funnel counts", () => {
   const data = buildRecruitmentDashboard({
     date: "2026-09-14",

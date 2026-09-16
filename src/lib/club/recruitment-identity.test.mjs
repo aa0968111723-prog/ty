@@ -64,6 +64,54 @@ test("same name same department different phones stay two people", () => {
   assert.equal(people.every((person) => person.personKey.startsWith("phone:")), true);
 });
 
+test("same phone different names stay two people; same student twice stays one", () => {
+  const conflict = clusterGamePeople([
+    { name: "王小明", phone: "0911111111", department: "歷史學系", grade: "大一", submissionId: "j" },
+    { name: "李小華", phone: "0911111111", department: "會計學系", grade: "大二", submissionId: "k" },
+  ]);
+  assert.equal(conflict.length, 2);
+  assert.deepEqual(
+    [...new Set(conflict.map((person) => person.normalizedName))].sort(),
+    ["李小華", "王小明"],
+  );
+  assert.ok(conflict.every((person) => person.personKey.startsWith("phone:0911111111|name:")));
+  assert.ok(conflict.every((person) => person.normalizedPhone === "0911111111"));
+
+  const twice = clusterGamePeople([
+    { name: "王小明", phone: "0911111111", submissionId: "m" },
+    { name: "王小明", phone: "0911-111-111", submissionId: "n" },
+  ]);
+  assert.equal(twice.length, 1);
+  assert.equal(twice[0].personKey, "phone:0911111111");
+  assert.equal(twice[0].attempts.length, 2);
+});
+
+test("shared phone does not mark the other name recruited or silently match the form", () => {
+  const people = clusterGamePeople([
+    { name: "王小明", phone: "0911111111", submissionId: "sid-w" },
+    { name: "李小華", phone: "0911111111", submissionId: "sid-l" },
+  ]);
+  const recruits = [
+    { submissionId: "form-w", normalizedPhone: "0911111111", normalizedName: "王小明", duplicate: false },
+  ];
+  const wang = people.find((person) => person.normalizedName === "王小明");
+  const li = people.find((person) => person.normalizedName === "李小華");
+  assert.equal(personIsRecruited(wang, recruits), true);
+  assert.equal(personIsRecruited(li, recruits), false);
+  const named = matchIncomingRecruitment({
+    submissionId: "",
+    ...identityFields({ name: "王小明", phone: "0911111111" }),
+  }, people);
+  assert.equal(named.person?.normalizedName, "王小明");
+  assert.equal(named.reason, "normalizedPhone");
+  const ambiguous = matchIncomingRecruitment({
+    submissionId: "",
+    ...identityFields({ name: "", phone: "0911111111" }),
+  }, people);
+  assert.equal(ambiguous.reason, "ambiguous-phone");
+  assert.equal(ambiguous.person, null);
+});
+
 test("unique name without phone matches; ambiguous same-name without phones does not merge", () => {
   const unique = clusterGamePeople([
     { name: "唯一", department: "歷史學系", grade: "大一", submissionId: "e" },

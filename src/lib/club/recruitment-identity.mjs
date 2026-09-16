@@ -197,7 +197,20 @@ export function clusterGamePeople(attempts) {
   /** @type {Array<ReturnType<typeof personFromRows>>} */
   const people = [];
   for (const [phone, group] of byPhone) {
-    people.push(personFromRows(group, `phone:${phone}`, "matched", "normalizedPhone"));
+    const namedRows = group.filter((row) => row.identity.normalizedName);
+    const unnamedRows = group.filter((row) => !row.identity.normalizedName);
+    const names = [...new Set(namedRows.map((row) => row.identity.normalizedName))];
+    if (names.length <= 1) {
+      people.push(personFromRows(group, `phone:${phone}`, "matched", "normalizedPhone"));
+      continue;
+    }
+    for (const name of names) {
+      const named = namedRows.filter((row) => row.identity.normalizedName === name);
+      people.push(personFromRows(named, `phone:${phone}|name:${name}`, "matched", "normalizedPhone"));
+    }
+    for (const row of unnamedRows) {
+      people.push(personFromRows([row], unmatchedKey(row), "ambiguous", "ambiguous-same-phone"));
+    }
   }
 
   /** @type {Map<string, typeof rows>} */
@@ -295,8 +308,13 @@ export function personIsRecruited(person, recruits) {
     ).filter(Boolean),
   );
   if (valid.some((row) => attemptIds.has(text(row.submissionId).toLowerCase()))) return true;
-  if (person.normalizedPhone && valid.some((row) => row.normalizedPhone === person.normalizedPhone)) {
-    return true;
+  if (person.normalizedPhone) {
+    const phoneHits = valid.filter((row) => row.normalizedPhone === person.normalizedPhone);
+    const nameCompatible = phoneHits.some((row) => {
+      if (!person.normalizedName || !row.normalizedName) return true;
+      return row.normalizedName === person.normalizedName;
+    });
+    if (nameCompatible) return true;
   }
   if (person.status !== "matched") return false;
   const named = valid.filter((row) => row.normalizedName && row.normalizedName === person.normalizedName);
@@ -322,7 +340,13 @@ export function matchIncomingRecruitment(incoming, people) {
   if (incoming.normalizedPhone) {
     const hits = people.filter((person) => person.normalizedPhone === incoming.normalizedPhone);
     if (hits.length === 1) return { person: hits[0], reason: "normalizedPhone" };
-    if (hits.length > 1) return { person: null, reason: "ambiguous-phone" };
+    if (hits.length > 1) {
+      const named = incoming.normalizedName
+        ? hits.filter((person) => person.normalizedName === incoming.normalizedName)
+        : [];
+      if (named.length === 1) return { person: named[0], reason: "normalizedPhone" };
+      return { person: null, reason: "ambiguous-phone" };
+    }
   }
   const named = people.filter((person) =>
     person.normalizedName && person.normalizedName === incoming.normalizedName);

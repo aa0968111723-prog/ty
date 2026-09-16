@@ -274,13 +274,17 @@ export function decodeStudentChoice(value) {
 function rosterOverlap(profile, row) {
   const profilePhone = text(profile?.normalizedPhone);
   const rowPhone = text(row?.normalizedPhone);
-  if (profilePhone && rowPhone) return profilePhone === rowPhone;
+  const profileName = normalizeName(profile?.name);
+  const rowName = text(row?.normalizedName) || normalizeName(row?.name);
+  if (profilePhone && rowPhone && profilePhone === rowPhone) {
+    if (profileName && rowName && profileName !== rowName) return false;
+    return true;
+  }
   const profileId = text(profile?.submissionId).toLowerCase();
   const rowId = text(row?.submissionId).toLowerCase();
   if (profileId && rowId && profileId === rowId) return true;
   if (profilePhone || rowPhone) return false;
-  const profileName = normalizeName(profile?.name);
-  return Boolean(profileName && row?.normalizedName && profileName === row.normalizedName);
+  return Boolean(profileName && rowName && profileName === rowName);
 }
 
 function profileFromSources({
@@ -524,6 +528,7 @@ export function buildRecruitmentDashboard(input = {}) {
     const masterRow = master.find((row) => rosterOverlap({
       normalizedPhone: person.normalizedPhone,
       submissionId: latest.submissionId,
+      name: latest.name,
     }, row));
     const source = masterRow || recruited;
     return profileFromSources({
