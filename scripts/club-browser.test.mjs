@@ -325,6 +325,101 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("recruitment HTTP failure is 同步失敗, not empty-as-zero, and 401 returns to login", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) =>
+        new URL(route.request().url()).origin !== origin
+          ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+          : route.continue(),
+      );
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+      await page.route("**/api/admin/dashboard**", (route) =>
+        route.fulfill({
+          json: buildDashboard({
+            date: today,
+            results: [],
+            forms: [{ name: "表單同學", timestamp: `${today.replaceAll("-", "/")} 09:00`, gatekeeper: "小哲" }],
+          }),
+        }),
+      );
+      let recruitmentMode = "down";
+      const student = {
+        name: "同步甲",
+        phone: "0912000000",
+        department: "歷史學系",
+        grade: "大一",
+        gatekeeper: "柏能",
+        completedAt: `${today}T01:00:00Z`,
+        kind: "official",
+        skipSave: false,
+        duration: 60,
+        settings: DEFAULT_SETTINGS,
+        score: 600,
+        correct: 5,
+        wrong: 0,
+        maxCombo: 5,
+        accuracy: 100,
+        submissionId: crypto.randomUUID(),
+      };
+      await page.route("**/api/admin/recruitment**", (route) => {
+        if (recruitmentMode === "down") {
+          return route.fulfill({ status: 502, json: { error: "無法讀取資料，請稍後重試" } });
+        }
+        if (recruitmentMode === "expired") {
+          return route.fulfill({ status: 401, json: { error: "請先登入管理後台" } });
+        }
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date: today,
+            gameRows: [{
+              ...student,
+              姓名: student.name,
+              電話: student.phone,
+              科系: student.department,
+              年級: student.grade,
+              遊戲關主: student.gatekeeper,
+              遊戲時間: `${today}T09:00:00+08:00`,
+              _submissionId: student.submissionId,
+            }],
+            recruitmentRows: [],
+            masterRows: [],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("alert").waitFor();
+      const firstFail = await page.locator("body").innerText();
+      assert.match(firstFail, /同步失敗/);
+      assert.doesNotMatch(firstFail, /目前沒有招生資料/);
+      assert.equal(await page.locator(".battle-home").count(), 0);
+      recruitmentMode = "ok";
+      await page.getByRole("button", { name: "更新資料" }).click();
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.locator("[data-battle-kpi=today]").waitFor();
+      assert.match(await page.locator(".battle-home").innerText(), /同步成功/);
+      recruitmentMode = "down";
+      await page.getByRole("button", { name: "更新資料" }).click();
+      await page.getByRole("alert").waitFor();
+      const afterFail = await page.locator(".battle-home").innerText();
+      assert.match(afterFail, /同步失敗/);
+      assert.match(afterFail, /今日接觸/);
+      assert.match(await page.locator("[data-battle-kpi=today]").innerText(), /1/);
+      recruitmentMode = "expired";
+      await page.getByRole("button", { name: "更新資料" }).click();
+      await page.getByRole("heading", { name: "管理員登入" }).waitFor();
+      assert.match(await page.locator("body").innerText(), /管理員登入/);
+      assert.equal(await page.locator(".battle-home").count(), 0);
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

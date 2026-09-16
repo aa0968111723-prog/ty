@@ -9,6 +9,7 @@ import { DashboardWidget } from "@/components/club/dashboard-widget";
 import { DEFAULT_LAYOUT, STORAGE_KEY, readLayout, initialView, taipeiDate, time, type Dashboard, type Tab, type LayoutPreference, type WidgetId, type Result } from "@/components/club/admin-presentation";
 import { Bars, Podium } from "@/components/club/admin-metrics";
 import { RecruitmentDashboard, RecruitmentSync, type RecruitmentData } from "@/components/club/recruitment-dashboard";
+import { partnerSyncFailure } from "@/lib/club/sync-status.mjs";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -46,6 +47,8 @@ function AdminDashboard() {
   const [layoutReady, setLayoutReady] = useState(false);
   const [dragging, setDragging] = useState<WidgetId | null>(null);
   const generation = useRef(0);
+  const hasDashboardRef = useRef(false);
+  const hasRecruitmentRef = useRef(false);
 
   useEffect(() => {
     setLayout(readLayout());
@@ -90,14 +93,34 @@ function AdminDashboard() {
         if (!response.ok) throw new Error(body.error || "同步失敗");
         return body as RecruitmentData;
       };
-      const selected = await load(date);
-      const today = date === current ? selected : await load(current);
-      const board = await loadRecruitment(current).catch(() => null);
+      let selected: Dashboard | undefined;
+      let today: Dashboard | undefined;
+      let board: RecruitmentData | undefined;
+      let nextError = "";
+      try {
+        selected = await load(date);
+        today = date === current ? selected : await load(current);
+      } catch (cause) {
+        if (cause instanceof Error && cause.message === "AUTH") throw cause;
+        nextError = partnerSyncFailure(hasDashboardRef.current);
+      }
+      try {
+        board = await loadRecruitment(current);
+      } catch (cause) {
+        if (cause instanceof Error && cause.message === "AUTH") throw cause;
+        nextError = nextError || partnerSyncFailure(hasRecruitmentRef.current);
+      }
       if (id === generation.current) {
-        setData(selected);
-        setTodayData(today);
-        if (board) setRecruitment(board);
-        setError("");
+        if (selected) {
+          setData(selected);
+          hasDashboardRef.current = true;
+        }
+        if (today) setTodayData(today);
+        if (board) {
+          setRecruitment(board);
+          hasRecruitmentRef.current = true;
+        }
+        setError(nextError);
       }
     } catch (cause) {
       if (id !== generation.current) return;
@@ -105,6 +128,8 @@ function AdminDashboard() {
         setGate((current) => ({ ...(current || { authenticated: false }), authenticated: false, setupRequired: false }));
         setData(null);
         setRecruitment(null);
+        hasDashboardRef.current = false;
+        hasRecruitmentRef.current = false;
       } else setError(cause instanceof Error ? cause.message : "同步失敗，請重新整理");
     } finally {
       if (id === generation.current) setBusy(false);
@@ -138,6 +163,9 @@ function AdminDashboard() {
       const nextGate = await fetch("/api/admin/session").then((res) => res.json()).catch(() => ({ authenticated: false }));
       setGate(nextGate);
       setData(null);
+      setRecruitment(null);
+      hasDashboardRef.current = false;
+      hasRecruitmentRef.current = false;
     } catch {
       setError("登出失敗，請再試一次");
     }
@@ -331,7 +359,7 @@ function AdminDashboard() {
       ) : null}
       {error && (
         <p className="admin-error" role="alert">
-          {error} · 保留上次成功資料
+          {error}
         </p>
       )}
 
