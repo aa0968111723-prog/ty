@@ -13,6 +13,7 @@ import {
   taipeiDate,
 } from "@/lib/club/recruitment-prefill.mjs";
 import { filterPendingQueue } from "@/lib/club/recruitment-queue.mjs";
+import { publicAdminError } from "@/lib/club/public-error.mjs";
 import type { RecruitmentData } from "./recruitment-dashboard";
 
 type Candidate = RecruitmentData["pending"][number] & {
@@ -175,11 +176,16 @@ export function RecruiterQuickfill() {
         { cache: "no-store", signal: AbortSignal.timeout(15000) },
       );
       if (response.status === 401) {
+        setGate((current) => ({
+          ...(current || { authenticated: false }),
+          authenticated: false,
+          sessionExpired: true,
+        }));
         setAuthenticated(false);
         return;
       }
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "無法載入待跟進名單");
+      if (!response.ok) throw new Error(publicAdminError(body.error, "無法載入待跟進名單"));
       setData(body);
       setStale(Boolean(
         body.sync?.recruitmentResponses?.stale
@@ -188,7 +194,7 @@ export function RecruiterQuickfill() {
       ));
       setError("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "無法載入待跟進名單");
+      setError(cause instanceof Error ? publicAdminError(cause.message, "無法載入待跟進名單") : "無法載入待跟進名單");
       setStale(Boolean(data));
     } finally {
       setBusy(false);
@@ -328,17 +334,22 @@ export function RecruiterQuickfill() {
         }),
       });
       if (response.status === 401) {
+        setGate((current) => ({
+          ...(current || { authenticated: false }),
+          authenticated: false,
+          sessionExpired: true,
+        }));
         setAuthenticated(false);
         return;
       }
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "無法送出招生資料");
+      if (!response.ok) throw new Error(publicAdminError(body.error, "無法送出招生資料"));
       setLastFormUrl(prefillUrl);
       hideCandidate(preview.personKey, preview.submissionId || "");
       setSuccess(body.duplicate ? "這位同學已有招生紀錄，已從待跟進名單移除" : "已送出招生資料");
       void load(true);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "無法送出招生資料");
+      setError(cause instanceof Error ? publicAdminError(cause.message, "無法送出招生資料") : "無法送出招生資料");
     } finally {
       setSubmitting(false);
     }

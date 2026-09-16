@@ -6,6 +6,7 @@ import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured, spreadsheetEditUrl, EXPECTED_SHEET_IDS } from "./sheets.mjs";
 import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
 import { normalizeStaffRecruitmentPayload } from "./recruitment-staff-form.mjs";
+import { METHOD_NOT_ALLOWED, publicAdminError } from "./public-error.mjs";
 
 /** @typedef {import("./admin").AdminContact} AdminContact */
 /** @typedef {import("./admin").OfficialResult} OfficialResult */
@@ -358,7 +359,7 @@ function cookie(token, maxAge) {
 
 /** @param {Request} request */
 export async function handleAdminLogin(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站登入" }, 403);
   const config = authConfig();
   const ip = clientKey(request);
@@ -403,7 +404,7 @@ export async function handleAdminLogin(request) {
 
 /** @param {Request} request */
 export async function handleAdminLogout(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站登出" }, 403);
   await revokeCurrentV2Session(request);
   return json({ ok: true }, 200, { "set-cookie": cookie("", 0) });
@@ -482,7 +483,9 @@ async function readSheet(action) {
 
 /** @param {PromiseSettledResult<unknown[]>} result @returns {SyncStatus} */
 function sourceStatus(result) {
-  return result.status === "fulfilled" ? { ok: true } : { ok: false, error: result.reason.message };
+  return result.status === "fulfilled"
+    ? { ok: true }
+    : { ok: false, error: publicAdminError(result.reason?.message, "無法讀取資料，請稍後重試") };
 }
 
 /** @param {Request} request */
@@ -520,7 +523,7 @@ async function handleRows(request, action) {
     const rows = action === "formResponses" ? contacts : rankOfficialResults(values, date);
     return json({ ok: true, date, rows: searchContacts(rows, request), contacts: searchContacts(contacts, request) });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "無法讀取資料" }, 502);
+    return json({ error: publicAdminError(error instanceof Error ? error.message : "", "無法讀取資料") }, 502);
   }
 }
 
@@ -566,7 +569,7 @@ function sourceSync(result) {
 /** @param {Request} request */
 export async function handleAdminRecruitment(request) {
   if (request.method === "POST") return handleAdminRecruitmentSubmit(request);
-  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, { Allow: "GET, POST" });
+  if (request.method !== "GET") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "GET, POST" });
   const denied = await protect(request);
   if (denied) return denied;
   const date = queryDate(request);

@@ -1,3 +1,5 @@
+import { publicAdminError } from "@/lib/club/public-error.mjs";
+
 function bufToB64url(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -59,7 +61,7 @@ export async function postAdminJSON(url: string, body: unknown) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(payload.error || "操作失敗，請稍後再試");
+    const error = new Error(publicAdminError(payload.error, "操作失敗，請稍後再試"));
     (error as Error & { payload?: unknown }).payload = payload;
     throw error;
   }

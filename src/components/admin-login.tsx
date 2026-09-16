@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Fingerprint, LockKeyhole, Shield, X } from "lucide-react";
 import { assertDevicePasskey, postAdminJSON, registerDevicePasskey } from "@/lib/club/webauthn-client";
+import { publicAdminError } from "@/lib/club/public-error.mjs";
 import "@/admin.css";
 
 export type AdminGate = {
@@ -11,6 +12,7 @@ export type AdminGate = {
   emergencyFallback?: boolean;
   method?: string;
   setupRequired?: boolean;
+  sessionExpired?: boolean;
   user?: { id: string; email: string; displayName: string };
   device?: { id: string; name: string; pinEnabled: boolean; passkeyEnabled: boolean };
   quickUnlock?: { available: boolean; pin?: boolean; passkey?: boolean; deviceName?: string };
@@ -152,7 +154,7 @@ export function AdminLogin({
       setPassword("");
       await finished();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "連線失敗，請稍後再試");
+      setError(cause instanceof Error ? publicAdminError(cause.message, "連線失敗，請稍後再試") : "連線失敗，請稍後再試");
     } finally {
       setBusy(false);
     }
@@ -256,6 +258,9 @@ export function AdminLogin({
       ) : (
         <p>現場工作人員專用</p>
       )}
+      {resolved?.sessionExpired ? (
+        <p role="alert" className="admin-error">登入已失效，請重新登入</p>
+      ) : null}
 
       {view === "password" && (
         <form onSubmit={loginPassword}>

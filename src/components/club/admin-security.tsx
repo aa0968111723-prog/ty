@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Fingerprint, Pencil, Shield, Smartphone, Trash2 } from "lucide-react";
 import { postAdminJSON, registerDevicePasskey } from "@/lib/club/webauthn-client";
+import { publicAdminError } from "@/lib/club/public-error.mjs";
 
 type Device = {
   id: string;
@@ -47,12 +48,12 @@ export function AdminSecurity() {
   const load = useCallback(async () => {
     const response = await fetch("/api/admin/auth/devices");
     const body = await response.json();
-    if (!response.ok) throw new Error(body.error || "無法讀取裝置");
+    if (!response.ok) throw new Error(publicAdminError(body.error, "無法讀取裝置"));
     setDevices(body.devices || []);
   }, []);
 
   useEffect(() => {
-    void load().catch((cause) => setError(cause instanceof Error ? cause.message : "無法讀取裝置"));
+    void load().catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "無法讀取裝置") : "無法讀取裝置"));
   }, [load]);
 
   async function send(path: string, body: unknown) {
@@ -98,7 +99,7 @@ export function AdminSecurity() {
                       void send("/api/admin/auth/devices/rename", { id: device.id, deviceName: name })
                         .then(() => load())
                         .then(() => setRenaming(null))
-                        .catch((cause) => setError(cause instanceof Error ? cause.message : "重新命名失敗"))
+                        .catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "重新命名失敗") : "重新命名失敗"))
                         .finally(() => setBusy(""));
                     }}
                   >
@@ -128,7 +129,7 @@ export function AdminSecurity() {
                           setBusy(device.id);
                           void send("/api/admin/auth/pin/disable", { deviceId: device.id })
                             .then(() => load())
-                            .catch((cause) => setError(cause instanceof Error ? cause.message : "無法關閉 PIN"))
+                            .catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "無法關閉 PIN") : "無法關閉 PIN"))
                             .finally(() => setBusy(""));
                         }}
                       >
@@ -141,12 +142,12 @@ export function AdminSecurity() {
                         setBusy("passkey");
                         void registerDevicePasskey()
                           .then(() => load())
-                          .catch((cause) => setError(cause instanceof Error ? cause.message : "無法新增 Passkey"))
+                          .catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "無法新增指紋解鎖") : "無法新增指紋解鎖"))
                           .finally(() => setBusy(""));
                       }}
                     >
                       <Fingerprint size={16} />
-                      新增 Passkey
+                      新增指紋／Face ID
                     </button>
                   </>
                 )}
@@ -160,7 +161,7 @@ export function AdminSecurity() {
                         if (payload.currentRevoked) window.location.assign("/admin");
                         else return load();
                       })
-                      .catch((cause) => setError(cause instanceof Error ? cause.message : "無法移除裝置"))
+                      .catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "無法移除裝置") : "無法移除裝置"))
                       .finally(() => setBusy(""));
                   }}
                 >
@@ -181,7 +182,7 @@ export function AdminSecurity() {
                         setShowPin(false);
                         return load();
                       })
-                      .catch((cause) => setError(cause instanceof Error ? cause.message : "無法設定 PIN"))
+                      .catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "無法設定 PIN") : "無法設定 PIN"))
                       .finally(() => setBusy(""));
                   }}
                 >

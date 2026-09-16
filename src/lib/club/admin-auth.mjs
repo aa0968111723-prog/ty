@@ -1,6 +1,7 @@
 // @ts-nocheck -- Admin identity handlers are covered by src/lib/club/admin-auth.test.mjs.
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual, randomUUID } from "node:crypto";
 import { SECURITY_HEADERS } from "./api.mjs";
+import { METHOD_NOT_ALLOWED, NOT_FOUND } from "./public-error.mjs";
 
 export const SESSION_COOKIE = "__Host-club_admin";
 export const DEVICE_COOKIE = "__Host-club_device";
@@ -1054,7 +1055,7 @@ function pinLockUntil(failedAttempts, now) {
 }
 
 export async function handlePinSetup(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站設定" }, 403);
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
@@ -1079,7 +1080,7 @@ export async function handlePinSetup(request) {
 }
 
 export async function handlePinDisable(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站設定" }, 403);
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
@@ -1096,7 +1097,7 @@ export async function handlePinDisable(request) {
 }
 
 export async function handlePinUnlock(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站解鎖" }, 403);
   if (!adminServiceEnabled()) return json({ error: "管理功能尚未啟用" }, 503);
   await ensureAdminAuthStore();
@@ -1145,7 +1146,7 @@ export async function handlePinUnlock(request) {
 }
 
 export async function handleSetupSkip(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站設定" }, 403);
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
@@ -1156,7 +1157,7 @@ export async function handleSetupSkip(request) {
 }
 
 export async function handleWebAuthnRegisterOptions(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站設定" }, 403);
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
@@ -1186,7 +1187,7 @@ export async function handleWebAuthnRegisterOptions(request) {
 }
 
 export async function handleWebAuthnRegister(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站設定" }, 403);
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
@@ -1227,7 +1228,7 @@ export async function handleWebAuthnRegister(request) {
 }
 
 export async function handleWebAuthnLoginOptions(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站解鎖" }, 403);
   if (!adminServiceEnabled()) return json({ error: "管理功能尚未啟用" }, 503);
   await ensureAdminAuthStore();
@@ -1253,7 +1254,7 @@ export async function handleWebAuthnLoginOptions(request) {
 }
 
 export async function handleWebAuthnLogin(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站解鎖" }, 403);
   if (!adminServiceEnabled()) return json({ error: "管理功能尚未啟用" }, 503);
   await ensureAdminAuthStore();
@@ -1320,7 +1321,7 @@ export async function handleListDevices(request) {
 }
 
 export async function handleRenameDevice(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站設定" }, 403);
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
@@ -1337,7 +1338,7 @@ export async function handleRenameDevice(request) {
 }
 
 export async function handleRevokeDevice(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  if (request.method !== "POST") return json({ error: METHOD_NOT_ALLOWED }, 405, { Allow: "POST" });
   if (!sameOrigin(request)) return json({ error: "請從本站設定" }, 403);
   const session = await requireIdentity(request);
   if (session instanceof Response) return session;
@@ -1373,5 +1374,5 @@ export async function handleAdminAuth(request) {
   if (rest === "devices" && request.method === "GET") return handleListDevices(request);
   if (rest === "devices/rename") return handleRenameDevice(request);
   if (rest === "devices/revoke") return handleRevokeDevice(request);
-  return json({ error: "Not found" }, 404);
+  return json({ error: NOT_FOUND }, 404);
 }

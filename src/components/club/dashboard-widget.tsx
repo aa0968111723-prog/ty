@@ -126,7 +126,7 @@ export function DashboardWidget({ id, editor = false, data, todayData, date, lay
             label="最後同步"
             value={time(data.sync.updatedAt)}
             hint={
-              data.sync.forms.ok && data.sync.results.ok ? "Google Sheet 已連線" : "部分同步異常"
+              data.sync.forms.ok && data.sync.results.ok ? "資料表已連線" : "部分同步異常"
             }
           />
         );

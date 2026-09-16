@@ -404,6 +404,8 @@ test("auth dispatcher and skip-setup keep a unified admin session", async (t) =>
   const session = await (await handleAdminSession(request("/api/admin/session", { cookie: first.cookie }))).json();
   assert.equal(session.setupRequired, false);
   assert.equal((await handleAdminAuth(request("/api/admin/auth/missing", { method: "GET" }))).status, 404);
+  const missing = await (await handleAdminAuth(request("/api/admin/auth/missing", { method: "GET" }))).json();
+  assert.equal(missing.error, "找不到這個功能");
   assert.equal((await handlePinDisable(request("/api/admin/auth/pin/disable", { body: {}, cookie: first.cookie }))).status, 200);
 });
 

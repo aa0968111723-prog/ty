@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, LayoutDashboard, RefreshCw, RotateCcw } from "lucide-react";
 import { AdminShell } from "@/components/club/admin-shell";
 import { AdminLogin, type AdminGate } from "@/components/admin-login";
+import { publicAdminError } from "@/lib/club/public-error.mjs";
 import { AdminSecurity } from "@/components/club/admin-security";
 import "@/admin.css";
 import { DashboardWidget } from "@/components/club/dashboard-widget";
@@ -94,7 +95,7 @@ function AdminDashboard() {
         });
         if (response.status === 401) throw new Error("AUTH");
         const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "同步失敗");
+        if (!response.ok) throw new Error(publicAdminError(body.error, "同步失敗"));
         return body as Dashboard;
       };
       const loadRecruitment = async (target: string) => {
@@ -104,7 +105,7 @@ function AdminDashboard() {
         );
         if (response.status === 401) throw new Error("AUTH");
         const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "同步失敗");
+        if (!response.ok) throw new Error(publicAdminError(body.error, "同步失敗"));
         return body as RecruitmentData;
       };
       const [selected, today, board] = await Promise.allSettled([
@@ -124,10 +125,15 @@ function AdminDashboard() {
     } catch (cause) {
       if (id !== generation.current) return;
       if (cause instanceof Error && cause.message === "AUTH") {
-        setGate((currentGate) => ({ ...(currentGate || { authenticated: false }), authenticated: false, setupRequired: false }));
+        setGate((currentGate) => ({
+          ...(currentGate || { authenticated: false }),
+          authenticated: false,
+          setupRequired: false,
+          sessionExpired: true,
+        }));
         setData(null);
         setRecruitment(null);
-      } else setError(cause instanceof Error ? cause.message : "同步失敗，請重新整理");
+      } else setError(cause instanceof Error ? publicAdminError(cause.message, "同步失敗，請重新整理") : "同步失敗，請重新整理");
     } finally {
       if (id === generation.current) setBusy(false);
     }
@@ -157,7 +163,7 @@ function AdminDashboard() {
       if (!response.ok) throw new Error();
       generation.current++;
       const nextGate = await fetch("/api/admin/session").then((res) => res.json()).catch(() => ({ authenticated: false }));
-      setGate(nextGate);
+      setGate({ ...nextGate, sessionExpired: false });
       setData(null);
       setRecruitment(null);
     } catch {
@@ -418,7 +424,7 @@ function AdminDashboard() {
               value="Google Form"
               onChange={() => undefined}
             >
-              <option>Google Form</option>
+              <option value="Google Form">Google 表單</option>
             </select>
             <select
               aria-label="篩選科系"
@@ -440,7 +446,7 @@ function AdminDashboard() {
                 <article key={`${row.completedAt}-${index}`}>
                   <div>
                     <strong>{row.name}</strong>
-                    <span className="admin-badge">{row.source}</span>
+                    <span className="admin-badge">{row.source === "Google Form" ? "Google 表單" : row.source}</span>
                   </div>
                   <p>
                     {row.department || "科系未填"} · {row.grade || "年級未填"}
@@ -471,11 +477,11 @@ function AdminDashboard() {
             <dt>自動更新</dt>
             <dd>每 30 秒</dd>
             <dt>統計時區</dt>
-            <dd>Asia/Taipei</dd>
+            <dd>台北時間</dd>
             <dt>最後同步</dt>
             <dd>{recruitment || data ? time((recruitment?.sync.updatedAt || data?.sync.updatedAt) as string) : "—"}</dd>
           </dl>
-          <p className="admin-caption">若同步失敗，請聯絡部署管理者檢查 Google Sheet 連線設定。單一來源失敗時會保留其他成功資料。</p>
+          <p className="admin-caption">若同步失敗，請聯絡部署管理者檢查資料表連線設定。單一來源失敗時會保留其他成功資料。</p>
           <button className="admin-primary" onClick={logout}>
             安全登出
           </button>

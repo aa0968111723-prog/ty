@@ -554,6 +554,8 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0.35rem;
+  min-height: 44px;
+  min-width: 44px;
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 0.15em;

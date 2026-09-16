@@ -74,7 +74,7 @@ export const WIDGETS: { id: WidgetId; label: string }[] = [
   { id: "grades", label: "年級分布" },
   { id: "latestForms", label: "Google 表單最新資料" },
   { id: "recentPlayers", label: "最近參賽者" },
-  { id: "sync", label: "Google Sheet 同步狀態" },
+  { id: "sync", label: "資料同步狀態" },
   { id: "system", label: "系統狀態" },
 ];
 export const IDS = WIDGETS.map(({ id }) => id);

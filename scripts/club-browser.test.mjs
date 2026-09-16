@@ -296,7 +296,79 @@ test(
       await page.getByRole("heading", { name: "招生資料暫時無法載入" }).waitFor();
       await page.getByRole("button", { name: "重新同步" }).waitFor();
       assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.equal(await page.getByText("googleapis").count(), 0);
+      assert.equal(await page.getByText("Something went wrong").count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("expired admin session shows a Chinese re-login notice", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      let authed = true;
+      await page.route("**/api/admin/session", (route) =>
+        route.fulfill({ json: { authenticated: authed, passwordEnabled: true } }),
+      );
+      await page.route("**/api/admin/dashboard?*", (route) => {
+        if (!authed) return route.fulfill({ status: 401, json: { error: "請先登入管理後台" } });
+        return route.fulfill({
+          json: buildDashboard({ date: new URL(route.request().url()).searchParams.get("date"), results: [], forms: [] }),
+        });
+      });
+      await page.route("**/api/admin/recruitment?*", (route) => {
+        if (!authed) return route.fulfill({ status: 401, json: { error: "請先登入管理後台" } });
+        return route.fulfill({
+          json: buildRecruitmentDashboard({ date: new URL(route.request().url()).searchParams.get("date"), gameRows: [], recruitmentRows: [], masterRows: [] }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const brandBox = await page.locator(".admin-mobile-top .club-brand").boundingBox();
+      assert.ok(brandBox.height >= 44, `brand touch height ${brandBox.height}`);
+      assert.ok(brandBox.width >= 44, `brand touch width ${brandBox.width}`);
+      authed = false;
+      await page.getByRole("button", { name: "更新資料" }).click();
+      await page.getByRole("heading", { name: "管理員登入" }).waitFor();
+      await page.getByRole("alert").getByText("登入已失效，請重新登入").waitFor();
+      assert.equal(await page.getByText("Something went wrong").count(), 0);
+      assert.equal(await page.getByText("googleapis").count(), 0);
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      const loginTap = await page.getByRole("button", { name: "登入後台" }).evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        return { height: box.height, width: box.width };
+      });
+      assert.ok(loginTap.height >= 44, `login button ${loginTap.height}`);
+      assert.ok(loginTap.width >= 44, `login button ${loginTap.width}`);
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("follow-up sync failure stays Chinese and hides googleapis", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/recruitment**", (route) =>
+        route.fulfill({
+          status: 502,
+          json: { error: "Request to https://sheets.googleapis.com/v4/spreadsheets failed\n    at Client.request" },
+        }),
+      );
+      await page.goto(`${origin}/follow-up`);
+      await page.getByRole("alert").waitFor();
+      assert.match(await page.getByRole("alert").innerText(), /資料暫時無法讀取|無法載入待跟進名單|稍後/);
+      assert.equal(await page.getByText("googleapis").count(), 0);
+      assert.equal(await page.getByText("Client.request").count(), 0);
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.equal(await page.getByText("Something went wrong").count(), 0);
       assert.deepEqual(errors, []);
       await context.close();
     });
@@ -358,6 +430,23 @@ test(
       }));
       await page.goto(`${origin}/admin`);
       await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const smallTargets = await page.evaluate(() => {
+        const nodes = [...document.querySelectorAll("a, button, [role='button']")];
+        return nodes.flatMap((el) => {
+          if (el.closest(".admin-sidebar")) return [];
+          const style = getComputedStyle(el);
+          if (style.display === "none" || style.visibility === "hidden") return [];
+          const rect = el.getBoundingClientRect();
+          if (rect.width < 1 || rect.height < 1) return [];
+          if (rect.height >= 43.5 && rect.width >= 43.5) return [];
+          return [{
+            text: (el.getAttribute("aria-label") || el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 48),
+            h: Math.round(rect.height * 10) / 10,
+            w: Math.round(rect.width * 10) / 10,
+          }];
+        });
+      });
+      assert.deepEqual(smallTargets, []);
       const sync = page.getByRole("button", { name: /資料同步狀態/ });
       await sync.waitFor();
       assert.equal(await sync.getAttribute("aria-expanded"), "false");
