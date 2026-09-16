@@ -45,6 +45,11 @@ function metric(value: number | null | undefined) {
   return value.toLocaleString("zh-Hant");
 }
 
+function formatRate(value: number | null | undefined) {
+  if (value == null) return "—";
+  return `${value}%`;
+}
+
 function Ring({
   value,
   max,
@@ -101,8 +106,9 @@ function ExpandCard({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const activities = id === "activity" || id === "popular";
+  const completion = id === "joined" || id === "deposit";
   return (
-    <article className={`battle-kpi${open ? " is-open" : ""}${id === "pending" ? " is-wide" : ""}${id === "popular" ? " is-text" : ""}${activities ? " is-activities" : ""}`}>
+    <article className={`battle-kpi${open ? " is-open" : ""}${id === "pending" ? " is-wide" : ""}${id === "popular" ? " is-text" : ""}${activities ? " is-activities" : ""}${completion ? " is-completion" : ""}`}>
       <button
         type="button"
         className="battle-kpi-toggle"
@@ -123,6 +129,49 @@ function ExpandCard({
         {details}
       </div>
     </article>
+  );
+}
+
+function CompletionDetail({
+  count,
+  rate,
+  rateLabel,
+  missing,
+  note,
+  extra,
+}: {
+  count: number | null | undefined;
+  rate: number | null | undefined;
+  rateLabel: string;
+  missing?: boolean;
+  note: string;
+  extra?: ReactNode;
+}) {
+  const people = missing || count == null ? "—" : metric(count);
+  const pct = missing ? null : rate;
+  return (
+    <div className="battle-completion">
+      <dl className="battle-completion-stats">
+        <div>
+          <dt>人數</dt>
+          <dd>{people}</dd>
+        </div>
+        <div>
+          <dt>完成比例</dt>
+          <dd>{formatRate(pct)}</dd>
+        </div>
+      </dl>
+      <div
+        className="battle-progress"
+        role="img"
+        aria-label={`完成比例 ${formatRate(pct)} · ${rateLabel}`}
+      >
+        <span style={{ width: `${pct == null ? 0 : Math.max(0, Math.min(100, pct))}%` }} />
+      </div>
+      <small>{pct == null ? "資料不足時不會顯示成 0" : rateLabel}</small>
+      <p>{note}</p>
+      {extra}
+    </div>
   );
 }
 
@@ -175,6 +224,8 @@ export function BattleCommand({
         .filter((row) => row.count > 0)
         .slice()
         .sort((a, b) => b.count - a.count || b.today - a.today || a.name.localeCompare(b.name, "zh-Hant"))[0] || null);
+  const joinedLayer = data.funnel.find((layer) => layer.id === "joined");
+  const depositLayer = data.funnel.find((layer) => layer.id === "deposit");
 
   return (
     <div className="battle-command">
@@ -252,7 +303,15 @@ export function BattleCommand({
           label="入社人數"
           value={metric(summary.joined)}
           hint="正式表單「是否入社」為是"
-          details={<p>只計算正式招生資料裡勾選「是」的同學，不用遊戲分數推論。</p>}
+          details={
+            <CompletionDetail
+              count={summary.joined}
+              rate={joinedLayer?.fromPrevious}
+              rateLabel="佔活動報名"
+              missing={joinedLayer?.missing || summary.joined == null}
+              note="只計算正式招生資料裡勾選「是」的同學，不用遊戲分數推論。"
+            />
+          }
         />
         <ExpandCard
           id="deposit"
@@ -260,7 +319,22 @@ export function BattleCommand({
           label="已繳保證金"
           value={metric(summary.depositPaid)}
           hint="正式表單「保證金」為是"
-          details={<p>{summary.depositTotal != null ? `已登錄金額合計 ${metric(summary.depositTotal)}。` : "尚未讀到保證金金額欄。"}</p>}
+          details={
+            <CompletionDetail
+              count={summary.depositPaid}
+              rate={depositLayer?.fromPrevious}
+              rateLabel="佔入社"
+              missing={depositLayer?.missing || summary.depositPaid == null}
+              note="只計算正式招生資料裡勾選「是」的同學，不用遊戲分數推論。"
+              extra={
+                <p>
+                  {summary.depositTotal != null
+                    ? `已登錄金額合計 ${metric(summary.depositTotal)}。`
+                    : "尚未讀到保證金金額欄。"}
+                </p>
+              }
+            />
+          }
         />
         <ExpandCard
           id="pending"

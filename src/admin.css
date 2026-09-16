@@ -1606,8 +1606,34 @@
   font-size: var(--text-small);
 }
 .battle-kpi-grid > .battle-kpi.is-wide,
-.battle-kpi-grid > .battle-kpi.is-activities.is-open {
+.battle-kpi-grid > .battle-kpi.is-activities.is-open,
+.battle-kpi-grid > .battle-kpi.is-completion.is-open {
   grid-column: 1 / -1;
+}
+.battle-completion {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.battle-completion-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.battle-completion-stats dt {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+.battle-completion-stats dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-h3);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.battle-completion > small {
+  color: var(--text-muted);
 }
 .battle-activity-breakdown {
   display: grid;
@@ -1795,7 +1821,8 @@
   .battle-kpi-grid > .battle-kpi.is-wide {
     grid-column: auto;
   }
-  .battle-kpi-grid > .battle-kpi.is-activities.is-open {
+  .battle-kpi-grid > .battle-kpi.is-activities.is-open,
+  .battle-kpi-grid > .battle-kpi.is-completion.is-open {
     grid-column: 1 / -1;
   }
   .battle-activity-grid {

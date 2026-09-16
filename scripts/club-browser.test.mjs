@@ -703,6 +703,102 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("command home expands 入社人數 and 已繳保證金 into counts and completion rates", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const skip = {
+        姓名: "茶會同學", 電話: "0910000101", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z",
+      };
+      const skipTwo = {
+        姓名: "茶會同學乙", 電話: "0910000103", 科系: "中國文學學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:30:00.000Z",
+      };
+      const paid = {
+        姓名: "演講同學", 電話: "0910000102", 科系: "會計學系", 年級: "大二", 遊戲關主: "安倢",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T02:00:00.000Z",
+      };
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({
+          date: "2026-09-14",
+          gameRows: [skip, skipTwo, paid],
+          recruitmentRows: [{
+            時間戳記: "2026/9/14 下午 3:00:00",
+            同學的姓名: skip.姓名,
+            "同學電話/LINE": skip.電話,
+            報名了那個活動: "9/30茶會",
+            是否入社: "否",
+            保證金是否繳費: "否",
+            _gameSubmissionId: skip._submissionId,
+          }, {
+            時間戳記: "2026/9/14 下午 3:30:00",
+            同學的姓名: skipTwo.姓名,
+            "同學電話/LINE": skipTwo.電話,
+            報名了那個活動: "9/30茶會",
+            是否入社: "否",
+            保證金是否繳費: "否",
+            _gameSubmissionId: skipTwo._submissionId,
+          }, {
+            時間戳記: "2026/9/14 下午 3:00:00",
+            同學的姓名: paid.姓名,
+            "同學電話/LINE": paid.電話,
+            報名了那個活動: "10/07演講",
+            是否入社: "是",
+            保證金是否繳費: "是",
+            "繳了多少呢?": "300",
+            _gameSubmissionId: paid._submissionId,
+          }],
+          masterRows: [],
+        }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const joined = page.getByRole("button", { name: /入社人數/ });
+      const deposit = page.getByRole("button", { name: /已繳保證金/ });
+      assert.equal(await joined.getAttribute("aria-expanded"), "false");
+      assert.equal(await page.locator("#joined-detail").isVisible(), false);
+      await joined.click();
+      assert.equal(await joined.getAttribute("aria-expanded"), "true");
+      const joinedDetail = page.locator("#joined-detail");
+      await joinedDetail.getByText("人數", { exact: true }).waitFor();
+      assert.equal(await joinedDetail.locator("dt", { hasText: "人數" }).locator("xpath=../dd").innerText(), "1");
+      assert.equal(await joinedDetail.locator("dt", { hasText: "完成比例" }).locator("xpath=../dd").innerText(), "33.3%");
+      await joinedDetail.getByText("佔活動報名").waitFor();
+      await joinedDetail.getByText("不用遊戲分數推論").waitFor();
+      assert.equal(await joinedDetail.getByText("分級", { exact: true }).count(), 0);
+      assert.equal(await joinedDetail.getByText(/^S$|^A$|^B$/).count(), 0);
+      await capture(page, "command-joined-expand-390");
+      await deposit.click();
+      assert.equal(await deposit.getAttribute("aria-expanded"), "true");
+      const depositDetail = page.locator("#deposit-detail");
+      await depositDetail.getByText("人數", { exact: true }).waitFor();
+      assert.equal(await depositDetail.locator("dt", { hasText: "人數" }).locator("xpath=../dd").innerText(), "1");
+      assert.equal(await depositDetail.locator("dt", { hasText: "完成比例" }).locator("xpath=../dd").innerText(), "100%");
+      await depositDetail.getByText("佔入社").waitFor();
+      await depositDetail.getByText("已登錄金額合計 300").waitFor();
+      await depositDetail.getByText("不用遊戲分數推論").waitFor();
+      assert.equal(await depositDetail.getByText("分級", { exact: true }).count(), 0);
+      assert.equal(await depositDetail.getByText(/^S$|^A$|^B$/).count(), 0);
+      await capture(page, "command-deposit-expand-390");
+      assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
+      assert.equal(await page.getByRole("heading", { name: /^S$/ }).count(), 0);
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("command home shows the next related person after picking a recruiter", async () => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const page = await context.newPage();
