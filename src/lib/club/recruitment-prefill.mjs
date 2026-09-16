@@ -293,6 +293,7 @@ export function readStoredRecruiter() {
   }
 }
 
+/** @param {string} name */
 export function rememberStoredRecruiter(name) {
   try {
     localStorage.setItem(RECRUITER_STORAGE_KEY, name);
