@@ -15,6 +15,7 @@ import {
 import { filterPendingQueue } from "@/lib/club/recruitment-queue.mjs";
 import { publicAdminError } from "@/lib/club/public-error.mjs";
 import type { RecruitmentData } from "./recruitment-dashboard";
+import { ConfirmMark } from "./recruitment-profile-sheet";
 
 type Candidate = RecruitmentData["pending"][number] & {
   completedAt?: string;
@@ -477,6 +478,7 @@ export function RecruiterQuickfill() {
                     <strong>{row.name}</strong>
                     <span className="admin-badge">{row.gameGatekeeper || "未分類"}</span>
                   </div>
+                  <ConfirmMark show={row.needsConfirmation} reason={row.confirmationReason} />
                   <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
                   <p>{row.phone || "電話未填"}</p>
                   <small>{waitLabel(row.waitMinutes)} · 遊戲關主 {row.gameGatekeeper || "未填"}</small>
@@ -499,6 +501,7 @@ export function RecruiterQuickfill() {
             </button>
           </div>
           <p className="admin-caption">可直接在後台送出，不必再開 Google 表單。以下欄位送出前都還能改。</p>
+          <ConfirmMark show={preview.needsConfirmation} reason={preview.confirmationReason} />
           <label>
             同學的姓名
             <input aria-label="同學的姓名" value={preview.name || ""} onChange={(event) => setDraft({ ...preview, name: event.target.value })} />

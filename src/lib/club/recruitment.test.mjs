@@ -421,7 +421,9 @@ test("same name different phones stay separate and are flagged for confirmation"
   assert.equal(data.summary.contactsToday, 2);
   assert.ok(data.pending.every((row) => row.needsConfirmation));
   assert.ok(data.profiles.every((row) => row.needsConfirmation));
-  assert.match(data.pending[0].confirmationReason, /確認/);
+  assert.equal(data.pending[0].confirmationReason, "同名不同電話，需要確認");
+  assert.equal(data.pending[1].confirmationReason, "同名不同電話，需要確認");
+  assert.notEqual(data.pending[0].personKey, data.pending[1].personKey);
   assert.doesNotMatch(JSON.stringify(data.summary), /"s":|"a":|"b":/);
 });
 

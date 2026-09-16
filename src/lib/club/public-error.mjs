@@ -28,6 +28,7 @@ export function publicAdminError(raw, fallback = PUBLIC_ERROR_FALLBACK) {
   const mapped = KNOWN[text.toLowerCase()];
   if (mapped) return mapped;
   if (TECHNICAL.test(text)) return "資料暫時無法讀取，請稍後再試";
-  if (!/[\u3400-\u9fff]/.test(text) && /[A-Za-z]{4,}/.test(text)) return fallback;
-  return text;
+  const partner = text.replaceAll("PIN", "解鎖碼");
+  if (!/[\u3400-\u9fff]/.test(partner) && /[A-Za-z]{4,}/.test(partner)) return fallback;
+  return partner;
 }

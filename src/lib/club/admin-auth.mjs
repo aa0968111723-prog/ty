@@ -1062,8 +1062,8 @@ export async function handlePinSetup(request) {
   let body;
   try { body = await readJson(request, 2048); }
   catch { return json({ error: "請提供有效資料" }, 400); }
-  if (!validPin(body.pin) || !validPin(body.confirm)) return json({ error: "請輸入 4 碼數字 PIN" }, 400);
-  if (body.pin !== body.confirm) return json({ error: "兩次 PIN 不一致" }, 400);
+  if (!validPin(body.pin) || !validPin(body.confirm)) return json({ error: "請輸入 4 碼數字解鎖碼" }, 400);
+  if (body.pin !== body.confirm) return json({ error: "兩次解鎖碼不一致" }, 400);
   let device = await readDeviceRecord(request);
   if (!device || device.userId !== session.userId) return json({ error: deviceLoginHint() }, 403);
   const pinHash = hashPin(body.pin);
@@ -1120,7 +1120,7 @@ export async function handlePinUnlock(request) {
   catch { return json({ error: "請提供有效資料" }, 400); }
   if (!validPin(body.pin)) {
     await store.addAudit({ userId: device.userId, deviceId: device.id, method: "pin", success: false });
-    return json({ error: "PIN 不正確" }, 401);
+    return json({ error: "解鎖碼不正確" }, 401);
   }
   if (!verifyPin(body.pin, device.pinHash)) {
     const failedAttempts = device.failedAttempts + 1;
@@ -1134,9 +1134,9 @@ export async function handlePinUnlock(request) {
     if (lock.reauth) return json({ error: reauthHint(), requireGoogle: Boolean(googleConfig()), requirePassword: true }, 403);
     if (lock.until) {
       const retry = Math.ceil((new Date(lock.until).getTime() - now) / 1000);
-      return json({ error: "PIN 不正確", retryAfter: retry }, 401, { "Retry-After": String(retry) });
+      return json({ error: "解鎖碼不正確", retryAfter: retry }, 401, { "Retry-After": String(retry) });
     }
-    return json({ error: "PIN 不正確" }, 401);
+    return json({ error: "解鎖碼不正確" }, 401);
   }
   const user = await store.getUser(device.userId);
   if (!user) return json({ error: deviceLoginHint() }, 401);

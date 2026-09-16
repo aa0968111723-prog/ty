@@ -531,6 +531,20 @@
   font-size: var(--text-caption);
   font-weight: 400;
 }
+.admin-badge.is-confirm {
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 600;
+}
+.admin-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  color: var(--danger);
+  font-size: var(--text-small);
+}
 .admin-table-wrap {
   display: none;
 }

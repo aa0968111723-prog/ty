@@ -47,6 +47,22 @@ function clock(value?: string) {
   });
 }
 
+export function ConfirmMark({
+  show,
+  reason,
+}: {
+  show?: boolean;
+  reason?: string;
+}) {
+  if (!show) return null;
+  return (
+    <p className="admin-confirm" role="status">
+      <span className="admin-badge is-confirm">需要確認</span>
+      {reason || "同名或同電話，請先核對是不是同一人"}
+    </p>
+  );
+}
+
 export function RecruitmentProfileSheet({
   profile,
   onClose,
@@ -63,6 +79,7 @@ export function RecruitmentProfileSheet({
           <p className="admin-caption">
             {profile?.department || "科系未填"} · {profile?.grade || "年級未填"} · {profile?.phone || "電話未填"}
           </p>
+          <ConfirmMark show={profile?.needsConfirmation} reason={profile?.confirmationReason} />
           <Dialog.Close className="admin-close" aria-label="關閉">
             <X size={20} />
           </Dialog.Close>

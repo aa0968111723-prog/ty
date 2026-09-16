@@ -30,7 +30,7 @@ function lastUsedLabel(iso: string) {
 function methodLabel(device: Device) {
   const parts = [];
   if (device.passkeyEnabled) parts.push("指紋");
-  if (device.pinEnabled) parts.push("PIN");
+  if (device.pinEnabled) parts.push("解鎖碼");
   if (!parts.length) parts.push(device.lastMethod === "google" ? "Google 登入" : "密碼登入");
   return parts.join(" + ");
 }
@@ -65,7 +65,7 @@ export function AdminSecurity() {
   return (
     <section className="admin-panel admin-security">
       <h2>安全與登入</h2>
-      <p className="admin-caption">現場以管理員密碼登入。已授權裝置可用指紋或 PIN 快速解鎖。若已設定 Google 白名單，也可使用 Google 帳號。</p>
+      <p className="admin-caption">現場以管理員密碼登入。已授權裝置可用指紋或 4 碼解鎖碼快速解鎖。若已設定 Google 白名單，也可使用 Google 帳號。</p>
       {error && <p className="admin-error" role="alert">{error}</p>}
       <h3>我的裝置</h3>
       {!active.length ? (
@@ -120,7 +120,7 @@ export function AdminSecurity() {
                   <>
                     <button onClick={() => setShowPin((value) => !value)}>
                       <Shield size={16} />
-                      {device.pinEnabled ? "重新設定 PIN" : "設定 PIN"}
+                      {device.pinEnabled ? "重新設定解鎖碼" : "設定解鎖碼"}
                     </button>
                     {device.pinEnabled && (
                       <button
@@ -129,11 +129,11 @@ export function AdminSecurity() {
                           setBusy(device.id);
                           void send("/api/admin/auth/pin/disable", { deviceId: device.id })
                             .then(() => load())
-                            .catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "無法關閉 PIN") : "無法關閉 PIN"))
+                            .catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "無法關閉解鎖碼") : "無法關閉解鎖碼"))
                             .finally(() => setBusy(""));
                         }}
                       >
-                        關閉 PIN
+                        關閉解鎖碼
                       </button>
                     )}
                     <button
@@ -182,12 +182,12 @@ export function AdminSecurity() {
                         setShowPin(false);
                         return load();
                       })
-                      .catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "無法設定 PIN") : "無法設定 PIN"))
+                      .catch((cause) => setError(cause instanceof Error ? publicAdminError(cause.message, "無法設定解鎖碼") : "無法設定解鎖碼"))
                       .finally(() => setBusy(""));
                   }}
                 >
                   <label>
-                    新 PIN
+                    新解鎖碼
                     <input inputMode="numeric" autoComplete="off" maxLength={4} value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))} />
                   </label>
                   <label>
@@ -195,7 +195,7 @@ export function AdminSecurity() {
                     <input inputMode="numeric" autoComplete="off" maxLength={4} value={confirm} onChange={(event) => setConfirm(event.target.value.replace(/\D/g, "").slice(0, 4))} />
                   </label>
                   <button className="admin-primary" disabled={busy === "pin" || pin.length !== 4 || confirm.length !== 4}>
-                    儲存 PIN
+                    儲存解鎖碼
                   </button>
                 </form>
               )}

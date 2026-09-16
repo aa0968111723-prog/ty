@@ -330,6 +330,7 @@ export function BattleCommand({
             <div key={row.date} className="battle-trend-day">
               <div
                 className="battle-trend-cols"
+                role="img"
                 aria-label={`${row.date} 接觸 ${row.contacts}、報名 ${row.activity}、入社 ${row.joined}`}
               >
                 <span style={{ height: `${(row.contacts / trendMax) * 100}%` }} aria-hidden="true" />

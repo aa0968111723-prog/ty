@@ -53,7 +53,7 @@ export function DashboardWidget({ id, editor = false, data, todayData, date, lay
         body = (
           <>
             <h2>關主統計</h2>
-            <Bars rows={data.gatekeepers} onSelect={selectLeader} />
+            <Bars rows={data.gatekeepers} onSelect={selectLeader} label="各關主接觸人數" />
           </>
         );
         break;
@@ -61,7 +61,7 @@ export function DashboardWidget({ id, editor = false, data, todayData, date, lay
         body = (
           <>
             <h2>科系分布</h2>
-            <Bars rows={data.departments} />
+            <Bars rows={data.departments} label="各科系人數" />
           </>
         );
         break;
@@ -69,7 +69,7 @@ export function DashboardWidget({ id, editor = false, data, todayData, date, lay
         body = (
           <>
             <h2>年級分布</h2>
-            <Bars rows={data.grades} />
+            <Bars rows={data.grades} label="各年級人數" />
           </>
         );
         break;

@@ -52,7 +52,7 @@ function PinBoxes({
 }) {
   return (
     <div className="admin-pin-boxes">
-      <label className="admin-sr" htmlFor={id}>4 碼 PIN</label>
+      <label className="admin-sr" htmlFor={id}>4 碼解鎖碼</label>
       <input
         id={id}
         inputMode="numeric"
@@ -172,7 +172,7 @@ export function AdminLogin({
       setView("setup");
       await finished();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "無法設定 PIN");
+      setError(cause instanceof Error ? publicAdminError(cause.message, "無法設定解鎖碼") : "無法設定解鎖碼");
     } finally {
       setBusy(false);
     }
@@ -191,11 +191,11 @@ export function AdminLogin({
       const payload = (cause as Error & { payload?: { requireGoogle?: boolean; requirePassword?: boolean } }).payload;
       if (payload?.requirePassword || payload?.requireGoogle) {
         setView("password");
-        setError(cause instanceof Error ? cause.message : "請改用密碼登入");
+        setError(cause instanceof Error ? publicAdminError(cause.message, "請改用密碼登入") : "請改用密碼登入");
         setBusy(false);
         return;
       }
-      setError(cause instanceof Error ? cause.message : "解鎖失敗");
+      setError(cause instanceof Error ? publicAdminError(cause.message, "解鎖失敗") : "解鎖失敗");
     } finally {
       setBusy(false);
     }
@@ -212,7 +212,7 @@ export function AdminLogin({
       if (cause instanceof DOMException && cause.name === "NotAllowedError") {
         setError("");
       } else {
-        setError(cause instanceof Error ? cause.message : "無法使用裝置解鎖");
+        setError(cause instanceof Error ? publicAdminError(cause.message, "無法使用裝置解鎖") : "無法使用裝置解鎖");
       }
     } finally {
       setBusy(false);
@@ -227,7 +227,7 @@ export function AdminLogin({
       await registerDevicePasskey();
       await finished();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "無法設定裝置解鎖");
+      setError(cause instanceof Error ? publicAdminError(cause.message, "無法設定裝置解鎖") : "無法設定裝置解鎖");
     } finally {
       setBusy(false);
     }
@@ -240,7 +240,7 @@ export function AdminLogin({
       await postAdminJSON("/api/admin/auth/setup/skip", {});
       await finished();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "請稍後再試");
+      setError(cause instanceof Error ? publicAdminError(cause.message, "請稍後再試") : "請稍後再試");
     } finally {
       setBusy(false);
     }
@@ -290,14 +290,14 @@ export function AdminLogin({
       {view === "setup" && (
         <div className="admin-login-actions">
           <h2>設定快速解鎖</h2>
-          <p>此裝置已經通過管理員授權。可設定指紋／Face ID、4 碼 PIN，或兩者都設定。</p>
+          <p>此裝置已經通過管理員授權。可設定指紋／Face ID、4 碼解鎖碼，或兩者都設定。</p>
           <button className="admin-primary" disabled={busy} type="button" onClick={() => void registerPasskey()}>
             <Fingerprint size={18} />
             {busy ? "請在裝置上確認…" : "使用指紋 / Face ID"}
           </button>
           <button type="button" disabled={busy} onClick={() => { setView("pin"); setError(""); }}>
             <Shield size={18} />
-            設定 4 碼 PIN
+            設定 4 碼解鎖碼
           </button>
           <button className="admin-text-btn" type="button" disabled={busy} onClick={() => void skipSetup()}>
             稍後設定
@@ -308,13 +308,13 @@ export function AdminLogin({
 
       {view === "pin" && (
         <form onSubmit={savePin}>
-          <label htmlFor="admin-pin-new">輸入 PIN</label>
+          <label htmlFor="admin-pin-new">輸入解鎖碼</label>
           <PinBoxes id="admin-pin-new" value={pin} onChange={setPin} autoFocus />
           <label htmlFor="admin-pin-confirm">再次輸入確認</label>
           <PinBoxes id="admin-pin-confirm" value={confirm} onChange={setConfirm} />
           {error && <p role="alert" className="admin-error">{error}</p>}
           <button className="admin-primary" disabled={busy || pin.length !== 4 || confirm.length !== 4} type="submit">
-            {busy ? "儲存中…" : "儲存 PIN"}
+            {busy ? "儲存中…" : "儲存解鎖碼"}
           </button>
           <button className="admin-text-btn" type="button" onClick={() => { setView("setup"); setError(""); }}>
             返回
@@ -332,7 +332,7 @@ export function AdminLogin({
           )}
           {resolved?.quickUnlock?.pin && (
             <form onSubmit={unlockPin}>
-              <label htmlFor="admin-pin-unlock">輸入 4 碼 PIN</label>
+              <label htmlFor="admin-pin-unlock">輸入 4 碼解鎖碼</label>
               <PinBoxes id="admin-pin-unlock" value={pin} onChange={setPin} autoFocus={!resolved.quickUnlock.passkey} />
               {error && <p role="alert" className="admin-error">{error}</p>}
               <button className="admin-primary" disabled={busy || pin.length !== 4} type="submit">
@@ -348,7 +348,7 @@ export function AdminLogin({
             <a className="admin-text-btn" href={googleHref()}>使用 Google 帳號登入</a>
           )}
           {resolved?.quickUnlock?.pin && resolved.googleEnabled && (
-            <a className="admin-text-btn" href={googleHref("reset-pin")}>忘記 PIN？</a>
+            <a className="admin-text-btn" href={googleHref("reset-pin")}>忘記解鎖碼？</a>
           )}
         </div>
       )}

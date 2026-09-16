@@ -335,6 +335,7 @@ test(
       await page.getByRole("button", { name: "更新資料" }).click();
       await page.getByRole("heading", { name: "管理員登入" }).waitFor();
       await page.getByRole("alert").getByText("登入已失效，請重新登入").waitFor();
+      assert.equal(await page.locator("text=PIN").count(), 0);
       assert.equal(await page.getByText("Something went wrong").count(), 0);
       assert.equal(await page.getByText("googleapis").count(), 0);
       assert.equal(await page.locator("text=submissionId").count(), 0);
@@ -463,6 +464,12 @@ test(
       await page.locator("#sync-detail").getByText("招生狀況表 正常").waitFor();
       await page.locator("#sync-detail").getByText("總表 正常").waitFor();
       assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
+      const unlabeledCharts = await page.evaluate(() =>
+        [...document.querySelectorAll(".battle-ring, .battle-funnel-bar, .battle-bar, .battle-trend, .battle-trend-cols")]
+          .filter((el) => !el.getAttribute("aria-label"))
+          .map((el) => el.className),
+      );
+      assert.deepEqual(unlabeledCharts, []);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       assert.deepEqual(errors, []);
       await context.close();
@@ -518,6 +525,52 @@ test(
       assert.match(page.url(), /\/follow-up\?personKey=/);
       assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("same name different phones stay two people and show 需要確認", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const first = {
+        姓名: "林同學", 電話: "0911111111", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z",
+      };
+      const second = {
+        姓名: "林同學", 電話: "0922222222", 科系: "會計學系", 年級: "大二", 遊戲關主: "柏能",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T02:00:00.000Z",
+      };
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({ date: "2026-09-14", gameRows: [first, second], recruitmentRows: [], masterRows: [] }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.getByRole("button", { name: "柏能", exact: true }).click();
+      const cards = page.locator(".battle-next-card").filter({ hasText: "林同學" });
+      assert.equal(await cards.count(), 2);
+      assert.equal(await page.getByText("需要確認").count() >= 2, true);
+      await page.getByText("0911111111").waitFor();
+      await page.getByText("0922222222").waitFor();
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
+      await page.getByRole("heading", { name: "待填正式招生資料" }).waitFor();
+      const queue = page.getByRole("article").filter({ hasText: "林同學" });
+      assert.equal(await queue.count(), 2);
+      assert.equal(await page.getByText("同名不同電話，需要確認").count() >= 2, true);
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
+      await page.getByRole("heading", { name: "招生名單" }).waitFor();
+      assert.equal(await page.getByRole("article").filter({ hasText: "林同學" }).count(), 2);
+      assert.equal(await page.getByText("需要確認").count() >= 2, true);
       assert.deepEqual(errors, []);
       await context.close();
     });

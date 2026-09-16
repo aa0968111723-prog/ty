@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Filter } from "lucide-react";
 import { BattleCommand } from "./battle-kpis";
-import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
+import { RecruitmentProfileSheet, ConfirmMark, type RecruitmentProfile } from "./recruitment-profile-sheet";
 import { OFFICIAL_RECRUITERS, RECRUITER_STORAGE_KEY, taipeiDate } from "@/lib/club/recruitment-prefill.mjs";
 import { filterPendingQueue } from "@/lib/club/recruitment-queue.mjs";
 import { time } from "./admin-presentation";
@@ -185,8 +185,13 @@ function NextUpCard({
     <article className={`battle-next-card${featured ? " is-next" : ""}`}>
       {featured ? <small>下一位</small> : null}
       <strong>{row.name}</strong>
+      {row.needsConfirmation ? <span className="admin-badge is-confirm">需要確認</span> : null}
       <p>{row.department || "科系未填"}{row.grade ? ` · ${row.grade}` : ""}</p>
+      <p>{row.phone || "電話未填"}</p>
       <p className="admin-badge">{statusLabel(row)}</p>
+      {row.needsConfirmation ? (
+        <p className="admin-confirm" role="status">{row.confirmationReason || "同名或同電話，請先核對是不是同一人"}</p>
+      ) : null}
       <a className="admin-primary" href={followUp}>填寫正式資料</a>
     </article>
   );
@@ -218,9 +223,7 @@ function PersonCard({
         <strong>{row.name}</strong>
         <span className="admin-badge">{statusLabel(row)}</span>
       </div>
-      {row.needsConfirmation ? (
-        <p className="admin-error" role="status">{row.confirmationReason || "姓名或電話重複，需要確認"}</p>
-      ) : null}
+      <ConfirmMark show={row.needsConfirmation} reason={row.confirmationReason} />
       <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
       <p>{row.phone || "電話未填"}</p>
       <p>遊戲完成 {row.gameCompletedAt || row.completedAt ? time(String(row.gameCompletedAt || row.completedAt)) : "時間未填"}</p>
