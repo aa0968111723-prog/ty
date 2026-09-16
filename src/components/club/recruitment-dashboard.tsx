@@ -491,6 +491,7 @@ export function RecruitmentDashboard({
             funnel: data.funnel,
             sync: data.sync,
           }}
+          recruiter={selfRecruiter}
           onOpenQueue={() => onOpenQueue?.()}
           onOpenRoster={() => onOpenRoster?.()}
         />

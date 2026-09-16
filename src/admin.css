@@ -1631,6 +1631,10 @@
   padding: 0;
   list-style: none;
 }
+.battle-kpi-detail .admin-primary {
+  width: 100%;
+  min-height: 44px;
+}
 .battle-completion-stats dt {
   color: var(--text-muted);
   font-size: var(--text-caption);

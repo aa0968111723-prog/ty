@@ -876,6 +876,63 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("command home expands 待填正式資料 into count and recruiter priority", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const mine = {
+        姓名: "關主的同學", 電話: "0910000001", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z",
+      };
+      const other = {
+        姓名: "別人的同學", 電話: "0910000003", 科系: "會計學系", 年級: "大二", 遊戲關主: "小哲",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T02:00:00.000Z",
+      };
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({
+          date: "2026-09-14",
+          gameRows: [mine, other],
+          recruitmentRows: [],
+          masterRows: [],
+        }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const pending = page.getByRole("button", { name: /待填正式資料/ });
+      assert.equal(await pending.getAttribute("aria-expanded"), "false");
+      await pending.click();
+      assert.equal(await pending.getAttribute("aria-expanded"), "true");
+      const detail = page.locator("#pending-detail");
+      await detail.getByText("人數", { exact: true }).waitFor();
+      assert.equal(await detail.locator("dt", { hasText: "人數" }).locator("xpath=../dd").innerText(), "2");
+      await detail.getByText("已完成遊戲、尚未正式資料").waitFor();
+      await detail.getByText("優先依目前接引人").waitFor();
+      await detail.getByText("遊戲關主不是接引人").waitFor();
+      assert.equal(await detail.locator("text=submissionId").count(), 0);
+      await page.getByLabel("這位有緣人的接引人").selectOption("柏能");
+      if ((await pending.getAttribute("aria-expanded")) !== "true") await pending.click();
+      await detail.getByText("優先「柏能」").waitFor();
+      assert.equal(await detail.locator("dt", { hasText: "人數" }).locator("xpath=../dd").innerText(), "2");
+      assert.equal(await detail.getByText("遊戲關主不是接引人").count(), 1);
+      assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
+      await capture(page, "command-pending-expand-390");
+      await detail.getByRole("button", { name: "查看待處理名單" }).click();
+      await page.getByRole("heading", { name: "待填正式招生資料" }).waitFor();
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("command home shows the next related person after picking a recruiter", async () => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const page = await context.newPage();

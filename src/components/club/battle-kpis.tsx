@@ -175,6 +175,36 @@ function CompletionDetail({
   );
 }
 
+function PendingDefinition({
+  count,
+  recruiter,
+  onOpenQueue,
+}: {
+  count: number | null | undefined;
+  recruiter?: string;
+  onOpenQueue: () => void;
+}) {
+  const partner = String(recruiter || "").trim();
+  return (
+    <div className="battle-completion">
+      <dl className="battle-completion-stats is-single">
+        <div>
+          <dt>人數</dt>
+          <dd>{metric(count)}</dd>
+        </div>
+      </dl>
+      <ul className="battle-count-rules" aria-label="待填定義">
+        <li>已完成遊戲、尚未正式資料</li>
+        <li>{partner ? `優先「${partner}」` : "優先依目前接引人"}</li>
+        <li>遊戲關主不是接引人</li>
+      </ul>
+      <button type="button" className="admin-primary" onClick={onOpenQueue}>
+        查看待處理名單
+      </button>
+    </div>
+  );
+}
+
 function CountDefinition({
   count,
   extra,
@@ -228,10 +258,12 @@ function ActivityBreakdown({
 
 export function BattleCommand({
   data,
+  recruiter,
   onOpenQueue,
   onOpenRoster,
 }: {
   data: CommandData;
+  recruiter?: string;
   onOpenQueue: () => void;
   onOpenRoster: () => void;
 }) {
@@ -362,11 +394,7 @@ export function BattleCommand({
           label="待填正式資料"
           value={metric(pending)}
           hint="已玩遊戲、尚未完成招生表"
-          details={
-            <button type="button" className="admin-primary" onClick={onOpenQueue}>
-              查看待處理名單
-            </button>
-          }
+          details={<PendingDefinition count={pending} recruiter={recruiter} onOpenQueue={onOpenQueue} />}
         />
       </section>
 
