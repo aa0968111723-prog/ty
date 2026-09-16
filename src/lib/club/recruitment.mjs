@@ -324,7 +324,6 @@ function profileFromSources({
     recruiterList: source?.recruiterList || [],
     recruitedAt: source?.recruitedAt || recruited?.submittedAt || "",
     submittedAt: recruited?.submittedAt || source?.submittedAt || "",
-    tier: source?.tier || "",
     activity: source?.activity || "",
     joined: source?.joined || "",
     depositPaid: source?.depositPaid || "",
@@ -361,14 +360,6 @@ function appendUnmatchedRoster(profiles, rows, { prefix }) {
       recruited: prefix === "recruit" ? row : null,
     }));
   });
-}
-
-function tierLetter(value) {
-  const raw = text(value);
-  if (/^S/i.test(raw) || raw.includes("已報名")) return "S";
-  if (/^A/i.test(raw) || raw.includes("有興趣")) return "A";
-  if (/^B/i.test(raw) || raw.includes("沒興趣") || raw.includes("還好")) return "B";
-  return "";
 }
 
 function hasActivity(value) {
@@ -560,9 +551,6 @@ export function buildRecruitmentDashboard(input = {}) {
     if (!known.length) return null;
     return rows.filter(predicate).length;
   }
-  const sCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "S");
-  const aCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "A");
-  const bCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "B");
   const activityCount = uniquePresent(completed, (row) => Boolean(text(row.activity)), (row) => hasActivity(row.activity));
   const joinedCount = uniquePresent(completed, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
   const depositCount = uniquePresent(completed, (row) => Boolean(text(row.depositPaid)), (row) => isYes(row.depositPaid));
@@ -639,9 +627,6 @@ export function buildRecruitmentDashboard(input = {}) {
       played: groupPeople.length,
       pending: groupPending.length,
       recruited: groupRecruited.length,
-      s: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.tier)), (row) => tierLetter(row.source?.tier) === "S"),
-      a: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.tier)), (row) => tierLetter(row.source?.tier) === "A"),
-      b: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.tier)), (row) => tierLetter(row.source?.tier) === "B"),
       activity: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.activity)), (row) => hasActivity(row.source?.activity)),
       joined: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.joined)), (row) => isYes(row.source?.joined)),
     };
@@ -682,9 +667,6 @@ export function buildRecruitmentDashboard(input = {}) {
       pendingToday,
       recruited: uniqueRosterPeople(completed).length,
       recruitedToday: completedToday,
-      s: sCount,
-      a: aCount,
-      b: bCount,
       activity: activityCount,
       joined: joinedCount,
       depositPaid: depositCount,
@@ -701,7 +683,6 @@ export function buildRecruitmentDashboard(input = {}) {
     distributions: {
       departments: distribution(completed.map((row) => row.department)),
       grades: distribution(completed.map((row) => row.grade)),
-      tiers: distribution(completed.map((row) => tierLetter(row.tier) || row.tier)),
     },
     candidatesByGatekeeper,
     duplicates: allRecruitsIncludingDup.filter((row) => row.duplicate).length,

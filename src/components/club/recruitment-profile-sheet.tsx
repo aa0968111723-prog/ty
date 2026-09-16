@@ -16,7 +16,6 @@ export type RecruitmentProfile = {
   recruiterList?: string[];
   recruitedAt?: string;
   submittedAt?: string;
-  tier?: string;
   activity?: string;
   joined?: string;
   depositPaid?: string;

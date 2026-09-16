@@ -25,9 +25,6 @@ export type RecruitmentData = {
     pendingToday?: number;
     recruited: number;
     recruitedToday?: number;
-    s: number | null;
-    a: number | null;
-    b: number | null;
     activity: number | null;
     joined: number | null;
     depositPaid: number | null;

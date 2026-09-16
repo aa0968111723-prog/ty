@@ -248,7 +248,7 @@ test("practice-like rows are ignored by game attempt parser", () => {
   assert.equal(rows.length, 1);
 });
 
-test("missing S/A/B and deposit fields are 資料不足 instead of zero", () => {
+test("missing deposit fields are 資料不足 instead of zero", () => {
   const player = game({ _submissionId: "ffffffff-ffff-4fff-8fff-ffffffffffff" });
   const data = buildRecruitmentDashboard({
     date: "2026-09-14",
@@ -261,7 +261,9 @@ test("missing S/A/B and deposit fields are 資料不足 instead of zero", () => 
     }],
     masterRows: [],
   });
-  assert.equal(data.summary.s, null);
+  assert.equal("s" in data.summary, false);
+  assert.equal("a" in data.summary, false);
+  assert.equal("b" in data.summary, false);
   assert.equal(data.summary.depositPaid, null);
   assert.equal(data.funnel.find((layer) => layer.id === "deposit")?.missing, true);
   assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 1);
@@ -302,7 +304,12 @@ test("招生狀況表 plus 總表 formula-shaped row keeps game gatekeeper separ
     }],
   });
   assert.equal(data.pending.length, 0);
-  assert.equal(data.summary.s, 1);
+  assert.equal("s" in data.summary, false);
+  assert.equal("a" in data.summary, false);
+  assert.equal("b" in data.summary, false);
+  assert.equal("tier" in data.profiles[0], false);
+  assert.equal("tiers" in data.distributions, false);
+  assert.ok(data.gameGatekeepers.every((row) => !("s" in row) && !("a" in row) && !("b" in row)));
   assert.equal(data.summary.activity, 1);
   assert.equal(data.summary.joined, 1);
   assert.equal(data.summary.depositPaid, 1);
@@ -341,7 +348,8 @@ test("總表-only roster rows appear even without a game attempt", () => {
   });
   assert.equal(data.profiles.length, 1);
   assert.equal(data.profiles[0].name, "歷史生");
-  assert.equal(data.summary.s, 1);
+  assert.equal("s" in data.summary, false);
+  assert.equal("tier" in data.profiles[0], false);
   assert.equal(data.summary.joined, 1);
   assert.equal(data.summary.depositTotal, 300);
   assert.equal(data.pending.length, 0);

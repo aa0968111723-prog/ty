@@ -207,6 +207,12 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.ok("pending" in recruitment);
   assert.ok("funnel" in recruitment);
   assert.ok("summary" in recruitment);
+  assert.equal("s" in recruitment.summary, false);
+  assert.equal("a" in recruitment.summary, false);
+  assert.equal("b" in recruitment.summary, false);
+  assert.equal("tiers" in (recruitment.distributions || {}), false);
+  assert.ok((recruitment.profiles || []).every((row) => !("tier" in row)));
+  assert.ok((recruitment.gameGatekeepers || []).every((row) => !("s" in row) && !("a" in row) && !("b" in row)));
   assert.ok(Array.isArray(recruitment.pending));
   if (recruitment.pending.length) {
     assert.match(String(recruitment.pending[0].prefillUrl), /\/viewform\?/);
@@ -240,6 +246,9 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.equal(partialBody.sync.recruitmentMaster.ok, false);
   assert.equal(partialBody.sync.gameResults.ok, true);
   assert.equal(typeof partialBody.summary.playedToday, "number");
+  assert.equal("s" in partialBody.summary, false);
+  assert.equal("a" in partialBody.summary, false);
+  assert.equal("b" in partialBody.summary, false);
   assert.ok(!JSON.stringify(partialBody).includes("private_key"));
   const logout = await handleAdminLogout(request("logout", { body: {}, cookie }));
   assert.match(logout.headers.get("set-cookie"), /Max-Age=0/);
