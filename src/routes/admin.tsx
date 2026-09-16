@@ -327,7 +327,7 @@ function AdminDashboard() {
           </button>
         </div>
       </header>
-      {(tab === "roster" || tab === "contacts" || tab === "results" || tab === "podium" || tab === "leaders") && (
+      {(tab === "contacts" || tab === "results" || tab === "podium" || tab === "leaders") && (
       <div className="admin-date-controls">
         <button aria-pressed={date === taipeiDate()} onClick={() => setDate(taipeiDate())}>
           今天
