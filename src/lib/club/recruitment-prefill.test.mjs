@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   FORMS_GLE_SHORT_URL,
   LIVE_PREFILL_ENTRIES,
+  OFFICIAL_FORM_EDIT_URL,
   OFFICIAL_FORM_ID,
   OFFICIAL_VIEWFORM_URL,
   buildGameMetadataNote,
@@ -31,6 +32,7 @@ test("forms.gle and missing responder resolve to the published /viewform URL", (
     OFFICIAL_VIEWFORM_URL,
   );
   assert.equal(resolveViewformUrl(`${OFFICIAL_VIEWFORM_URL}?usp=send_form`), OFFICIAL_VIEWFORM_URL);
+  assert.equal(OFFICIAL_FORM_EDIT_URL, `https://docs.google.com/forms/d/${OFFICIAL_FORM_ID}/edit`);
 });
 
 test("prefill uses the full viewform URL and live entry IDs, never forms.gle", () => {

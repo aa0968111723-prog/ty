@@ -6,7 +6,9 @@ import {
   LIVE_INTEREST_TOPICS,
   LIVE_NOTE_TITLE,
   LIVE_YES_NO,
+  OFFICIAL_FORM_EDIT_URL,
   OFFICIAL_RECRUITERS,
+  OFFICIAL_VIEWFORM_URL,
   RECRUITER_STORAGE_KEY,
   datetimeLocalTaipei,
   generatePrefilledFormUrl,
@@ -126,6 +128,7 @@ export function RecruiterQuickfill() {
   const [data, setData] = useState<RecruitmentData | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [sentPrefillUrl, setSentPrefillUrl] = useState("");
   const [stale, setStale] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -318,6 +321,7 @@ export function RecruiterQuickfill() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "無法送出招生資料");
       hideCandidate(preview.personKey, preview.submissionId || "");
+      setSentPrefillUrl(prefillUrl || OFFICIAL_VIEWFORM_URL);
       setSuccess(body.duplicate ? "這位同學已有招生紀錄，已從待跟進名單移除" : "已送出招生資料");
       void load(true);
     } catch (cause) {
@@ -352,12 +356,21 @@ export function RecruiterQuickfill() {
           <span>{success}</span>
           <a
             className="quickfill-google"
-            href="/admin?view=today"
+            href={sentPrefillUrl || OFFICIAL_VIEWFORM_URL}
+            target="_blank"
+            rel="noreferrer"
+            data-quickfill="open-form"
+          >
+            開啟正式招生表單 <ExternalLink size={16} />
+          </a>
+          <a
+            className="quickfill-google"
+            href={OFFICIAL_FORM_EDIT_URL}
             target="_blank"
             rel="noreferrer"
             data-quickfill="open-backoffice"
           >
-            查看招生狀況表後台 <ExternalLink size={16} />
+            查看招生表單後台 <ExternalLink size={16} />
           </a>
         </div>
       ) : null}

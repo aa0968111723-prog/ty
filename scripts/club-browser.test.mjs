@@ -798,10 +798,26 @@ test(
       assert.equal(submitted[0].tier, undefined);
       assert.ok(submitted[0].activities.includes("9/30茶會"));
       assert.equal(await page.getByRole("button", { name: "跟進這位同學" }).count(), 0);
-      assert.equal(await page.locator("[data-quickfill=open-form]").count(), 0);
+      const openForm = page.locator("[data-quickfill=open-form]");
+      assert.equal(await openForm.count(), 1);
+      assert.match(String(await openForm.getAttribute("href")), /\/viewform/);
+      assert.doesNotMatch(String(await openForm.getAttribute("href")), /forms\.gle/);
+      assert.ok(await page.getByRole("link", { name: "開啟正式招生表單" }).count());
       const backoffice = page.locator("[data-quickfill=open-backoffice]");
       assert.equal(await backoffice.count(), 1);
-      assert.equal(await backoffice.getAttribute("href"), "/admin?view=today");
+      assert.equal(
+        await backoffice.getAttribute("href"),
+        "https://docs.google.com/forms/d/12fk5ubMY0fnCSSTEljFJ1l-gcao1hDMkw7F8I8qTlOw/edit",
+      );
+      assert.ok(await page.getByRole("link", { name: "查看招生表單後台" }).count());
+      assert.equal(await page.getByText("查看招生狀況表後台").count(), 0);
+      assert.equal(await page.getByText("分級").count(), 0);
+      assert.equal(await page.getByText("S／A／B").count(), 0);
+      assert.equal(await page.getByText("S(已報名)").count(), 0);
+      assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
+      const successText = await page.getByRole("status").innerText();
+      assert.equal(successText.includes("submissionId"), false);
+      assert.equal(successText.includes("11111111-1111-4111-8111-111111111111"), false);
       await capture(page, "follow-up-390");
       assert.deepEqual(errors, []);
       await context.close();
