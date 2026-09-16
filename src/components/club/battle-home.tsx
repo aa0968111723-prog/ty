@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { RecruitmentData } from "./recruitment-dashboard";
 import { funnelStepCaption } from "@/lib/club/funnel-caption.mjs";
+import { recruitmentSyncLabel } from "@/lib/club/sync-status.mjs";
 
 function metric(value: number | null | undefined) {
   if (value == null) return "資料不足";
@@ -17,16 +18,7 @@ function metric(value: number | null | undefined) {
 }
 
 function syncLabel(data: RecruitmentData, error?: string) {
-  const flags = [
-    data.sync.gameResults,
-    data.sync.recruitmentResponses,
-    data.sync.recruitmentMaster,
-    data.sync.form,
-  ];
-  if (error) return { tone: "fail" as const, text: "同步失敗，仍顯示上次資料" };
-  if (flags.every((flag) => flag.ok)) return { tone: "ok" as const, text: "同步正常" };
-  if (flags.some((flag) => flag.stale)) return { tone: "wait" as const, text: "等待同步 · 顯示上次資料" };
-  return { tone: "fail" as const, text: "同步失敗，仍顯示上次資料" };
+  return recruitmentSyncLabel(data.sync, error);
 }
 
 function clock(value?: string) {

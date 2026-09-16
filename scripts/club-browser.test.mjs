@@ -163,6 +163,9 @@ test(
         const homeText = await page.locator(".battle-home").innerText();
         assert.equal(homeText.includes("分級"), false);
         assert.equal(/S（已報名）|A（有興趣|B（還好/.test(homeText), false);
+        assert.match(homeText, /最後同步/);
+        assert.match(homeText, /同步成功|等待同步|同步失敗/);
+        assert.doesNotMatch(homeText, /同步正常/);
         await capture(page, `recruitment-${width}`);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
