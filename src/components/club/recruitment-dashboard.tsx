@@ -257,25 +257,26 @@ export function RecruitmentDashboard({
   if (panel === "pending") {
     return (
       <div className="recruitment-board">
-        <section className="admin-panel quickfill-partner" aria-label="這位有緣人的接引人">
+        <section className="admin-panel recruiter-compact" aria-label="這位有緣人的接引人">
           <h2>這位有緣人的接引人</h2>
-          <p className="admin-caption">先選正在接引的夥伴。遊戲關主只是現場帶玩的人，不會被改成正式接引人。</p>
-          <div className="quickfill-partners">
+          <select
+            aria-label="選擇接引夥伴"
+            value={recruiter}
+            onChange={(event) => {
+              const next = event.target.value;
+              setRecruiter(next);
+              try { localStorage.setItem(RECRUITER_STORAGE_KEY, next); } catch { /* ignore */ }
+            }}
+          >
+            <option value="">尚未選擇</option>
             {OFFICIAL_RECRUITERS.map((name) => (
-              <button
-                key={name}
-                type="button"
-                aria-pressed={recruiter === name}
-                onClick={() => {
-                  const next = recruiter === name ? "" : name;
-                  setRecruiter(next);
-                  try { localStorage.setItem(RECRUITER_STORAGE_KEY, next); } catch { /* ignore */ }
-                }}
-              >
-                {name}
-              </button>
+              <option key={name} value={name}>{name}</option>
             ))}
-          </div>
+          </select>
+          <p className="admin-caption">
+            {recruiter ? `目前：${recruiter}` : "先選接引夥伴"}
+            。遊戲關主不會變成正式接引人。
+          </p>
         </section>
         <section className="admin-panel">
           <div className="admin-section-heading">
@@ -288,13 +289,10 @@ export function RecruitmentDashboard({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <label className="admin-caption">
-            遊戲關主
-            <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
-              <option value="">全部關主</option>
-              {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}
-            </select>
-          </label>
+          <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
+            <option value="">全部關主</option>
+            {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}
+          </select>
           {!pending.length && !followUps.length ? (
             <p className="admin-empty">{busy ? "讀取中…" : "目前沒有待處理同學"}</p>
           ) : (
@@ -305,6 +303,9 @@ export function RecruitmentDashboard({
                     <strong>{row.name}</strong>
                     <span className="admin-badge">{statusLabel(row)}</span>
                   </div>
+                  <a className="admin-primary" href={`/follow-up?personKey=${encodeURIComponent(row.personKey)}`}>
+                    填寫正式資料
+                  </a>
                   <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
                   <p>{row.phone || "電話未填"}</p>
                   <small>
@@ -319,9 +320,6 @@ export function RecruitmentDashboard({
                   </p>
                   {row.duplicateWarning ? <p className="admin-caption">{row.duplicateWarning}</p> : null}
                   <div className="recruitment-actions">
-                    <a className="admin-primary" href={`/follow-up?personKey=${encodeURIComponent(row.personKey)}`}>
-                      填寫正式資料
-                    </a>
                     <a href={row.prefillUrl || OFFICIAL_VIEWFORM_URL} target="_blank" rel="noreferrer">
                       開啟正式招生表單 <ExternalLink size={16} />
                     </a>

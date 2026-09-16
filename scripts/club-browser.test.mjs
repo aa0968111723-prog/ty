@@ -171,6 +171,18 @@ test(
         assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
         assert.match(await page.locator(".recruitment-pending").innerText(), /遊戲關主/);
         assert.match(await page.getByRole("heading", { name: "這位有緣人的接引人" }).innerText(), /這位有緣人的接引人/);
+        assert.equal(await page.locator(".recruiter-compact select").count(), 1);
+        assert.ok(
+          await page.evaluate(() => {
+            const link = document.querySelector(".recruitment-pending a.admin-primary");
+            if (!link) return false;
+            const box = link.getBoundingClientRect();
+            const nav = document.querySelector(".admin-bottom-nav");
+            const navTop = nav ? nav.getBoundingClientRect().top : innerHeight;
+            return box.top >= 0 && box.bottom <= navTop + 1;
+          }),
+          "填寫正式資料 must sit in the first thumb viewport",
+        );
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
         await page.getByRole("heading", { level: 1, name: "名單" }).waitFor();
         await page.getByRole("button", { name: "全部", exact: true }).waitFor();

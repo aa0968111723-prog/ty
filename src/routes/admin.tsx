@@ -308,7 +308,7 @@ function AdminDashboard() {
           </label>
         </div>
       ) : null}
-      {tab !== "recruitment" ? (
+      {tab !== "recruitment" && tab !== "pending" ? (
         <div className="admin-sync-line" role="status">
         <span>
           {data || recruitment
