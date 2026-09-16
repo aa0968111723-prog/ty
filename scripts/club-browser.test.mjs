@@ -9,10 +9,195 @@ import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
 import { OFFICIAL_FORM_EDIT_URL, OFFICIAL_VIEWFORM_URL } from "../src/lib/club/recruitment-prefill.mjs";
 
 const base = process.env.CLUB_BROWSER_URL;
+function paidDepositMasterRows() {
+  return [
+    {
+      接引日期: "9/12",
+      "接引人(可複選)": "安倢",
+      同學的姓名: "已繳保證金甲",
+      科系: "歷史學系",
+      年級: "大一",
+      是否入社: "否",
+      保證金是否繳費: "是",
+      繳了多少: "300",
+      "同學電話/LINE": "0912000601",
+    },
+    {
+      接引日期: "9/12",
+      "接引人(可複選)": "安倢",
+      同學的姓名: "已繳保證金乙",
+      科系: "資訊工程學系",
+      年級: "大二",
+      是否入社: "否",
+      保證金是否繳費: "是",
+      繳了多少: "300",
+      "同學電話/LINE": "0912000602",
+    },
+  ];
+}
 async function capture(page, name) {
   if (!process.env.CLUB_QA_DIR) return;
   mkdirSync(process.env.CLUB_QA_DIR, { recursive: true });
   await page.screenshot({ path: join(process.env.CLUB_QA_DIR, name + ".png"), fullPage: true });
+}
+
+async function assertPendingActionButtons(page) {
+  const card = page.locator(".recruitment-pending article").first();
+  await card.waitFor();
+  await page.waitForFunction(() => {
+    const nav = document.querySelector(".admin-bottom-nav");
+    const article = document.querySelector(".recruitment-pending article");
+    if (!article) return false;
+    const actions = [...article.querySelectorAll(".recruitment-actions a, .recruitment-actions button")];
+    if (actions.length < 4) return false;
+    if (!nav || getComputedStyle(nav).display === "none") return true;
+    const navTop = nav.getBoundingClientRect().top;
+    return actions.every((el) => {
+      const box = el.getBoundingClientRect();
+      return box.height >= 44 && box.bottom <= navTop + 1;
+    });
+  });
+  const actionMetrics = await page.evaluate(() => {
+    const nav = document.querySelector(".admin-bottom-nav");
+    const navHidden = !nav || getComputedStyle(nav).display === "none";
+    const navTop = navHidden ? null : nav.getBoundingClientRect().top;
+    const article = document.querySelector(".recruitment-pending article");
+    return [...(article?.querySelectorAll(".recruitment-actions a, .recruitment-actions button") ?? [])].map((el) => {
+      const box = el.getBoundingClientRect();
+      const parent = el.parentElement?.getBoundingClientRect();
+      const label = el.querySelector("span");
+      const labelBox = label?.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return {
+        height: box.height,
+        width: box.width,
+        top: box.top,
+        bottom: box.bottom,
+        parentWidth: parent?.width ?? 0,
+        labelHeight: labelBox?.height ?? 0,
+        nowrap: style.whiteSpace === "nowrap",
+        text: (label?.textContent || el.textContent || "").replace(/\s+/g, ""),
+        navTop,
+        clearsNav: navTop == null || box.bottom <= navTop + 1,
+        fullyOnScreen: box.top >= 0 && box.bottom <= innerHeight + 1,
+      };
+    });
+  });
+  assert.deepEqual(
+    actionMetrics.map((row) => row.text),
+    ["填寫正式資料", "開啟表單", "標記已處理", "查看詳細資料"],
+  );
+  for (const row of actionMetrics) {
+    assert.ok(row.height >= 44, `${row.text} height ${row.height}`);
+    assert.ok(row.width + 1 >= row.parentWidth, `${row.text} width ${row.width} / ${row.parentWidth}`);
+    assert.ok(row.labelHeight <= 28, `${row.text} wrapped at ${row.labelHeight}px`);
+    assert.equal(row.nowrap, true);
+    assert.equal(row.clearsNav, true, `${row.text} overlaps tab bar ${row.bottom} > ${row.navTop}`);
+  }
+  const last = actionMetrics.at(-1);
+  assert.ok(last, "missing 查看詳細資料");
+  assert.equal(last.clearsNav, true, `查看詳細資料 overlaps tab bar ${last.bottom} > ${last.navTop}`);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+}
+async function assertWarCardLabels(page) {
+  const labels = page.locator(".war-card .war-card-label");
+  await labels.first().waitFor();
+  const metrics = await labels.evaluateAll((els) =>
+    els.map((el) => {
+      const box = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return {
+        text: el.textContent?.trim() || "",
+        height: box.height,
+        nowrap: style.whiteSpace === "nowrap",
+      };
+    }),
+  );
+  assert.deepEqual(metrics.map((row) => row.text), ["接觸", "活動", "入社", "保證金"]);
+  for (const row of metrics) {
+    assert.ok(row.height <= 20, `${row.text} wrapped at ${row.height}px`);
+    assert.equal(row.nowrap, true);
+  }
+  const hints = await page.locator(".war-card .war-card-hint").evaluateAll((els) =>
+    els.map((el) => {
+      const box = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return {
+        text: el.textContent?.trim() || "",
+        height: box.height,
+        nowrap: style.whiteSpace === "nowrap",
+        clipped: el.scrollWidth > el.clientWidth + 1,
+      };
+    }),
+  );
+  assert.equal(hints[1]?.text, "報名");
+  assert.equal(hints[2]?.text, "招生表");
+  assert.equal(hints[3]?.text, "$600");
+  assert.notEqual(hints[3]?.text, "需確認");
+  assert.equal(hints[3]?.nowrap, true);
+  assert.equal(hints[3]?.clipped, false);
+  for (const row of [hints[1], hints[2], hints[3]]) {
+    assert.ok(row.height <= 20, `${row.text} hint wrapped at ${row.height}px`);
+    assert.equal(row.nowrap, true);
+    assert.equal(row.clipped, false, `${row.text} clipped`);
+  }
+  assert.ok(await page.getByText("保證金以正式表單勾選為準").count());
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  assert.equal(await page.getByText("分級").count(), 0);
+  assert.equal(await page.getByText("S／A／B").count(), 0);
+}
+async function assertAdminSafeCopy(page) {
+  const text = await page.locator("body").innerText();
+  assert.equal(text.includes("分級"), false);
+  assert.equal(text.includes("S／A／B"), false);
+  assert.equal(/submissionId/i.test(text), false);
+  assert.equal(text.includes("BEGIN PRIVATE"), false);
+  assert.equal(text.includes("GOOGLE_PRIVATE_KEY"), false);
+  assert.equal(text.includes("googleapis"), false);
+}
+async function mockAdminApis(page, { recruitmentMode }) {
+  await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+  await page.route("**/api/admin/dashboard**", (route) => {
+    const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+    return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+  });
+  await page.route("**/api/admin/recruitment**", (route) => {
+    const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+    if (recruitmentMode() === "fail") {
+      return route.fulfill({
+        status: 500,
+        json: { error: "GOOGLE_PRIVATE_KEY -----BEGIN PRIVATE KEY----- leaked" },
+      });
+    }
+    if (recruitmentMode() === "empty") {
+      return route.fulfill({
+        json: buildRecruitmentDashboard({
+          date,
+          gameRows: [],
+          recruitmentRows: [],
+          masterRows: [],
+        }),
+      });
+    }
+    return route.fulfill({ status: 401, json: { error: "請先登入管理後台" } });
+  });
+}
+async function assertFailShell(page, navName) {
+  await page.locator("[data-war-room=home][data-war-state=error]").waitFor();
+  await page.locator("[data-sync-state=fail]").first().waitFor();
+  assert.ok(await page.getByText("失敗", { exact: true }).count());
+  assert.ok(await page.getByText(/最後同步/).count());
+  assert.ok(await page.getByRole("button", { name: "再試一次" }).count());
+  const nav = page.getByRole("navigation", { name: navName, exact: true });
+  assert.equal(await nav.getByRole("button").count(), 4);
+  await nav.getByRole("button", { name: "戰情", exact: true }).waitFor();
+  await nav.getByRole("button", { name: "待處理", exact: true }).waitFor();
+  await nav.getByRole("button", { name: "名單", exact: true }).waitFor();
+  await nav.getByRole("button", { name: "更多", exact: true }).waitFor();
+  const labels = await page.locator(".war-card .war-card-label").allTextContents();
+  assert.deepEqual(labels.map((value) => value.trim()), ["接觸", "活動", "入社", "保證金"]);
+  await assertAdminSafeCopy(page);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
 }
 test(
   "club mobile DOM, scrolling, admin filters and game interactions (optional QA screenshots)",
@@ -88,8 +273,19 @@ test(
             json: {
               ok: true, public: true, scope: "today", date: "2026-09-13",
               generatedAt: "2026-09-13T10:00:00.000Z", count: 1,
-              topThree: [{ rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" }],
-              rows: [{ rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" }],
+              topThree: [
+                { rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" },
+                { rank: 2, displayName: "李○", score: 2500, accuracy: 90, title: "Lv.3 穩定領航者", time: "17:00" },
+                { rank: 3, displayName: "陳○安", score: 1800, accuracy: 80, title: "Lv.2 潛力領袖", time: "16:00" },
+              ],
+              rows: [
+                { rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" },
+                { rank: 2, displayName: "李○", score: 2500, accuracy: 90, title: "Lv.3 穩定領航者", time: "17:00" },
+                { rank: 3, displayName: "陳○安", score: 1800, accuracy: 80, title: "Lv.2 潛力領袖", time: "16:00" },
+                { rank: 4, displayName: "林○", score: 1600, accuracy: 78, title: "Lv.2 潛力領袖", time: "15:00" },
+                { rank: 5, displayName: "黃○", score: 1400, accuracy: 70, title: "Lv.1 心靈修煉者", time: "14:00" },
+                { rank: 6, displayName: "張○", score: 1200, accuracy: 66, title: "Lv.1 心靈修煉者", time: "13:00" },
+              ],
             },
           }),
         );
@@ -152,7 +348,7 @@ test(
                 _submissionId: result.submissionId,
               }],
               recruitmentRows: [],
-              masterRows: [],
+              masterRows: paidDepositMasterRows(),
             }),
           });
         });
@@ -273,6 +469,7 @@ test(
       await page.getByLabel("管理員密碼").fill("ui-test-only");
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("alert").waitFor();
+      sessionAuthenticated = true;
       await page.route("**/api/admin/login", route => route.fulfill({ json: { ok: true } }));
       await page.route("**/api/admin/dashboard**", route => {
         const date = new URL(route.request().url()).searchParams.get("date");
