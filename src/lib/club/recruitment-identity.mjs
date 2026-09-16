@@ -158,6 +158,35 @@ export function profileConsistent(left, right) {
   return deptOk && gradeOk;
 }
 
+function identityName(row) {
+  return text(row?.normalizedName) || normalizeName(row?.name);
+}
+
+function identityPhone(row) {
+  return text(row?.normalizedPhone);
+}
+
+/** Official identity is name+phone, same as the deposit card and roster. Never phone-only. */
+export function sameOfficialIdentity(left, right) {
+  const leftName = identityName(left);
+  const rightName = identityName(right);
+  const leftPhone = identityPhone(left);
+  const rightPhone = identityPhone(right);
+  return Boolean(leftName && rightName && leftPhone && rightPhone && leftName === rightName && leftPhone === rightPhone);
+}
+
+/** Name or phone collides across two different identities. */
+export function officialIdentityConflict(left, right) {
+  const leftName = identityName(left);
+  const rightName = identityName(right);
+  const leftPhone = identityPhone(left);
+  const rightPhone = identityPhone(right);
+  if (leftPhone && rightPhone && leftPhone === rightPhone && leftName && rightName && leftName !== rightName) return true;
+  if (leftName && rightName && leftName === rightName && leftPhone && rightPhone && leftPhone !== rightPhone) return true;
+  if (leftName && rightName && leftName === rightName && Boolean(leftPhone) !== Boolean(rightPhone)) return true;
+  return false;
+}
+
 /**
  * @typedef {{ key: string, status: "matched" | "unmatched" | "ambiguous", reason: string }} IdentityMatch
  */
@@ -295,9 +324,8 @@ export function personIsRecruited(person, recruits) {
     ).filter(Boolean),
   );
   if (valid.some((row) => attemptIds.has(text(row.submissionId).toLowerCase()))) return true;
-  if (person.normalizedPhone && valid.some((row) => row.normalizedPhone === person.normalizedPhone)) {
-    return true;
-  }
+  if (valid.some((row) => sameOfficialIdentity(person, row))) return true;
+  if (identityPhone(person)) return false;
   if (person.status !== "matched") return false;
   const named = valid.filter((row) => row.normalizedName && row.normalizedName === person.normalizedName);
   if (!named.length) return false;
@@ -321,8 +349,14 @@ export function matchIncomingRecruitment(incoming, people) {
   }
   if (incoming.normalizedPhone) {
     const hits = people.filter((person) => person.normalizedPhone === incoming.normalizedPhone);
-    if (hits.length === 1) return { person: hits[0], reason: "normalizedPhone" };
-    if (hits.length > 1) return { person: null, reason: "ambiguous-phone" };
+    if (incoming.normalizedName) {
+      const named = hits.filter((person) => person.normalizedName === incoming.normalizedName);
+      if (hits.length && !named.length) return { person: null, reason: "phone-name-conflict" };
+      if (named.length === 1) return { person: named[0], reason: "name-and-phone" };
+      if (named.length > 1) return { person: null, reason: "ambiguous-phone" };
+    } else if (hits.length > 1) {
+      return { person: null, reason: "ambiguous-phone" };
+    }
   }
   const named = people.filter((person) =>
     person.normalizedName && person.normalizedName === incoming.normalizedName);

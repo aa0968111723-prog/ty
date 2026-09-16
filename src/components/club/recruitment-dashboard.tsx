@@ -134,7 +134,11 @@ export function PendingQueue({
         ) : (
           <div className="admin-person-list recruitment-pending">
             {pending.map((row, index) => (
-              <article key={row.personKey} className={index === 0 ? "is-priority" : undefined}>
+              <article
+                key={row.personKey}
+                data-review={row.needsReview ? "true" : undefined}
+                className={index === 0 ? "is-priority" : undefined}
+              >
                 <div>
                   <strong>{row.name}</strong>
                   {index === 0 ? <span className="admin-badge is-priority">現在先找</span> : null}

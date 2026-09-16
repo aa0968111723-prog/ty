@@ -218,7 +218,7 @@ test("same submission processed twice is duplicate and does not create a second 
   assert.equal(sectioned.gameGatekeeper, "柏能");
 });
 
-test("phone match removes candidate even without submissionId on the form row", () => {
+test("name and phone match removes candidate even without submissionId on the form row", () => {
   const player = game({
     姓名: "電話去重",
     電話: "0910000009",
@@ -239,6 +239,46 @@ test("phone match removes candidate even without submissionId on the form row", 
     masterRows: [],
   });
   assert.deepEqual(data.pending.map((row) => row.name), ["仍待跟進"]);
+  assert.equal(data.summary.pending, 1);
+  assert.equal(data.summary.pending, data.pending.length);
+});
+
+test("same-phone different-name form does not drop the pending student", () => {
+  const tang = game({
+    姓名: "唐同學",
+    電話: "0917777174",
+    遊戲關主: "安倢",
+    分數: 3600,
+    _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [tang],
+    recruitmentRows: [{
+      時間戳記: "2026/9/14 下午 4:00:00",
+      同學的姓名: "陳同學甲乙丙",
+      "同學電話/LINE": "0917777174",
+      "接引人(可複選)": "柏能",
+      是否入社: "否",
+      保證金是否繳費: "是",
+    }],
+    masterRows: [],
+  });
+  assert.equal(data.summary.pending, 1);
+  assert.equal(data.pending.length, 1);
+  assert.equal(data.summary.pending, data.pending.length);
+  assert.equal(data.pending[0].name, "唐同學");
+  assert.equal(data.pending[0].needsReview, true);
+  assert.equal(data.pending[0].gameGatekeeper, "安倢");
+  assert.equal(data.pending[0].score, undefined);
+  const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal(partner.pending.length, 1);
+  assert.equal(partner.pending[0].name, "唐同學");
+  assert.equal(partner.pending[0].needsReview, true);
+  assert.equal(partner.pending[0].score, undefined);
+  assert.equal(partner.pending[0].tier, undefined);
+  assert.equal(data.gameGatekeepers.find((row) => row.name === "安倢")?.pending, 1);
+  assert.equal(data.gameGatekeepers.find((row) => row.name === "安倢")?.recruited, 0);
 });
 
 test("practice-like rows are ignored by game attempt parser", () => {

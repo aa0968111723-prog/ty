@@ -6,6 +6,7 @@ import {
   identityFields,
   normalizeGatekeeper,
   normalizeName,
+  officialIdentityConflict,
   personIsRecruited,
   splitDepartmentGrade,
   text,
@@ -598,7 +599,10 @@ export function buildRecruitmentDashboard(input = {}) {
 
   const pending = pendingPeople.map((person) => {
     const latest = latestAttempt(person.attempts);
-    const needsReview = person.status === "ambiguous" || reviewKeys.has(person.personKey);
+    const needsReview = person.status === "ambiguous"
+      || reviewKeys.has(person.personKey)
+      || recruits.some((row) => officialIdentityConflict(person, row))
+      || master.some((row) => officialIdentityConflict(person, row));
     return {
       personKey: person.personKey,
       status: person.status,

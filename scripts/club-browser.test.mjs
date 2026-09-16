@@ -583,6 +583,74 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("admin pending keeps same-phone different-name students for review", async () => {
+      const board = (date) => buildRecruitmentDashboard({
+        date,
+        gameRows: [{
+          姓名: "唐同學",
+          電話: "0917777174",
+          科系: "歷史學系",
+          年級: "大一",
+          遊戲關主: "安倢",
+          分數: 3600,
+          遊戲時間: `${date}T01:00:00.000Z`,
+          _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+          _kind: "official",
+          _skipSave: false,
+        }],
+        recruitmentRows: [{
+          時間戳記: `${date} 09:00:00`,
+          同學的姓名: "陳同學甲乙丙",
+          "同學電話/LINE": "0917777174",
+          "接引人(可複選)": "柏能",
+          是否入社: "否",
+          保證金是否繳費: "是",
+        }],
+        masterRows: [],
+      });
+      const runPending = async (width, height, navName, shot) => {
+        const context = await browser.newContext({
+          viewport: { width, height },
+          ...(width <= 430 ? { isMobile: true, hasTouch: true } : {}),
+        });
+        const page = await context.newPage();
+        const errors = [];
+        page.on("pageerror", (error) => errors.push(error.message));
+        await page.route("**/*", (route) =>
+          new URL(route.request().url()).origin !== origin
+            ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+            : route.continue(),
+        );
+        await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+        await page.route("**/api/admin/dashboard**", (route) => {
+          const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+          return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+        });
+        await page.route("**/api/admin/recruitment**", (route) => {
+          const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+          return route.fulfill({ json: board(date) });
+        });
+        await page.goto(`${origin}/admin`);
+        await page.locator("[data-war-room=home]").waitFor();
+        await page.getByRole("navigation", { name: navName, exact: true }).getByRole("button", { name: "待處理", exact: true }).click();
+        await page.getByRole("heading", { name: "待填正式資料" }).waitFor();
+        await page.getByText("唐同學", { exact: true }).waitFor();
+        assert.equal(await page.getByText("唐同學", { exact: true }).count(), 1);
+        assert.equal(await page.locator(".recruitment-pending [data-review=true]").count(), 1);
+        assert.ok(await page.getByText("需確認").count());
+        assert.equal(await page.getByText("陳同學甲乙丙").count(), 0);
+        assert.ok(await page.getByText("1 位尚未填正式招生資料").count());
+        assert.ok(await page.getByText("遊戲關主 安倢").count());
+        assert.equal(await page.getByText("3600").count(), 0);
+        await assertAdminSafeCopy(page);
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+        await capture(page, shot);
+        assert.deepEqual(errors, []);
+        await context.close();
+      };
+      await runPending(390, 844, "手機後台導覽", "admin-pending-review-390");
+      await runPending(1280, 800, "後台導覽", "admin-pending-review-desktop");
+    });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

@@ -10,8 +10,10 @@ import {
   normalizeGrade,
   normalizeName,
   normalizePhone,
+  officialIdentityConflict,
   personIsRecruited,
   profileConsistent,
+  sameOfficialIdentity,
   splitDepartmentGrade,
 } from "./recruitment-identity.mjs";
 
@@ -90,4 +92,31 @@ test("recruited people drop out of candidates; unknown gatekeeper is kept", () =
   const incoming = matchIncomingRecruitment({ submissionId: "sid-a", ...identityFields({ name: "甲", phone: "0911111111" }) }, people);
   assert.equal(incoming.reason, "_gameSubmissionId");
   assert.equal(profileConsistent({ department: "歷史學系", grade: "大一" }, { department: "歷史學系" }), true);
+});
+
+test("same phone different names is not recruited and is a conflict", () => {
+  const people = clusterGamePeople([
+    { name: "唐同學", phone: "0917777174", gatekeeper: "安倢", submissionId: "sid-tang" },
+  ]);
+  const chenForm = { normalizedPhone: "0917777174", normalizedName: "陳同學甲乙丙", duplicate: false };
+  assert.equal(sameOfficialIdentity(people[0], chenForm), false);
+  assert.equal(officialIdentityConflict(people[0], chenForm), true);
+  assert.equal(personIsRecruited(people[0], [chenForm]), false);
+  const incoming = matchIncomingRecruitment({
+    ...identityFields({ name: "陳同學甲乙丙", phone: "0917777174" }),
+  }, people);
+  assert.equal(incoming.person, null);
+  assert.equal(incoming.reason, "phone-name-conflict");
+});
+
+test("same name and phone still matches without submissionId", () => {
+  const people = clusterGamePeople([
+    { name: "電話去重", phone: "0910000009", gatekeeper: "柏能", submissionId: "sid-phone" },
+  ]);
+  const form = { normalizedPhone: "0910000009", normalizedName: "電話去重", duplicate: false };
+  assert.equal(sameOfficialIdentity(people[0], form), true);
+  assert.equal(personIsRecruited(people[0], [form]), true);
+  const incoming = matchIncomingRecruitment(identityFields({ name: "電話去重", phone: "0910-000-009" }), people);
+  assert.equal(incoming.reason, "name-and-phone");
+  assert.equal(incoming.person.personKey, people[0].personKey);
 });
