@@ -119,10 +119,12 @@ function RecruiterPicker({
   value,
   onChange,
   compact = false,
+  asSelect = false,
 }: {
   value: string;
   onChange: (name: string) => void;
   compact?: boolean;
+  asSelect?: boolean;
 }) {
   const [choosing, setChoosing] = useState(!value);
   const showGrid = !compact || !value || choosing;
@@ -130,6 +132,25 @@ function RecruiterPicker({
     const next = value === name ? "" : name;
     onChange(next);
     setChoosing(!next);
+  }
+  if (asSelect) {
+    return (
+      <div className="battle-next-picker recruiter-select">
+        <label>
+          這位有緣人的接引人
+          <select
+            aria-label="這位有緣人的接引人"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+          >
+            <option value="">請選擇</option>
+            {OFFICIAL_RECRUITERS.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+    );
   }
   const buttons = (
     <div className="quickfill-partners">
@@ -270,6 +291,7 @@ function PersonCard({
         <span className="admin-badge">{statusLabel(row)}</span>
       </div>
       <ConfirmMark show={row.needsConfirmation} reason={row.confirmationReason} />
+      <a className="admin-primary" href={followUp}>填寫正式資料</a>
       <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
       <p>{row.phone || "電話未填"}</p>
       <p>遊戲完成 {row.gameCompletedAt || row.completedAt ? time(String(row.gameCompletedAt || row.completedAt)) : "時間未填"}</p>
@@ -278,7 +300,6 @@ function PersonCard({
       <p>活動 {activities}</p>
       <p>入社 {row.joined || "尚未填"} · 保證金 {row.depositPaid || "尚未填"}</p>
       <div className="recruitment-actions">
-        <a className="admin-primary" href={followUp}>填寫正式資料</a>
         {row.prefillUrl ? (
           <a href={row.prefillUrl} target="_blank" rel="noreferrer">
             開啟表單 <ExternalLink size={16} />
@@ -460,29 +481,31 @@ export function RecruitmentDashboard({
   if (mode === "queue") {
     return (
       <div className="recruitment-board">
-        <RecruiterPicker value={selfRecruiter} onChange={rememberRecruiter} />
         <section className="admin-panel">
           <div className="admin-section-heading">
             <h2>待填正式招生資料</h2>
             <FiltersToggle open={filtersOpen} panelId="queue-filters" onToggle={() => setFiltersOpen((value) => !value)} />
           </div>
           <NamePhoneSearch query={query} setQuery={setQuery} />
+          <RecruiterPicker value={selfRecruiter} onChange={rememberRecruiter} asSelect />
           <p className="admin-caption">
             {showAllPending || !selfRecruiter
               ? `${pending.length} 位尚未填正式資料`
               : `${pending.length} 位與「${selfRecruiter}」相關、尚未填正式資料`}
           </p>
-          <button
-            type="button"
-            aria-pressed={showAllPending}
-            data-queue="show-all"
-            onClick={() => setShowAllPending((value) => !value)}
-          >
-            {showAllPending ? "只看我的有緣人" : "看全部尚未填表"}
-          </button>
-          <button type="button" onClick={() => setStatus(status === "handled" ? "pending" : "handled")}>
-            {status === "handled" ? "只看未處理" : "含已標記處理"}
-          </button>
+          <div className="queue-toggles">
+            <button
+              type="button"
+              aria-pressed={showAllPending}
+              data-queue="show-all"
+              onClick={() => setShowAllPending((value) => !value)}
+            >
+              {showAllPending ? "只看我的有緣人" : "看全部尚未填表"}
+            </button>
+            <button type="button" onClick={() => setStatus(status === "handled" ? "pending" : "handled")}>
+              {status === "handled" ? "只看未處理" : "含已標記處理"}
+            </button>
+          </div>
           <div id="queue-filters" className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
             <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
               <option value="">所有遊戲關主</option>

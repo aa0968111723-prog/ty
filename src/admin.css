@@ -3,7 +3,7 @@
   min-height: 100dvh;
   background: var(--page-bg-warm);
   color: var(--text-primary);
-  padding: 0 0 calc(88px + env(safe-area-inset-bottom));
+  padding: 0 0 calc(108px + env(safe-area-inset-bottom));
   overflow-x: hidden;
 }
 .admin-page button,
@@ -1303,6 +1303,29 @@
 }
 .battle-next-picker {
   margin-bottom: var(--space-2);
+}
+.recruiter-select label {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+.recruiter-select select {
+  width: 100%;
+}
+.queue-toggles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+.recruitment-card > .admin-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  text-decoration: none;
+  margin: var(--space-2) 0;
 }
 .battle-next-picker .quickfill-partners {
   margin-top: var(--space-2);

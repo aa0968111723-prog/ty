@@ -177,8 +177,8 @@ test(
         await assertScroll("admin");
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待填正式招生資料" }).waitFor();
-        const self = page.getByRole("button", { name: "柏能", exact: true });
-        if ((await self.getAttribute("aria-pressed")) !== "true") await self.click();
+        const recruiterSelect = page.getByLabel("這位有緣人的接引人");
+        if ((await recruiterSelect.inputValue()) !== "柏能") await recruiterSelect.selectOption("柏能");
         await page.getByRole("link", { name: "填寫正式資料" }).first().waitFor();
         await capture(page, `admin-${width}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
@@ -409,10 +409,12 @@ test(
       await page.goto(`${origin}/admin?view=queue`);
       await page.getByRole("heading", { name: "待處理" }).waitFor();
       assert.equal(await page.getByRole("link", { name: "填寫正式資料" }).count(), 0);
-      await page.getByRole("button", { name: "柏能", exact: true }).click();
+      const searchBox = await page.getByLabel("搜尋姓名或電話").boundingBox();
+      assert.ok(searchBox.y + searchBox.height < 500, `queue search ${JSON.stringify(searchBox)}`);
+      await page.getByLabel("這位有緣人的接引人").selectOption("柏能");
       assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
       assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 0);
-      await page.getByRole("button", { name: "小哲", exact: true }).click();
+      await page.getByLabel("這位有緣人的接引人").selectOption("小哲");
       await page.getByRole("status").getByText(/目前沒有與「小哲」相關/).waitFor();
       await page.getByRole("button", { name: "看全部尚未填表" }).click();
       assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
