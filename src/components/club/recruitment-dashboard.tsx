@@ -326,9 +326,9 @@ export function RecruitmentDashboard({
                       開啟正式招生表單 <ExternalLink size={16} />
                     </a>
                     <button type="button" onClick={() => markHandled(row.personKey)}>
-                      <Check size={16} /> 已處理
+                      <Check size={16} /> 標記已處理
                     </button>
-                    <button type="button" onClick={() => setProfile(row)}>查看詳情</button>
+                    <button type="button" onClick={() => setProfile(row)}>查看詳細資料</button>
                   </div>
                 </article>
               ))}

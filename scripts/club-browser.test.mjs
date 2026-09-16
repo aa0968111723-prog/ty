@@ -170,6 +170,8 @@ test(
         await page.getByRole("link", { name: "填寫正式資料" }).waitFor();
         assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
         assert.match(await page.locator(".recruitment-pending").innerText(), /遊戲關主/);
+        assert.ok(await page.getByRole("link", { name: /開啟正式招生表單/ }).count());
+        assert.ok(await page.getByRole("button", { name: "查看詳細資料" }).count());
         assert.match(await page.getByRole("heading", { name: "這位有緣人的接引人" }).innerText(), /這位有緣人的接引人/);
         assert.equal(await page.locator(".recruiter-compact select").count(), 1);
         assert.ok(
@@ -183,6 +185,15 @@ test(
           }),
           "填寫正式資料 must sit in the first thumb viewport",
         );
+        const pendingBefore = await page.locator(".recruitment-pending article").count();
+        assert.ok(pendingBefore >= 1);
+        await page.getByRole("button", { name: "標記已處理" }).first().click();
+        await page.waitForFunction(
+          (count) => document.querySelectorAll(".recruitment-pending article").length === count - 1
+            || document.body.innerText.includes("目前沒有待處理同學"),
+          pendingBefore,
+        );
+        assert.equal(await page.locator(".recruitment-pending article").count(), pendingBefore - 1);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
         await page.getByRole("heading", { level: 1, name: "名單" }).waitFor();
         await page.getByLabel("搜尋姓名或電話").waitFor();
