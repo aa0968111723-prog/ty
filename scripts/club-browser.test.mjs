@@ -519,6 +519,7 @@ test(
       await sheet.getByText("遊戲關主").waitFor();
       assert.match(await sheet.locator("dd").filter({ hasText: "安倢" }).innerText(), /安倢/);
       const sheetForm = sheet.getByRole("link", { name: /開啟正式招生表單/ });
+      const sheetFill = sheet.getByRole("link", { name: "填寫正式資料" });
       const sheetHref = decodeURIComponent(String(await sheetForm.getAttribute("href")));
       assert.match(sheetHref, /\/viewform\?/);
       assert.doesNotMatch(sheetHref, /forms\.gle/);
@@ -527,9 +528,14 @@ test(
       assert.doesNotMatch(sheetHref, /entry\.1318284482=安倢/);
       assert.doesNotMatch(await sheet.innerText(), /submissionId/);
       const sheetTap = await sheetForm.boundingBox();
+      const fillTap = await sheetFill.boundingBox();
       assert.ok(
         sheetTap && sheetTap.height >= 43.5 && sheetTap.width >= 43.5,
         `sheet open-form tap ${JSON.stringify(sheetTap)}`,
+      );
+      assert.ok(
+        fillTap && sheetTap && fillTap.y + fillTap.height <= sheetTap.y + 1,
+        `sheet actions overlap fill=${JSON.stringify(fillTap)} form=${JSON.stringify(sheetTap)}`,
       );
       await capture(page, "profile-sheet-prefill-390");
       assert.equal(await page.locator("text=submissionId").count(), 0);

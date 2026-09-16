@@ -118,25 +118,27 @@ export function RecruitmentProfileSheet({
               </li>
             )}
           </ol>
-          {profile?.pending ? (
-            <a
-              className="admin-primary"
-              href={profile.followUpPath || `/follow-up?personKey=${encodeURIComponent(profile.personKey)}`}
-            >
-              填寫正式資料
-            </a>
-          ) : null}
-          {formUrl ? (
-            <a
-              className="admin-primary"
-              href={formUrl}
-              target="_blank"
-              rel="noreferrer"
-              data-prefill="open-form"
-            >
-              開啟正式招生表單 <ExternalLink size={16} />
-            </a>
-          ) : null}
+          <div className="recruitment-sheet-actions">
+            {profile?.pending ? (
+              <a
+                className="admin-primary"
+                href={profile.followUpPath || `/follow-up?personKey=${encodeURIComponent(profile.personKey)}`}
+              >
+                填寫正式資料
+              </a>
+            ) : null}
+            {formUrl ? (
+              <a
+                className="admin-primary"
+                href={formUrl}
+                target="_blank"
+                rel="noreferrer"
+                data-prefill="open-form"
+              >
+                開啟正式招生表單 <ExternalLink size={16} />
+              </a>
+            ) : null}
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
