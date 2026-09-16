@@ -500,6 +500,13 @@ test(
         Math.abs(phoneBox.y - deptBox.y) < 8 && phoneBox.x > deptBox.x,
         `facts not two columns phone=${JSON.stringify(phoneBox)} dept=${JSON.stringify(deptBox)}`,
       );
+      const queueForm = page.getByRole("article").filter({ hasText: "關主的同學" }).getByRole("link", { name: /開啟表單/ });
+      const queueFormHref = decodeURIComponent(String(await queueForm.getAttribute("href")));
+      assert.match(queueFormHref, /\/viewform\?/);
+      assert.doesNotMatch(queueFormHref, /forms\.gle/);
+      assert.match(queueFormHref, /entry\.1318284482=柏能/);
+      assert.match(queueFormHref, /關主的同學/);
+      assert.doesNotMatch(await queueForm.innerText(), /submissionId/);
       await capture(page, "queue-card-twocol-390");
       await page.getByLabel("這位有緣人的接引人").selectOption("小哲");
       await page.getByRole("status").getByText(/目前沒有與「小哲」相關/).waitFor();
@@ -609,6 +616,19 @@ test(
       await nextCard.getByText("歷史學系", { exact: false }).waitFor();
       await nextCard.getByText("尚未填正式資料").waitFor();
       assert.equal(await page.getByRole("link", { name: "填寫正式資料" }).count(), 1);
+      const nextForm = nextCard.getByRole("link", { name: "開啟表單" });
+      await nextForm.waitFor();
+      const nextFormHref = decodeURIComponent(String(await nextForm.getAttribute("href")));
+      assert.match(nextFormHref, /\/viewform\?/);
+      assert.doesNotMatch(nextFormHref, /forms\.gle/);
+      assert.match(nextFormHref, /entry\.1318284482=柏能/);
+      assert.match(nextFormHref, /關主的同學/);
+      const nextFormBox = await nextForm.boundingBox();
+      assert.ok(
+        nextFormBox && nextFormBox.height >= 43.5 && nextFormBox.width >= 43.5,
+        `open-form tap ${JSON.stringify(nextFormBox)}`,
+      );
+      await capture(page, "command-prefill-390");
       assert.equal(await page.getByText("別人的同學").count(), 0);
       const glance = [
         [/今日接觸/, "今日接觸"],

@@ -525,7 +525,7 @@
 .admin-person-list article:last-child {
   border: 0;
 }
-.admin-person-list article > div:not(.recruitment-meta):not(.recruitment-actions) {
+.admin-person-list article > div:not(.recruitment-meta):not(.recruitment-actions):not(.recruitment-card-actions) {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1416,6 +1416,40 @@
   min-height: 44px;
   text-decoration: none;
   margin: var(--space-2) 0;
+}
+.battle-next-actions,
+.recruitment-card-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  margin-top: var(--space-1);
+}
+.battle-next-card.is-next .battle-next-actions,
+.recruitment-card-actions:has(a + a) {
+  grid-template-columns: 1fr 1fr;
+}
+.battle-next-actions a,
+.recruitment-card-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: var(--text-small);
+  white-space: nowrap;
+}
+.battle-next-card:not(.is-next) .battle-next-actions {
+  width: auto;
+  margin-top: 0;
+  margin-left: auto;
 }
 .battle-next-picker .quickfill-partners {
   margin-top: var(--space-2);

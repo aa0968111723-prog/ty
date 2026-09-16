@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Filter } from "lucide-react";
 import { BattleCommand } from "./battle-kpis";
 import { RecruitmentProfileSheet, ConfirmMark, type RecruitmentProfile } from "./recruitment-profile-sheet";
-import { OFFICIAL_RECRUITERS, RECRUITER_STORAGE_KEY, taipeiDate } from "@/lib/club/recruitment-prefill.mjs";
+import { generatePrefilledFormUrl, OFFICIAL_RECRUITERS, RECRUITER_STORAGE_KEY, taipeiDate } from "@/lib/club/recruitment-prefill.mjs";
 import { filterPendingQueue } from "@/lib/club/recruitment-queue.mjs";
 import { time } from "./admin-presentation";
 
@@ -241,14 +241,39 @@ function NamePhoneSearch({
   );
 }
 
+function officialFormUrl(
+  row: {
+    name?: string;
+    phone?: string;
+    department?: string;
+    grade?: string;
+    gameGatekeeper?: string;
+    completedAt?: string;
+    gameCompletedAt?: string;
+    submissionId?: string;
+    latestAttempt?: { submissionId?: string; completedAt?: string };
+  },
+  recruiter: string,
+) {
+  if (!row.name && !row.phone) return "";
+  return generatePrefilledFormUrl({
+    ...row,
+    completedAt: row.completedAt || row.gameCompletedAt,
+    tier: "",
+  }, { recruiter, tier: "" });
+}
+
 function NextUpCard({
   row,
   featured,
+  recruiter,
 }: {
   row: RecruitmentProfile & { waitMinutes?: number | null; followUpPath?: string };
   featured?: boolean;
+  recruiter: string;
 }) {
   const followUp = row.followUpPath || `/follow-up?personKey=${encodeURIComponent(row.personKey)}`;
+  const formUrl = officialFormUrl(row, recruiter);
   const dept = [row.department || "科系未填", row.grade].filter(Boolean).join(" · ");
   return (
     <article className={`battle-next-card${featured ? " is-next" : ""}`}>
@@ -260,13 +285,19 @@ function NextUpCard({
         <strong>{row.name}</strong>
         <p>{dept} · {row.phone || "電話未填"}{featured ? ` · ${statusLabel(row)}` : ""}</p>
       </div>
-      <a className="admin-primary" href={followUp}>填寫正式資料</a>
+      <div className="battle-next-actions">
+        <a className="admin-primary" href={followUp}>填寫正式資料</a>
+        {featured && formUrl ? (
+          <a href={formUrl} target="_blank" rel="noreferrer" data-prefill="open-form">開啟表單</a>
+        ) : null}
+      </div>
     </article>
   );
 }
 
 function PersonCard({
   row,
+  recruiter,
   onOpen,
   onHandled,
   handled,
@@ -279,11 +310,15 @@ function PersonCard({
     needsConfirmation?: boolean;
     confirmationReason?: string;
   };
+  recruiter: string;
   onOpen: () => void;
   onHandled?: () => void;
   handled?: boolean;
 }) {
   const followUp = row.followUpPath || `/follow-up?personKey=${encodeURIComponent(row.personKey)}`;
+  const formUrl = row.pending
+    ? officialFormUrl(row, recruiter) || row.prefillUrl || ""
+    : "";
   const activities = row.activityList?.length ? row.activityList.join("、") : (row.activity || "尚未報名");
   return (
     <article className="recruitment-card">
@@ -292,7 +327,14 @@ function PersonCard({
         <span className="admin-badge">{statusLabel(row)}</span>
       </div>
       <ConfirmMark show={row.needsConfirmation} reason={row.confirmationReason} />
-      <a className="admin-primary" href={followUp}>填寫正式資料</a>
+      <div className="recruitment-card-actions">
+        <a className="admin-primary" href={followUp}>填寫正式資料</a>
+        {formUrl ? (
+          <a href={formUrl} target="_blank" rel="noreferrer" data-prefill="open-form">
+            開啟表單 <ExternalLink size={16} />
+          </a>
+        ) : null}
+      </div>
       <div className="recruitment-meta">
         <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
         <p>{row.phone || "電話未填"}</p>
@@ -304,11 +346,6 @@ function PersonCard({
         <p>保證金 {row.depositPaid || "尚未填"}</p>
       </div>
       <div className="recruitment-actions">
-        {row.prefillUrl ? (
-          <a href={row.prefillUrl} target="_blank" rel="noreferrer">
-            開啟表單 <ExternalLink size={16} />
-          </a>
-        ) : null}
         {onHandled ? (
           <button type="button" onClick={onHandled}>
             {handled ? "取消已處理" : "標記已處理"}
@@ -453,7 +490,12 @@ export function RecruitmentDashboard({
             <>
               <div className="battle-next-list">
                 {nextUp.map((row, index) => (
-                  <NextUpCard key={row.personKey} row={row} featured={index === 0} />
+                  <NextUpCard
+                    key={row.personKey}
+                    row={row}
+                    featured={index === 0}
+                    recruiter={selfRecruiter}
+                  />
                 ))}
               </div>
               {relatedPending.length > 1 ? (
@@ -534,6 +576,7 @@ export function RecruitmentDashboard({
                 <PersonCard
                   key={row.personKey}
                   row={row}
+                  recruiter={selfRecruiter}
                   onOpen={() => setProfile(row)}
                   onHandled={() => toggleHandled(row.personKey)}
                   handled={handled.has(row.personKey)}
@@ -602,6 +645,7 @@ export function RecruitmentDashboard({
               <PersonCard
                 key={row.personKey}
                 row={row}
+                recruiter={selfRecruiter}
                 onOpen={() => setProfile(row)}
               />
             ))}
