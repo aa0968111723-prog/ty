@@ -410,54 +410,11 @@ function hasActivity(value) {
   return countedActivityList(value).length > 0;
 }
 
-function personIdentityKey(row) {
-  if (text(row?.normalizedPhone)) return `phone:${row.normalizedPhone}`;
-  if (text(row?.normalizedName)) return `name:${row.normalizedName}`;
-  return `row:${text(row?.name)}:${text(row?.phone)}`;
-}
-
-function uniqueActivityPeople(rows) {
-  const keys = new Set();
-  for (const row of rows || []) {
-    if (!hasActivity(row.activity)) continue;
-    keys.add(personIdentityKey(row));
-  }
-  return keys.size;
-}
-
-function activityBreakdown(rows) {
-  /** @type {Map<string, Set<string>>} */
-  const map = new Map();
-  for (const row of rows || []) {
-    const key = personIdentityKey(row);
-    for (const activity of countedActivityList(row.activity)) {
-      const set = map.get(activity) || new Set();
-      set.add(key);
-      map.set(activity, set);
-    }
-  }
-  return [...map]
-    .map(([name, set]) => ({ name, count: set.size }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-Hant"));
-}
-
 /** @param {string} iso @param {number} days */
 export function shiftIsoDate(iso, days) {
   const [year, month, day] = String(iso).split("-").map(Number);
   const utc = Date.UTC(year, month - 1, day + Number(days || 0));
   return new Date(utc).toISOString().slice(0, 10);
-}
-
-function recruitOnDate(row, date) {
-  if (!date) return true;
-  const at = timestamp(row?.submittedAt) || "";
-  if (at && onDate(at, date)) return true;
-  const day = text(row?.recruitedAt);
-  if (!day) return false;
-  const parsed = day.match(/(\d{1,2})[/-](\d{1,2})/);
-  if (!parsed) return false;
-  const [, month, d] = parsed;
-  return date.slice(5) === `${month.padStart(2, "0")}-${d.padStart(2, "0")}`;
 }
 
 function reviewPersonKeys(people) {
@@ -626,32 +583,6 @@ export function summarizePaidDeposit(rows) {
     phoneCount: byPhone.size,
     conflictNames,
     conflictPhones,
-  };
-}
-
-function rosterIdentityConflicts(rows) {
-  /** @type {Map<string, Set<string>>} */
-  const byName = new Map();
-  /** @type {Map<string, Set<string>>} */
-  const byPhone = new Map();
-  (rows || []).forEach((row, index) => {
-    const name = rosterName(row);
-    const phone = text(row.normalizedPhone);
-    const key = depositPersonKey({ normalizedName: name, normalizedPhone: phone }, index);
-    if (name) {
-      const set = byName.get(name) || new Set();
-      set.add(key);
-      byName.set(name, set);
-    }
-    if (phone) {
-      const set = byPhone.get(phone) || new Set();
-      set.add(key);
-      byPhone.set(phone, set);
-    }
-  });
-  return {
-    names: [...byName.entries()].filter(([, set]) => set.size > 1).map(([name]) => name),
-    phones: [...byPhone.entries()].filter(([, set]) => set.size > 1).map(([phone]) => phone),
   };
 }
 

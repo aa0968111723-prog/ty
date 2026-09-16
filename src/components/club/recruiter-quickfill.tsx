@@ -130,7 +130,7 @@ export function RecruiterQuickfill() {
   const [data, setData] = useState<RecruitmentData | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [sentPrefillUrl, setSentPrefillUrl] = useState("");
+  const [, setSentPrefillUrl] = useState("");
   const [stale, setStale] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submitting, setSubmitting] = useState(false);

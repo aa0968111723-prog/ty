@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { ClubHeader } from "./club-header";
 import { BrandLogo } from "./brand-logo";
@@ -46,12 +46,14 @@ export function LeaderboardBoard({
   const [scope, setScope] = useState<LeaderboardScope>(initialScope);
   const [reload, setReload] = useState(0);
   const [data, setData] = useState<PublicLeaderboard | null>(initialData);
+  const dataRef = useRef(data);
+  dataRef.current = data;
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     const ac = new AbortController();
-    if (!data || data.scope !== scope) setLoading(true);
+    if (!dataRef.current || dataRef.current.scope !== scope) setLoading(true);
     setError(false);
     try {
       window.history.replaceState(null, "", `/leaderboard?scope=${scope}`);

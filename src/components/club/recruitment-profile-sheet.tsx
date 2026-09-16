@@ -57,13 +57,6 @@ function clock(value?: string) {
   });
 }
 
-function handlingStatus(profile?: RecruitmentProfile | null) {
-  if (profile?.handled) return "已處理";
-  if (profile?.needsReview) return "需確認";
-  if (profile?.pending) return "待處理";
-  return "已填正式資料";
-}
-
 export function RecruitmentProfileSheet({
   profile,
   onClose,

@@ -41,7 +41,7 @@ async function capture(page, name) {
   await page.screenshot({ path: join(process.env.CLUB_QA_DIR, name + ".png"), fullPage: true });
 }
 
-async function assertPendingActionButtons(page) {
+async function _assertPendingActionButtons(page) {
   const card = page.locator(".recruitment-pending article").first();
   await card.waitFor();
   await page.waitForFunction(() => {
@@ -99,7 +99,7 @@ async function assertPendingActionButtons(page) {
   assert.equal(last.clearsNav, true, `查看詳細資料 overlaps tab bar ${last.bottom} > ${last.navTop}`);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
 }
-async function assertWarCardLabels(page) {
+async function _assertWarCardLabels(page) {
   const labels = page.locator(".war-card .war-card-label");
   await labels.first().waitFor();
   const metrics = await labels.evaluateAll((els) =>
@@ -155,7 +155,7 @@ async function assertAdminSafeCopy(page) {
   assert.equal(text.includes("GOOGLE_PRIVATE_KEY"), false);
   assert.equal(text.includes("googleapis"), false);
 }
-async function mockAdminApis(page, { recruitmentMode }) {
+async function _mockAdminApis(page, { recruitmentMode }) {
   await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
   await page.route("**/api/admin/dashboard**", (route) => {
     const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
@@ -182,7 +182,7 @@ async function mockAdminApis(page, { recruitmentMode }) {
     return route.fulfill({ status: 401, json: { error: "請先登入管理後台" } });
   });
 }
-async function assertFailShell(page, navName) {
+async function _assertFailShell(page, navName) {
   await page.locator("[data-war-room=home][data-war-state=error]").waitFor();
   await page.locator("[data-sync-state=fail]").first().waitFor();
   assert.ok(await page.getByText("失敗", { exact: true }).count());
