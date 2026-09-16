@@ -16,8 +16,8 @@ export type RecruitmentProfile = {
   recruiterList?: string[];
   recruitedAt?: string;
   submittedAt?: string;
-  tier?: string;
   activity?: string;
+  activityList?: string[];
   joined?: string;
   depositPaid?: string;
   depositAmount?: string;
@@ -26,6 +26,10 @@ export type RecruitmentProfile = {
   studentId?: string;
   interest?: string;
   prefillUrl?: string;
+  followUpPath?: string;
+  needsConfirmation?: boolean;
+  confirmationReason?: string;
+  submissionId?: string;
   timeline?: Array<{ at: string; kind: string; title: string; detail: string }>;
 };
 
@@ -64,8 +68,8 @@ export function RecruitmentProfileSheet({
           </Dialog.Close>
           <dl className="recruitment-identity">
             <div><dt>遊戲關主</dt><dd>{profile?.gameGatekeeper || "未填"}</dd></div>
-            <div><dt>招生接引人</dt><dd>{profile?.recruiters || "尚未填表"}</dd></div>
-            <div><dt>活動報名</dt><dd>{profile?.activity || "尚未填"}</dd></div>
+            <div><dt>正式接引人</dt><dd>{profile?.recruiters || "尚未填表"}</dd></div>
+            <div><dt>活動報名</dt><dd>{profile?.activityList?.join("、") || profile?.activity || "尚未填"}</dd></div>
             <div><dt>入社</dt><dd>{profile?.joined || "尚未填"}</dd></div>
             <div><dt>保證金</dt><dd>{profile?.depositPaid || "尚未填"}{profile?.depositAmount ? ` · ${profile.depositAmount}` : ""}</dd></div>
             <div><dt>學號</dt><dd>{profile?.studentId || "尚未填"}</dd></div>
@@ -88,9 +92,17 @@ export function RecruitmentProfileSheet({
               </li>
             )}
           </ol>
-          {profile?.pending && profile.prefillUrl ? (
+          {profile?.pending ? (
+            <a
+              className="admin-primary"
+              href={profile.followUpPath || `/follow-up?personKey=${encodeURIComponent(profile.personKey)}`}
+            >
+              填寫正式資料
+            </a>
+          ) : null}
+          {profile?.prefillUrl ? (
             <a className="admin-primary" href={profile.prefillUrl} target="_blank" rel="noreferrer">
-              填招生資料 <ExternalLink size={16} />
+              開啟正式招生表單 <ExternalLink size={16} />
             </a>
           ) : null}
         </Dialog.Content>

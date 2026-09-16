@@ -25,27 +25,21 @@
   ],
   "shortcuts": [
     {
-      "name": "今日戰情",
+      "name": "今日招生戰情",
       "short_name": "今日戰情",
       "url": "/admin?view=today",
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     },
     {
-      "name": "前三名",
-      "short_name": "前三名",
-      "url": "/admin?view=ranking",
+      "name": "待處理",
+      "short_name": "待處理",
+      "url": "/admin?view=queue",
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     },
     {
-      "name": "聯絡名單",
-      "short_name": "聯絡名單",
+      "name": "名單",
+      "short_name": "名單",
       "url": "/admin?view=contacts",
-      "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "關主統計",
-      "short_name": "關主統計",
-      "url": "/admin?view=gatekeepers",
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     }
   ]

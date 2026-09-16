@@ -1,25 +1,31 @@
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Filter } from "lucide-react";
+import { BattleCommand } from "./battle-kpis";
 import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
+import { OFFICIAL_RECRUITERS, RECRUITER_STORAGE_KEY, taipeiDate } from "@/lib/club/recruitment-prefill.mjs";
+import { time } from "./admin-presentation";
 
 export type SyncFlag = { ok: boolean; stale?: boolean; error?: string };
 export type RecruitmentData = {
   date: string;
   summary: {
+    contactsToday?: number;
+    contactsTotal?: number;
     playedToday: number;
     pending: number;
+    pendingFormal?: number;
     pendingToday?: number;
     recruited: number;
     recruitedToday?: number;
-    s: number | null;
-    a: number | null;
-    b: number | null;
     activity: number | null;
+    activityToday?: number | null;
     joined: number | null;
     depositPaid: number | null;
     depositTotal: number | null;
     roster: number;
   };
+  activities?: Array<{ name: string; count: number; today: number }>;
+  dailyTrend?: Array<{ date: string; contacts: number; activity: number; joined: number }>;
   funnel: Array<{
     id: string;
     label: string;
@@ -30,10 +36,12 @@ export type RecruitmentData = {
   }>;
   pending: Array<RecruitmentProfile & {
     waitMinutes: number | null;
-    score: number;
     prefillUrl: string;
     gameGatekeeper: string;
     completedAt?: string;
+    followUpPath?: string;
+    needsConfirmation?: boolean;
+    confirmationReason?: string;
     submissionId?: string;
   }>;
   profiles: RecruitmentProfile[];
@@ -42,11 +50,9 @@ export type RecruitmentData = {
     played: number;
     pending: number;
     recruited: number;
-    s: number | null;
-    a: number | null;
-    b: number | null;
     activity: number | null;
     joined: number | null;
+    depositPaid?: number | null;
   }>;
   recruiters: Array<{ name: string; count: number }>;
   sync: {
@@ -64,17 +70,31 @@ export type RecruitmentData = {
   };
 };
 
-function metric(value: number | null | undefined) {
-  if (value == null) return "資料不足";
-  return value.toLocaleString();
+const HANDLED_KEY = "admin-handled-people";
+
+function readHandled() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HANDLED_KEY) || "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((item) => typeof item === "string") : []);
+  } catch {
+    return new Set<string>();
+  }
 }
 
-function waitLabel(minutes: number | null) {
-  if (minutes == null) return "時間未填";
-  if (minutes < 60) return `已等 ${minutes} 分`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest ? `已等 ${hours} 時 ${rest} 分` : `已等 ${hours} 時`;
+function writeHandled(keys: Set<string>) {
+  try {
+    localStorage.setItem(HANDLED_KEY, JSON.stringify([...keys]));
+  } catch {
+    /* ignore */
+  }
+}
+
+function readRecruiter() {
+  try {
+    return localStorage.getItem(RECRUITER_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
 }
 
 function rowMatchesQuery(
@@ -86,196 +106,292 @@ function rowMatchesQuery(
   return `${row.name} ${row.phone} ${row.department} ${row.grade}`.includes(needle);
 }
 
+function statusLabel(row: RecruitmentProfile) {
+  if (row.pending) return "尚未填正式資料";
+  if (row.joined === "是" && row.depositPaid === "是") return "已入社已繳費";
+  if (row.joined === "是") return "已入社";
+  if ((row.activityList || []).length || row.activity) return "已報名活動";
+  return "已填正式資料";
+}
+
+function PersonCard({
+  row,
+  onOpen,
+  onHandled,
+  handled,
+}: {
+  row: RecruitmentProfile & {
+    waitMinutes?: number | null;
+    prefillUrl?: string;
+    completedAt?: string;
+    followUpPath?: string;
+    needsConfirmation?: boolean;
+    confirmationReason?: string;
+  };
+  onOpen: () => void;
+  onHandled?: () => void;
+  handled?: boolean;
+}) {
+  const followUp = row.followUpPath || `/follow-up?personKey=${encodeURIComponent(row.personKey)}`;
+  const activities = row.activityList?.length ? row.activityList.join("、") : (row.activity || "尚未報名");
+  return (
+    <article className="recruitment-card">
+      <div>
+        <strong>{row.name}</strong>
+        <span className="admin-badge">{statusLabel(row)}</span>
+      </div>
+      {row.needsConfirmation ? (
+        <p className="admin-error" role="status">{row.confirmationReason || "姓名或電話重複，需要確認"}</p>
+      ) : null}
+      <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
+      <p>{row.phone || "電話未填"}</p>
+      <p>遊戲完成 {row.gameCompletedAt || row.completedAt ? time(String(row.gameCompletedAt || row.completedAt)) : "時間未填"}</p>
+      <p>遊戲關主 {row.gameGatekeeper || "未填"}</p>
+      <p>正式接引人 {row.recruiters || "尚未指定"}</p>
+      <p>活動 {activities}</p>
+      <p>入社 {row.joined || "尚未填"} · 保證金 {row.depositPaid || "尚未填"}</p>
+      <div className="recruitment-actions">
+        <a className="admin-primary" href={followUp}>填寫正式資料</a>
+        {row.prefillUrl ? (
+          <a href={row.prefillUrl} target="_blank" rel="noreferrer">
+            開啟表單 <ExternalLink size={16} />
+          </a>
+        ) : null}
+        {onHandled ? (
+          <button type="button" onClick={onHandled}>
+            {handled ? "取消已處理" : "標記已處理"}
+          </button>
+        ) : null}
+        <button type="button" onClick={onOpen}>查看詳細</button>
+      </div>
+    </article>
+  );
+}
+
 export function RecruitmentDashboard({
   data,
+  mode = "command",
   query,
   setQuery,
   gameGatekeeper,
   setGameGatekeeper,
   recruiter,
   setRecruiter,
-  tier,
-  setTier,
   status,
   setStatus,
+  date,
+  setDate,
+  onOpenQueue,
+  onOpenRoster,
 }: {
   data: RecruitmentData;
+  mode?: "command" | "queue" | "roster";
   query: string;
   setQuery: (value: string) => void;
   gameGatekeeper: string;
   setGameGatekeeper: (value: string) => void;
   recruiter: string;
   setRecruiter: (value: string) => void;
-  tier: string;
-  setTier: (value: string) => void;
   status: string;
   setStatus: (value: string) => void;
+  date?: string;
+  setDate?: (value: string) => void;
+  onOpenQueue?: () => void;
+  onOpenRoster?: () => void;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [profile, setProfile] = useState<RecruitmentProfile | null>(null);
-  const [department, setDepartment] = useState("");
-  const [grade, setGrade] = useState("");
   const [activity, setActivity] = useState("");
   const [joined, setJoined] = useState("");
   const [deposit, setDeposit] = useState("");
-  const departments = useMemo(
-    () => [...new Set(data.profiles.map((row) => row.department).filter(Boolean))],
-    [data.profiles],
-  );
-  const grades = useMemo(
-    () => [...new Set(data.profiles.map((row) => row.grade).filter(Boolean))],
-    [data.profiles],
-  );
-  const activities = useMemo(
-    () => [...new Set(data.profiles.map((row) => row.activity).filter(Boolean))],
-    [data.profiles],
-  );
+  const [filled, setFilled] = useState("");
+  const [range, setRange] = useState<"today" | "yesterday" | "date" | "all">("all");
+  const [handled, setHandled] = useState<Set<string>>(readHandled);
+  const [selfRecruiter, setSelfRecruiter] = useState(() => recruiter || readRecruiter());
+  const activities = data.activities?.length
+    ? data.activities.map((row) => row.name)
+    : [...new Set(data.profiles.flatMap((row) => row.activityList || []).filter(Boolean))];
+
   const pending = useMemo(() => {
     return data.pending.filter((row) => {
+      if (handled.has(row.personKey) && status !== "handled") return false;
       if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
-      if (department && row.department !== department) return false;
-      if (grade && row.grade !== grade) return false;
+      if (selfRecruiter && row.recruiters && !(row.recruiterList || []).includes(selfRecruiter) && row.recruiters !== selfRecruiter) {
+        return false;
+      }
       return rowMatchesQuery(row, query);
     });
-  }, [data.pending, gameGatekeeper, department, grade, query]);
+  }, [data.pending, gameGatekeeper, selfRecruiter, query, handled, status]);
+
   const people = useMemo(() => {
+    const today = data.date;
+    const yesterday = taipeiDate(new Date(`${data.date}T12:00:00+08:00`))
+      ? (() => {
+        const noon = new Date(`${data.date}T12:00:00+08:00`);
+        return taipeiDate(new Date(noon.getTime() - 86400000));
+      })()
+      : "";
     return data.profiles.filter((row) => {
+      const completed = row.gameCompletedAt || row.submittedAt || "";
+      const day = completed ? taipeiDate(completed) : "";
+      if (range === "today" && day && day !== today) return false;
+      if (range === "yesterday" && day && day !== yesterday) return false;
+      if (range === "date" && date && day && day !== date) return false;
       if (status === "pending" && !row.pending) return false;
       if (status === "done" && row.pending) return false;
+      if (filled === "yes" && row.pending) return false;
+      if (filled === "no" && !row.pending) return false;
       if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
       if (recruiter && !(row.recruiterList || []).includes(recruiter)) return false;
-      if (tier && !(row.tier || "").startsWith(tier)) return false;
-      if (department && row.department !== department) return false;
-      if (grade && row.grade !== grade) return false;
-      if (activity && row.activity !== activity) return false;
+      if (activity && !(row.activityList || []).includes(activity) && row.activity !== activity) return false;
       if (joined === "yes" && row.joined !== "是") return false;
       if (joined === "no" && row.joined === "是") return false;
       if (deposit === "yes" && row.depositPaid !== "是") return false;
       if (deposit === "no" && row.depositPaid === "是") return false;
       return rowMatchesQuery(row, query);
     });
-  }, [data.profiles, status, gameGatekeeper, recruiter, tier, department, grade, activity, joined, deposit, query]);
+  }, [data.profiles, data.date, range, date, status, filled, gameGatekeeper, recruiter, activity, joined, deposit, query]);
+
+  function rememberRecruiter(name: string) {
+    setSelfRecruiter(name);
+    setRecruiter(name);
+    try { localStorage.setItem(RECRUITER_STORAGE_KEY, name); } catch { /* ignore */ }
+  }
+
+  function toggleHandled(personKey: string) {
+    setHandled((current) => {
+      const next = new Set(current);
+      if (next.has(personKey)) next.delete(personKey);
+      else next.add(personKey);
+      writeHandled(next);
+      return next;
+    });
+  }
+
+  if (mode === "command") {
+    return (
+      <div className="recruitment-board">
+        <BattleCommand
+          data={{
+            summary: data.summary,
+            activities: data.activities || [],
+            dailyTrend: data.dailyTrend || [],
+            funnel: data.funnel,
+            sync: data.sync,
+          }}
+          onOpenQueue={() => onOpenQueue?.()}
+          onOpenRoster={() => onOpenRoster?.()}
+        />
+        <section className="admin-panel">
+          <div className="admin-section-heading">
+            <h2>現在應優先處理</h2>
+            <button type="button" className="admin-primary" onClick={() => onOpenQueue?.()}>全部待處理</button>
+          </div>
+          {!data.pending.length ? (
+            <p className="admin-empty">目前沒有待填正式資料的同學</p>
+          ) : (
+            <div className="admin-person-list">
+              {data.pending.slice(0, 3).map((row) => (
+                <PersonCard
+                  key={row.personKey}
+                  row={row}
+                  onOpen={() => setProfile(row)}
+                  onHandled={() => toggleHandled(row.personKey)}
+                  handled={handled.has(row.personKey)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+        <RecruitmentProfileSheet profile={profile} onClose={() => setProfile(null)} />
+      </div>
+    );
+  }
+
+  if (mode === "queue") {
+    return (
+      <div className="recruitment-board">
+        <section className="admin-panel" aria-label="這位有緣人的接引人">
+          <h2>這位有緣人的接引人</h2>
+          <p className="admin-caption">選擇目前負責後續聯繫的夥伴。遊戲關主不會被改成接引人。</p>
+          <div className="quickfill-partners">
+            {OFFICIAL_RECRUITERS.map((name) => (
+              <button
+                key={name}
+                type="button"
+                aria-pressed={selfRecruiter === name}
+                onClick={() => rememberRecruiter(selfRecruiter === name ? "" : name)}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="admin-panel">
+          <div className="admin-section-heading">
+            <h2>待填正式招生資料</h2>
+            <button type="button" className="admin-more-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}>
+              <span><Filter size={18} /> 篩選</span>
+              <ChevronDown size={18} className={filtersOpen ? "is-open" : ""} />
+            </button>
+          </div>
+          <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
+            <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話" value={query} onChange={(event) => setQuery(event.target.value)} />
+            <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
+              <option value="">所有遊戲關主</option>
+              {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}
+            </select>
+          </div>
+          <p className="admin-caption">{pending.length} 位尚未填正式資料 · 預設隱藏已標記處理</p>
+          {!pending.length ? (
+            <p className="admin-empty">這時段沒有待處理同學</p>
+          ) : (
+            <div className="admin-person-list">
+              {pending.map((row) => (
+                <PersonCard
+                  key={row.personKey}
+                  row={row}
+                  onOpen={() => setProfile(row)}
+                  onHandled={() => toggleHandled(row.personKey)}
+                  handled={handled.has(row.personKey)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+        <RecruitmentProfileSheet profile={profile} onClose={() => setProfile(null)} />
+      </div>
+    );
+  }
 
   return (
     <div className="recruitment-board">
-      <section className="admin-summary" aria-label="招生摘要">
-        <div className="admin-widget-kpi"><span>今天遊戲</span><strong>{metric(data.summary.playedToday)}</strong><small>現場挑戰人數</small></div>
-        <div className="admin-widget-kpi"><span>尚未填表</span><strong>{metric(data.summary.pending)}</strong><small>待追蹤</small></div>
-        <div className="admin-widget-kpi"><span>已完成招生</span><strong>{metric(data.summary.recruited)}</strong><small>有效紀錄</small></div>
-        <div className="admin-widget-kpi"><span>S</span><strong>{metric(data.summary.s)}</strong><small>分級</small></div>
-        <div className="admin-widget-kpi"><span>A</span><strong>{metric(data.summary.a)}</strong><small>分級</small></div>
-        <div className="admin-widget-kpi"><span>B</span><strong>{metric(data.summary.b)}</strong><small>分級</small></div>
-        <div className="admin-widget-kpi"><span>已報活動</span><strong>{metric(data.summary.activity)}</strong><small>總表</small></div>
-        <div className="admin-widget-kpi"><span>已入社</span><strong>{metric(data.summary.joined)}</strong><small>總表</small></div>
-        <div className="admin-widget-kpi"><span>保證金已繳</span><strong>{metric(data.summary.depositPaid)}</strong><small>總額 {metric(data.summary.depositTotal)}</small></div>
-        <div className="admin-widget-kpi"><span>總留資料</span><strong>{metric(data.summary.roster)}</strong><small>總表人數</small></div>
-      </section>
-
-      <section className="admin-panel recruitment-funnel" aria-label="招生漏斗">
-        <h2>招生狀況</h2>
-        <ol>
-          {data.funnel.map((layer) => (
-            <li key={layer.id}>
-              <strong>{layer.label}</strong>
-              <b>{layer.missing || layer.count == null ? "資料不足" : layer.count}</b>
-              <small>
-                {layer.fromPrevious == null ? (layer.id === "played" ? "起點" : "資料不足") : `上一階 ${layer.fromPrevious}%`}
-                {layer.fromStart != null ? ` · 整體 ${layer.fromStart}%` : ""}
-              </small>
-            </li>
-          ))}
-        </ol>
-      </section>
-
       <section className="admin-panel">
         <div className="admin-section-heading">
-          <h2>待追蹤</h2>
-          <a className="admin-primary" href="/follow-up">接引人快速填表</a>
-        </div>
-        <p className="admin-caption">{pending.length} 位尚未填招生表單 · 遊戲關主與接引人分開填</p>
-        {!pending.length ? (
-          <p className="admin-empty">這時段沒有待追蹤同學</p>
-        ) : (
-          <div className="admin-person-list recruitment-pending">
-            {pending.map((row) => (
-              <article key={row.personKey}>
-                <div>
-                  <strong>{row.name}</strong>
-                  <span className="admin-badge">{row.gameGatekeeper || "未分類"}</span>
-                </div>
-                <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
-                <p>{row.phone || "電話未填"}</p>
-                <small>{waitLabel(row.waitMinutes)} · {row.score?.toLocaleString?.() ?? row.score} 分</small>
-                <div className="recruitment-actions">
-                  <a
-                    className="admin-primary"
-                    href={`/follow-up?personKey=${encodeURIComponent(row.personKey)}${row.submissionId ? `&submissionId=${encodeURIComponent(row.submissionId)}` : ""}`}
-                  >
-                    接引人快速填表
-                  </a>
-                  <a href={row.prefillUrl} target="_blank" rel="noreferrer">
-                    直接開表單 <ExternalLink size={16} />
-                  </a>
-                  <button type="button" onClick={() => setProfile(row)}>時間線</button>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="admin-panel">
-        <h2>關主狀況</h2>
-        <p className="admin-caption">接引進度 · 遊戲關主與招生接引人不一定相同</p>
-        <div className="recruitment-gatekeepers">
-          {data.gameGatekeepers.map((row) => (
-            <button key={row.name} type="button" onClick={() => setGameGatekeeper(row.name === gameGatekeeper ? "" : row.name)}>
-              <strong>{row.name}</strong>
-              <span>玩遊戲 {row.played}</span>
-              <span>待追蹤 {row.pending}</span>
-              <span>已填表 {row.recruited}</span>
-              <span>S {metric(row.s)} · A {metric(row.a)} · B {metric(row.b)}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="admin-panel">
-        <div className="admin-section-heading">
-          <h2>同學名單</h2>
+          <h2>招生名單</h2>
           <button type="button" className="admin-more-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}>
             <span><Filter size={18} /> 篩選</span>
             <ChevronDown size={18} className={filtersOpen ? "is-open" : ""} />
           </button>
         </div>
         <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
-          <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話、科系" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <select aria-label="日期範圍" value={range} onChange={(event) => setRange(event.target.value as typeof range)}>
+            <option value="today">今日</option>
+            <option value="yesterday">昨日</option>
+            <option value="date">指定日期</option>
+            <option value="all">歷史全部</option>
+          </select>
+          {range === "date" && setDate ? (
+            <input aria-label="指定日期" type="date" value={date} onChange={(event) => event.target.value && setDate(event.target.value)} />
+          ) : null}
           <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
             <option value="">所有遊戲關主</option>
             {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}
           </select>
-          <select aria-label="篩選招生接引人" value={recruiter} onChange={(event) => setRecruiter(event.target.value)}>
+          <select aria-label="篩選正式接引人" value={recruiter} onChange={(event) => setRecruiter(event.target.value)}>
             <option value="">所有接引人</option>
             {data.recruiters.map((row) => <option key={row.name}>{row.name}</option>)}
-          </select>
-          <select aria-label="篩選分級" value={tier} onChange={(event) => setTier(event.target.value)}>
-            <option value="">所有分級</option>
-            <option value="S">S</option>
-            <option value="A">A</option>
-            <option value="B">B</option>
-          </select>
-          <select aria-label="待追蹤或已完成" value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">全部狀態</option>
-            <option value="pending">待追蹤</option>
-            <option value="done">已完成</option>
-          </select>
-          <select aria-label="篩選科系" value={department} onChange={(event) => setDepartment(event.target.value)}>
-            <option value="">所有科系</option>
-            {departments.map((name) => <option key={name}>{name}</option>)}
-          </select>
-          <select aria-label="篩選年級" value={grade} onChange={(event) => setGrade(event.target.value)}>
-            <option value="">所有年級</option>
-            {grades.map((name) => <option key={name}>{name}</option>)}
           </select>
           <select aria-label="篩選活動" value={activity} onChange={(event) => setActivity(event.target.value)}>
             <option value="">所有活動</option>
@@ -291,55 +407,27 @@ export function RecruitmentDashboard({
             <option value="yes">已繳</option>
             <option value="no">未繳</option>
           </select>
+          <select aria-label="是否已填正式資料" value={filled} onChange={(event) => setFilled(event.target.value)}>
+            <option value="">填表不限</option>
+            <option value="no">尚未填正式資料</option>
+            <option value="yes">已填正式資料</option>
+          </select>
         </div>
         <p className="admin-caption">{people.length} 位 · 僅工作人員可見</p>
-        <div className="admin-person-list">
-          {people.map((row) => (
-            <article key={row.personKey} role="button" tabIndex={0} onClick={() => setProfile(row)} onKeyDown={(event) => event.key === "Enter" && setProfile(row)}>
-              <div>
-                <strong>{row.name}</strong>
-                <span className="admin-badge">{row.pending ? "待追蹤" : row.tier || "已填表"}</span>
-              </div>
-              <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
-              <p>遊戲關主 {row.gameGatekeeper || "未填"} · 接引人 {row.recruiters || "尚未填表"}</p>
-              <small>{row.phone || "電話未填"}</small>
-            </article>
-          ))}
-        </div>
-        <div className="admin-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>姓名</th>
-                <th>科系／年級</th>
-                <th>遊戲關主</th>
-                <th>招生接引人</th>
-                <th>分級</th>
-                <th>活動</th>
-                <th>入社</th>
-                <th>保證金</th>
-                <th>電話</th>
-              </tr>
-            </thead>
-            <tbody>
-              {people.map((row) => (
-                <tr key={`table-${row.personKey}`}>
-                  <td><button type="button" className="recruitment-name" onClick={() => setProfile(row)}>{row.name}</button></td>
-                  <td>{row.department}<small>{row.grade}</small></td>
-                  <td>{row.gameGatekeeper}</td>
-                  <td>{row.recruiters}</td>
-                  <td>{row.tier}</td>
-                  <td>{row.activity}</td>
-                  <td>{row.joined}</td>
-                  <td>{row.depositPaid}{row.depositAmount ? ` ${row.depositAmount}` : ""}</td>
-                  <td>{row.phone}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {!people.length ? (
+          <p className="admin-empty">沒有符合條件的同學</p>
+        ) : (
+          <div className="admin-person-list">
+            {people.map((row) => (
+              <PersonCard
+                key={row.personKey}
+                row={row}
+                onOpen={() => setProfile(row)}
+              />
+            ))}
+          </div>
+        )}
       </section>
-
       <RecruitmentProfileSheet profile={profile} onClose={() => setProfile(null)} />
     </div>
   );
@@ -357,7 +445,7 @@ export function RecruitmentSync({ data }: { data: RecruitmentData }) {
       {items.map(([label, flag]) => (
         <Fragment key={label}>
           <dt>{label}</dt>
-          <dd>{flag.ok ? "● 正常" : flag.stale ? "○ 同步異常 · 顯示上次資料" : "○ 同步異常"}</dd>
+          <dd>{flag.ok ? "● 正常" : flag.stale ? "○ 同步失敗 · 顯示上次資料" : "○ 同步失敗"}</dd>
         </Fragment>
       ))}
       <dt>最後同步</dt>

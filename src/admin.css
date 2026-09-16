@@ -4,6 +4,7 @@
   background: var(--page-bg-warm);
   color: var(--text-primary);
   padding: 0 0 calc(88px + env(safe-area-inset-bottom));
+  overflow-x: hidden;
 }
 .admin-page button,
 .admin-login button,
@@ -477,6 +478,11 @@
   width: 100%;
   font-size: var(--text-small);
 }
+.admin-person-list {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
 .admin-person-list article {
   padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border);
@@ -570,7 +576,7 @@
   left: 0;
   right: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-1);
   padding: var(--space-2) var(--space-2) max(var(--space-2), env(safe-area-inset-bottom));
   background: var(--surface-primary);
@@ -843,12 +849,10 @@
     width: 100%;
   }
   .admin-person-list {
-    display: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .admin-table-wrap {
-    display: block;
-    max-width: 100%;
-    overflow-x: auto;
+    display: none;
   }
   .admin-table-wrap table {
     width: 100%;
@@ -927,6 +931,9 @@
     color: var(--text-secondary);
     background: transparent;
     font-size: var(--text-small);
+  }
+  .admin-sidebar nav button span.admin-nav-short {
+    display: none;
   }
   .admin-sidebar nav button:hover:not([aria-current]) {
     background: var(--page-bg);
@@ -1090,10 +1097,7 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .recruitment-funnel ol {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-  .recruitment-filters {
-    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .recruitment-gatekeepers {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1213,4 +1217,235 @@
   gap: var(--space-2);
   margin: 0;
   font-size: var(--text-h3);
+}
+.admin-more-dialog .admin-nav-short {
+  display: none;
+}
+.recruitment-card,
+.admin-person-list article {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+  overflow-wrap: anywhere;
+}
+.recruitment-card p,
+.admin-person-list article p {
+  margin: var(--space-1) 0;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+}
+.recruitment-actions {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.recruitment-actions a,
+.recruitment-actions button {
+  min-height: 44px;
+}
+.battle-command {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.battle-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.battle-kpi {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+.battle-kpi-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 88px;
+  padding: var(--space-4);
+  border: 0;
+  text-align: left;
+  background: transparent;
+}
+.battle-kpi-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--surface-secondary);
+  color: var(--brand);
+}
+.battle-kpi-toggle small,
+.battle-kpi-toggle em {
+  display: block;
+  font-style: normal;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+.battle-kpi-toggle strong {
+  display: block;
+  font-size: var(--text-h2);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.battle-kpi-detail {
+  padding: 0 var(--space-4) var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+}
+.battle-ring-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  text-align: center;
+}
+.battle-ring {
+  width: 100%;
+  max-width: 112px;
+  margin: 0 auto;
+}
+.battle-ring-track {
+  stroke: var(--border-strong);
+}
+.battle-ring-value {
+  stroke: var(--brand);
+}
+.battle-ring.is-highlight .battle-ring-value {
+  stroke: var(--accent-highlight);
+}
+.battle-ring.is-ink .battle-ring-value {
+  stroke: var(--text-primary);
+}
+.battle-ring text {
+  font-size: 8px;
+  font-weight: 700;
+  fill: var(--text-primary);
+}
+.battle-ring-row figcaption {
+  margin-top: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+.battle-funnel ol {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.battle-funnel-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.battle-funnel-bar,
+.battle-bar,
+.battle-progress {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-secondary);
+  overflow: hidden;
+}
+.battle-funnel-bar i,
+.battle-bar i,
+.battle-progress span {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+}
+.battle-activity-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+.battle-activity-grid article {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+.battle-activity-grid header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.battle-trend {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+  align-items: end;
+  min-height: 140px;
+}
+.battle-trend-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  height: 110px;
+  align-items: end;
+}
+.battle-trend-cols span {
+  display: block;
+  min-height: 4px;
+  border-radius: 3px 3px 0 0;
+  background: var(--brand);
+}
+.battle-trend-cols span:nth-child(2) {
+  background: var(--accent-highlight);
+}
+.battle-trend-cols span:nth-child(3) {
+  background: var(--text-primary);
+}
+.battle-trend-day {
+  text-align: center;
+}
+.battle-trend-day small {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.battle-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+.battle-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  background: var(--brand);
+}
+.battle-legend .is-activity {
+  background: var(--accent-highlight);
+}
+.battle-legend .is-joined {
+  background: var(--text-primary);
+}
+@media (min-width: 760px) {
+  .battle-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .battle-activity-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-spinning {
+    animation: none;
+  }
 }

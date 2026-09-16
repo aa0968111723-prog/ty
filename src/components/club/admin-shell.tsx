@@ -2,35 +2,51 @@ import { useState, type ReactNode } from "react";
 import { BrandLogo } from "./brand-logo";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
-  BarChart3,
+  Radio,
+  ClipboardPen,
   Users,
   Trophy,
   Medal,
-  Flag,
   Sheet,
   Settings,
   Pin,
   MoreHorizontal,
   LogOut,
-  Radio,
   Shield,
   X,
 } from "lucide-react";
 
 export type AdminView =
-  "overview" | "recruitment" | "contacts" | "results" | "podium" | "leaders" | "system" | "pinned" | "security";
-const navigation = [
-  { id: "overview", label: "總覽", mobile: "總覽", icon: BarChart3, shortcut: "today" },
-  { id: "recruitment", label: "招生戰情", mobile: "戰情", icon: Radio, shortcut: "recruitment" },
-  { id: "contacts", label: "聯絡名單", mobile: "名單", icon: Users, shortcut: "contacts" },
-  { id: "results", label: "比賽成績", mobile: "成績", icon: Trophy, shortcut: "results" },
-  { id: "podium", label: "前三名", mobile: "排行", icon: Medal, shortcut: "ranking" },
-  { id: "leaders", label: "關主", mobile: "關主", icon: Flag, shortcut: "gatekeepers" },
-  { id: "contacts", label: "Google 表單", mobile: "表單", icon: Sheet, shortcut: "form" },
-  { id: "system", label: "系統", mobile: "系統", icon: Settings, shortcut: "sync" },
-  { id: "security", label: "安全與登入", mobile: "安全", icon: Shield, shortcut: "security" },
-  { id: "pinned", label: "我的釘選", mobile: "釘選", icon: Pin, shortcut: "pinned" },
+  | "recruitment"
+  | "queue"
+  | "roster"
+  | "pinned"
+  | "podium"
+  | "history"
+  | "forms"
+  | "system"
+  | "security"
+  | "overview"
+  | "contacts"
+  | "results"
+  | "leaders";
+
+const primary = [
+  { id: "recruitment", label: "今日招生戰情", mobile: "戰情", icon: Radio, shortcut: "today" },
+  { id: "queue", label: "待處理", mobile: "待處理", icon: ClipboardPen, shortcut: "queue" },
+  { id: "roster", label: "名單", mobile: "名單", icon: Users, shortcut: "contacts" },
 ] as const;
+
+const moreItems = [
+  { id: "pinned", label: "我的釘選", mobile: "釘選", icon: Pin, shortcut: "pinned" },
+  { id: "podium", label: "今日排行榜", mobile: "今日榜", icon: Trophy, shortcut: "ranking" },
+  { id: "history", label: "歷史排行榜", mobile: "歷史榜", icon: Medal, shortcut: "history" },
+  { id: "forms", label: "表單資料", mobile: "表單", icon: Sheet, shortcut: "form" },
+  { id: "system", label: "同步狀態", mobile: "同步", icon: Settings, shortcut: "sync" },
+  { id: "security", label: "系統設定", mobile: "設定", icon: Shield, shortcut: "security" },
+] as const;
+
+const moreViewIds = moreItems.map((item) => item.id);
 
 export function AdminShell({
   view,
@@ -47,12 +63,12 @@ export function AdminShell({
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const active = (id: AdminView, shortcut: string) =>
-    view === id && (id !== "contacts" || forms === (shortcut === "form"));
-  const items = (mobile = false) =>
-    navigation.map(({ id, label, mobile: short, icon: Icon, shortcut }, index) => (
+    view === id || (id === "forms" && (view === "contacts" || forms) && shortcut === "form")
+    || (id === "roster" && view === "contacts" && shortcut === "contacts" && !forms);
+  const renderItems = (items: typeof primary | typeof moreItems) =>
+    items.map(({ id, label, mobile, icon: Icon, shortcut }) => (
       <button
         key={shortcut}
-        className={mobile && index > 3 ? "mobile-secondary-item" : undefined}
         aria-current={active(id, shortcut) ? "page" : undefined}
         onClick={() => {
           onNavigate(id, shortcut);
@@ -60,20 +76,24 @@ export function AdminShell({
         }}
       >
         <Icon size={18} aria-hidden="true" />
-        <span>{mobile ? short : label}</span>
+        <span className="admin-nav-full">{label}</span>
+        <span className="admin-nav-short">{mobile}</span>
       </button>
     ));
+  const moreCurrent = moreViewIds.includes(view as (typeof moreViewIds)[number]) || forms;
   return (
     <main className="admin-page">
       <aside className="admin-sidebar">
         <a className="admin-brand" href="/">
           <BrandLogo />
           <span>
-            淡江禪學社<small>活動工作台</small>
+            淡江禪學社<small>招生工作台</small>
           </span>
         </a>
-        <p className="admin-nav-label">工作空間</p>
-        <nav aria-label="後台導覽">{items()}</nav>
+        <p className="admin-nav-label">主要入口</p>
+        <nav aria-label="後台導覽">{renderItems(primary)}</nav>
+        <p className="admin-nav-label">更多</p>
+        <nav aria-label="更多後台導覽">{renderItems(moreItems)}</nav>
         <div className="admin-sidebar-footer">
           <span>現場工作人員</span>
           <button className="admin-logout" onClick={onLogout}>
@@ -87,17 +107,24 @@ export function AdminShell({
           <BrandLogo size={40} />
           淡江禪學社
         </a>
-        <span>活動工作台</span>
+        <span>招生工作台</span>
       </div>
       <div className="admin-content">{children}</div>
       <nav className="admin-bottom-nav" aria-label="手機後台導覽">
-        {items(true)}
+        {primary.map(({ id, mobile, icon: Icon, shortcut }) => (
+          <button
+            key={shortcut}
+            aria-current={active(id, shortcut) ? "page" : undefined}
+            onClick={() => onNavigate(id, shortcut)}
+          >
+            <Icon size={20} aria-hidden="true" />
+            <span>{mobile}</span>
+          </button>
+        ))}
         <button
           aria-label="更多"
           aria-expanded={moreOpen}
-          aria-current={
-            ["leaders", "system", "security", "pinned"].includes(view) || forms ? "page" : undefined
-          }
+          aria-current={moreCurrent ? "page" : undefined}
           onClick={() => setMoreOpen(true)}
         >
           <MoreHorizontal size={20} />
@@ -108,12 +135,12 @@ export function AdminShell({
         <Dialog.Portal>
           <Dialog.Overlay className="admin-overlay" />
           <Dialog.Content className="admin-more-dialog">
-            <Dialog.Title>更多功能</Dialog.Title>
-            <Dialog.Description>管理活動與個人工作台</Dialog.Description>
+            <Dialog.Title>更多</Dialog.Title>
+            <Dialog.Description>排行榜、表單資料與系統</Dialog.Description>
             <Dialog.Close className="admin-close" aria-label="關閉更多">
               <X size={20} />
             </Dialog.Close>
-            <nav aria-label="更多後台導覽">{items()}</nav>
+            <nav aria-label="更多後台導覽">{renderItems(moreItems)}</nav>
             <button className="admin-logout" onClick={onLogout}>
               <LogOut size={18} />
               登出
