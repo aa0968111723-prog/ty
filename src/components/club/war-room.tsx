@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
   CalendarCheck,
+  ChevronDown,
   CircleAlert,
   Coins,
   Gamepad2,
@@ -9,7 +10,7 @@ import {
   Users,
   ClipboardList,
 } from "lucide-react";
-import type { RecruitmentData, SyncFlag } from "./recruitment-dashboard";
+import type { KpiPersonChip, RecruitmentData, SyncFlag } from "./recruitment-dashboard";
 
 function metric(value: number | null | undefined) {
   if (value == null) return "—";
@@ -85,11 +86,50 @@ function KpiCard({
           <small>{hint}</small>
         </span>
         {typeof value === "number" ? <Ring value={value} max={Math.max(value, 8)} /> : null}
+        <ChevronDown className={`war-caret${open ? " is-open" : ""}`} size={18} aria-hidden="true" />
       </button>
       <div id={`${id}-detail`} hidden={!open} className="war-card-detail">
         {details}
       </div>
     </article>
+  );
+}
+
+function NamePeek({
+  names,
+  missing,
+  empty,
+  actionLabel,
+  onAction,
+}: {
+  names: KpiPersonChip[];
+  missing?: boolean;
+  empty: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  const shown = names.slice(0, 6);
+  const rest = names.length - shown.length;
+  return (
+    <div className="war-peek">
+      {missing ? (
+        <p>名單暫缺，不是 0 人。</p>
+      ) : !names.length ? (
+        <p>{empty}</p>
+      ) : (
+        <ul className="war-name-chips">
+          {shown.map((row) => (
+            <li key={row.personKey}>{row.name}</li>
+          ))}
+          {rest > 0 ? <li className="is-more">還有 {rest} 人</li> : null}
+        </ul>
+      )}
+      {actionLabel && onAction ? (
+        <button type="button" className="admin-primary" onClick={onAction}>
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -120,7 +160,7 @@ export function WarRoom({
   const maxTrend = Math.max(1, ...trend.flatMap((row) => [row.contacts, row.signups, row.joined]));
   const ready = Boolean(data);
   const pending = kpiCount(summary?.pending, ready, busy);
-  const gapHint = "同步失敗，此數字暫缺，不是 0 人。";
+  const lists = data?.kpiPeople;
   const sync = data?.sync;
   const overall = sync
     ? sync.gameResults.ok && sync.recruitmentResponses.ok && sync.recruitmentMaster.ok
@@ -181,7 +221,13 @@ export function WarRoom({
           hint="今天完成遊戲 · 去重"
           icon={<Gamepad2 size={22} />}
           details={
-            <p>{ready ? "不含練習。同一人多局只算一次，姓名已正規化；電話不同的同名會分開計算。" : gapHint}</p>
+            <NamePeek
+              names={lists?.todayContacts || []}
+              missing={!ready}
+              empty="今天還沒有新的接觸"
+              actionLabel="到名單"
+              onAction={onOpenRoster}
+            />
           }
         />
         <KpiCard
@@ -190,7 +236,15 @@ export function WarRoom({
           value={kpiCount(summary?.playedAll, ready, busy)}
           hint="歷史正式遊戲"
           icon={<Users size={22} />}
-          details={<p>{ready ? "所有日期的正式 60 秒挑戰，排除練習與重複局。" : gapHint}</p>}
+          details={
+            <NamePeek
+              names={lists?.allContacts || []}
+              missing={!ready}
+              empty="尚無正式遊戲接觸"
+              actionLabel="到名單"
+              onAction={onOpenRoster}
+            />
+          }
         />
         <KpiCard
           id="today-events"
@@ -199,7 +253,15 @@ export function WarRoom({
           hint="今天報名至少一場"
           icon={<CalendarCheck size={22} />}
           tone={summary?.activityToday ? "ok" : "plain"}
-          details={<p>{ready ? "同一人報多場仍算 1 人。不含「無／考慮中」。" : gapHint}</p>}
+          details={
+            <NamePeek
+              names={lists?.todayEvents || []}
+              missing={!ready || summary?.activityToday == null}
+              empty="今天還沒有活動報名"
+              actionLabel="到名單"
+              onAction={onOpenRoster}
+            />
+          }
         />
         <KpiCard
           id="joined"
@@ -207,7 +269,15 @@ export function WarRoom({
           value={summary?.joined ?? "—"}
           hint="正式表單「是」"
           icon={<UserPlus size={22} />}
-          details={<p>{ready ? "以招生狀況表「是否入社」計算，同名同電話只算一次。" : gapHint}</p>}
+          details={
+            <NamePeek
+              names={lists?.joined || []}
+              missing={!ready || summary?.joined == null}
+              empty="尚無入社紀錄"
+              actionLabel="到名單"
+              onAction={onOpenRoster}
+            />
+          }
         />
         <KpiCard
           id="deposit"
@@ -215,7 +285,15 @@ export function WarRoom({
           value={summary?.depositPaid ?? "—"}
           hint="正式表單「是」"
           icon={<Coins size={22} />}
-          details={<p>{ready ? "以招生狀況表「保證金是否繳費」計算，不去猜遊戲分數。" : gapHint}</p>}
+          details={
+            <NamePeek
+              names={lists?.deposit || []}
+              missing={!ready || summary?.depositPaid == null}
+              empty="尚無保證金紀錄"
+              actionLabel="到名單"
+              onAction={onOpenRoster}
+            />
+          }
         />
         <KpiCard
           id="pending"
@@ -225,18 +303,13 @@ export function WarRoom({
           icon={<ClipboardList size={22} />}
           tone={typeof pending === "number" && pending ? "warn" : ready ? "ok" : "plain"}
           details={
-            <div className="war-pending-cta">
-              <p>
-                {!ready
-                  ? gapHint
-                  : summary?.conflicts
-                    ? `${summary.conflicts} 筆姓名需現場確認，不會自動合併。`
-                    : "下一步先處理尚未填正式招生資料的有緣人。"}
-              </p>
-              <button type="button" className="admin-primary" onClick={onOpenPending}>
-                去待處理
-              </button>
-            </div>
+            <NamePeek
+              names={lists?.pending || []}
+              missing={!ready}
+              empty={summary?.conflicts ? `${summary.conflicts} 筆姓名需現場確認，不會自動合併。` : "目前沒有待填正式資料"}
+              actionLabel="去待處理"
+              onAction={onOpenPending}
+            />
           }
         />
       </section>

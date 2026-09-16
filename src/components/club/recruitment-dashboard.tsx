@@ -13,6 +13,7 @@ export type RecruitmentTrendPoint = {
   joined: number;
 };
 export type RecruitmentEventCount = { name: string; count: number };
+export type KpiPersonChip = { name: string; personKey: string };
 export type RecruitmentData = {
   date: string;
   summary: {
@@ -35,6 +36,14 @@ export type RecruitmentData = {
   };
   events?: RecruitmentEventCount[];
   trend?: RecruitmentTrendPoint[];
+  kpiPeople?: {
+    todayContacts: KpiPersonChip[];
+    allContacts: KpiPersonChip[];
+    todayEvents: KpiPersonChip[];
+    joined: KpiPersonChip[];
+    deposit: KpiPersonChip[];
+    pending: KpiPersonChip[];
+  };
   funnel: Array<{
     id: string;
     label: string;

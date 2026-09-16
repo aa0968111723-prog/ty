@@ -854,6 +854,28 @@ export function buildRecruitmentDashboard(input = {}) {
     (candidatesByGatekeeper[key] ||= []).push(row);
   }
 
+  function personChip(person) {
+    const latest = latestAttempt(person.attempts);
+    return { name: text(latest?.name) || "未填姓名", personKey: person.personKey };
+  }
+  function rowChips(rows) {
+    return uniqueByIdentity(rows).map((row) => ({
+      name: text(row.name) || "未填姓名",
+      personKey: row.normalizedPhone
+        ? `phone:${row.normalizedPhone}`
+        : `name:${row.normalizedName || row.name || "未填"}`,
+    }));
+  }
+  const kpiPeople = {
+    todayContacts: todayPeople.map(personChip),
+    allContacts: people.map(personChip),
+    todayEvents: rowChips(formal.filter((row) =>
+      rosterDay(row, today) && (listedEvents(row.activity).length > 0 || hasActivity(row.activity)))),
+    joined: rowChips(formal.filter((row) => isYes(row.joined))),
+    deposit: rowChips(formal.filter((row) => isYes(row.depositPaid))),
+    pending: pending.map((row) => ({ name: text(row.name) || "未填姓名", personKey: row.personKey })),
+  };
+
   return {
     ok: true,
     date,
@@ -878,6 +900,7 @@ export function buildRecruitmentDashboard(input = {}) {
     events,
     trend: trendDays,
     funnel,
+    kpiPeople,
     pending,
     profiles,
     gameGatekeepers,

@@ -425,6 +425,10 @@ test("today vs history contacts exclude practice and keep name-normalized unique
   assert.equal(data.summary.playedAll, 2);
   assert.equal(data.summary.playedOnDate, 1);
   assert.equal(data.pending.length, 2);
+  assert.deepEqual(data.kpiPeople.todayContacts.map((row) => row.name), ["王小明"]);
+  assert.deepEqual(data.kpiPeople.allContacts.map((row) => row.name).sort(), ["王小明", "昨日生"]);
+  assert.equal(data.kpiPeople.pending.length, 2);
+  assert.equal(data.kpiPeople.todayContacts.some((row) => /09\d/.test(row.name)), false);
 });
 
 test("event signup counts a person once today and once per event", () => {
@@ -491,6 +495,9 @@ test("join and deposit counts are name-normalized unique and do not merge differ
   });
   assert.equal(data.summary.joined, 2);
   assert.equal(data.summary.depositPaid, 1);
+  assert.equal(data.kpiPeople.joined.length, 2);
+  assert.equal(data.kpiPeople.deposit.length, 1);
+  assert.equal(data.kpiPeople.joined.every((row) => row.name === "林同學"), true);
 });
 
 test("considering-none event options do not count as signups", () => {
@@ -513,6 +520,7 @@ test("considering-none event options do not count as signups", () => {
   assert.equal(data.summary.activity, 0);
   assert.equal(data.summary.activityToday, 0);
   assert.equal(data.summary.joined, 0);
+  assert.deepEqual(data.kpiPeople.todayEvents, []);
 });
 
 test("empty sheets report zero unique people, not missing counts", () => {
@@ -529,4 +537,7 @@ test("empty sheets report zero unique people, not missing counts", () => {
   assert.equal(data.summary.activityToday, null);
   assert.equal(data.trend.length, 7);
   assert.equal(data.trend.every((row) => row.contacts === 0 && row.signups === 0 && row.joined === 0), true);
+  assert.deepEqual(data.kpiPeople.todayContacts, []);
+  assert.deepEqual(data.kpiPeople.pending, []);
+  assert.deepEqual(data.kpiPeople.allContacts, []);
 });

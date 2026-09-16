@@ -580,6 +580,107 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("war-room KPI click expands names then collapses", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route((url) => {
+        try { return new URL(url).origin !== origin; } catch { return false; }
+      }, async (route) => {
+        await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+      });
+      const taipeiToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+      const student = {
+        name: "測試同學",
+        phone: "0900000000",
+        department: "歷史學系",
+        grade: "大一",
+        gatekeeper: "柏能",
+        completedAt: `${taipeiToday}T04:00:00.000Z`,
+        kind: "official",
+        skipSave: false,
+        duration: 60,
+        settings: DEFAULT_SETTINGS,
+        score: 600,
+        correct: 5,
+        wrong: 0,
+        maxCombo: 5,
+        accuracy: 100,
+        submissionId: crypto.randomUUID(),
+      };
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({ json: buildDashboard({ date, results: [student], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date,
+            now: new Date(`${taipeiToday}T12:00:00+08:00`),
+            gameRows: [{
+              姓名: student.name,
+              電話: student.phone,
+              科系: student.department,
+              年級: student.grade,
+              遊戲關主: student.gatekeeper,
+              遊戲時間: student.completedAt,
+              _submissionId: student.submissionId,
+              _kind: "official",
+              _skipSave: false,
+            }],
+            recruitmentRows: [],
+            masterRows: [],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const hit = page.locator("[data-kpi=today-contacts] .war-card-hit");
+      const detail = page.locator("#today-contacts-detail");
+      await hit.waitFor();
+      assert.equal(await hit.getAttribute("aria-expanded"), "false");
+      assert.equal(await detail.isVisible(), false);
+      await capture(page, "war-kpi-today-closed-390");
+      await hit.click();
+      assert.equal(await hit.getAttribute("aria-expanded"), "true");
+      assert.equal(await detail.isVisible(), true);
+      assert.equal(await detail.getByText("測試同學", { exact: true }).count(), 1);
+      const roster = detail.getByRole("button", { name: "到名單", exact: true });
+      assert.equal(await roster.count(), 1);
+      const rosterBox = await roster.boundingBox();
+      assert.ok(rosterBox && rosterBox.height >= 44);
+      assert.equal(await detail.getByText("0900000000").count(), 0);
+      assert.equal(await detail.getByText("submissionId").count(), 0);
+      assert.equal(await detail.getByText("分級").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await capture(page, "war-kpi-today-open-390");
+      await hit.click();
+      assert.equal(await hit.getAttribute("aria-expanded"), "false");
+      assert.equal(await detail.isVisible(), false);
+      const pendingHit = page.locator("[data-kpi=pending] .war-card-hit");
+      const pendingDetail = page.locator("#pending-detail");
+      await pendingHit.click();
+      assert.equal(await pendingHit.getAttribute("aria-expanded"), "true");
+      assert.equal(await pendingDetail.isVisible(), true);
+      assert.equal(await pendingDetail.getByText("測試同學", { exact: true }).count(), 1);
+      const goPending = pendingDetail.getByRole("button", { name: "去待處理", exact: true });
+      assert.equal(await goPending.count(), 1);
+      const pendingBtn = await goPending.boundingBox();
+      assert.ok(pendingBtn && pendingBtn.height >= 44);
+      await capture(page, "war-kpi-pending-open-390");
+      await pendingHit.click();
+      assert.equal(await pendingHit.getAttribute("aria-expanded"), "false");
+      assert.equal(await pendingDetail.isVisible(), false);
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

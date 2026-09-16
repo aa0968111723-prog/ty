@@ -1526,6 +1526,45 @@
   color: var(--text-secondary);
   font-size: var(--text-small);
 }
+.war-caret {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: transform 160ms ease;
+}
+.war-card.is-open .war-caret {
+  transform: rotate(180deg);
+}
+.war-peek {
+  display: grid;
+  gap: var(--space-3);
+}
+.war-name-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.war-name-chips li {
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.war-name-chips li.is-more {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.war-peek .admin-primary {
+  min-height: 44px;
+  width: 100%;
+}
 .war-pending-cta {
   display: grid;
   gap: var(--space-3);
