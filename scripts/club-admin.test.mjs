@@ -170,7 +170,7 @@ test("admin authentication and private read API contracts with mocked Google onl
     spreadsheets: { values: {
       get: async ({ spreadsheetId, range }) => {
         assert.equal(spreadsheetId, "fixture-sheet");
-        const action = /results|14後玩遊戲/.test(String(range)) ? "results" : "formResponses";
+        const action = range === "'results'" || range === `'${DEFAULT_TAB_TITLES.gameResults}'` ? "results" : "formResponses";
         calls.push(action);
         if (failForms && action === "formResponses") {
           throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);

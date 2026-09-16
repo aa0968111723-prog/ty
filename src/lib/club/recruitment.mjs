@@ -12,7 +12,7 @@ import {
   text,
 } from "./recruitment-identity.mjs";
 import { fieldFromAliases, formatTaipeiTimestamp, internalizedGameRow } from "./sheets.mjs";
-import { generatePrefilledFormUrl } from "./recruitment-prefill.mjs";
+import { LIVE_ACTIVITY_CHOICES, generatePrefilledFormUrl } from "./recruitment-prefill.mjs";
 
 const UNCLASSIFIED = "未分類";
 const UNKNOWN_GATEKEEPER = "未知關主";
@@ -336,6 +336,7 @@ function profileFromSources({
     submittedAt: recruited?.submittedAt || source?.submittedAt || "",
     tier: source?.tier || "",
     activity: source?.activity || "",
+    events: listedEvents(source?.activity),
     joined: source?.joined || "",
     depositPaid: source?.depositPaid || "",
     depositAmount: source?.depositAmount || "",
@@ -469,6 +470,72 @@ function reviewPersonKeys(people) {
     }
   }
   return keys;
+}
+
+const REAL_EVENT_CHOICES = LIVE_ACTIVITY_CHOICES.filter((name) => hasActivity(name));
+
+export function listedEvents(value) {
+  const parts = text(value).split(/[,，、]/).map((part) => part.trim()).filter(Boolean);
+  const known = [];
+  for (const part of parts) {
+    const match = REAL_EVENT_CHOICES.find((choice) => part === choice || part.includes(choice) || choice.includes(part));
+    if (match && !known.includes(match)) known.push(match);
+  }
+  return known;
+}
+
+function rosterDay(row, date) {
+  if (!date) return true;
+  if (row.submittedAt && onDate(row.submittedAt, date)) return true;
+  const day = text(row.recruitedAt);
+  const parsed = day.match(/(\d{1,2})[/-](\d{1,2})/);
+  if (!parsed) return false;
+  const [, month, d] = parsed;
+  return date.slice(5) === `${month.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+/**
+ * Unique people for formal stats. Phone wins; same name + different phones stay
+ * separate; same name without phones is one person; name that collides with a
+ * phone identity is not silently merged.
+ */
+export function uniqueByIdentity(rows) {
+  const byPhone = new Map();
+  const noPhone = [];
+  for (const row of rows || []) {
+    if (row?.normalizedPhone) {
+      if (!byPhone.has(row.normalizedPhone)) byPhone.set(row.normalizedPhone, row);
+    } else noPhone.push(row);
+  }
+  const namesWithPhone = new Set(
+    [...byPhone.values()].map((row) => row.normalizedName).filter(Boolean),
+  );
+  const byName = new Map();
+  const unmatched = [];
+  for (const row of noPhone) {
+    const name = row.normalizedName;
+    if (!name) {
+      unmatched.push(row);
+      continue;
+    }
+    if (namesWithPhone.has(name)) {
+      unmatched.push(row);
+      continue;
+    }
+    if (!byName.has(name)) byName.set(name, row);
+  }
+  return [...byPhone.values(), ...byName.values(), ...unmatched];
+}
+
+function uniqueCount(rows, predicate) {
+  return uniqueByIdentity((rows || []).filter(predicate)).length;
+}
+
+function presentUnique(rows, hasField, predicate) {
+  if (!rows.length) return null;
+  const known = rows.filter(hasField);
+  if (!known.length) return null;
+  return uniqueCount(rows, predicate);
 }
 
 function isYes(value) {
@@ -663,39 +730,46 @@ export function buildRecruitmentDashboard(input = {}) {
   appendUnmatchedRoster(profiles, recruits, { prefix: "recruit", pending: false });
 
   const completed = master.length ? master : recruits;
+  const formal = recruits.length ? recruits : master;
   function presentCount(rows, hasField, predicate) {
     if (!rows.length) return null;
     const known = rows.filter(hasField);
     if (!known.length) return null;
     return rows.filter(predicate).length;
   }
-  const activityKnown = completed.some((row) => Boolean(text(row.activity)));
-  const activityCount = !completed.length || !activityKnown ? null : uniqueActivityPeople(completed);
-  const joinedCount = presentCount(completed, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
-  const deposit = summarizePaidDeposit(completed);
-  const depositCount = deposit.count;
-  const rosterConflicts = rosterIdentityConflicts(profiles);
-  const conflictNames = new Set([...deposit.conflictNames, ...rosterConflicts.names]);
-  const conflictPhones = new Set([...deposit.conflictPhones, ...rosterConflicts.phones]);
-  for (const row of profiles) {
-    if (row.needsReview == null) {
-      row.needsReview = row.status === "ambiguous" || reviewKeys.has(row.personKey);
-    }
-    const nameHit = Boolean(rosterName(row) && conflictNames.has(rosterName(row)));
-    const phoneHit = Boolean(row.normalizedPhone && conflictPhones.has(row.normalizedPhone));
-    if (nameHit || phoneHit) row.needsReview = true;
-  }
+  const sCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "S");
+  const aCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "A");
+  const bCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "B");
+  const activityCount = presentUnique(
+    formal,
+    (row) => Boolean(text(row.activity)),
+    (row) => listedEvents(row.activity).length > 0 || hasActivity(row.activity),
+  );
+  const joinedCount = presentUnique(formal, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
+  const depositCount = presentUnique(
+    formal,
+    (row) => Boolean(text(row.depositPaid)),
+    (row) => isYes(row.depositPaid),
+  );
   const depositKnown = completed.filter((row) => text(row.depositAmount) !== "" || isYes(row.depositPaid));
   const depositTotal = !completed.length || !depositKnown.length
     ? null
-    : completed.reduce((sum, row) => sum + amount(row.depositAmount), 0);
-  const activities = activityBreakdown(completed);
-  const completedOnDate = date ? completed.filter((row) => recruitOnDate(row, date)) : completed;
-  const activityToday = uniqueActivityPeople(completedOnDate);
+    : uniqueByIdentity(completed).reduce((sum, row) => sum + amount(row.depositAmount), 0);
 
+  const today = dateInTaipei(now);
+  const todayPeople = clusterGamePeople(attempts.filter((row) => onDate(row.completedAt, today)));
   const played = datedPeople.length;
   const pendingToday = datedPending.length;
-  const completedToday = completedOnDate.length;
+  const completedToday = uniqueCount(completed, (row) => rosterDay(row, date));
+  const activityToday = presentUnique(
+    formal,
+    (row) => Boolean(text(row.activity)),
+    (row) => rosterDay(row, today) && (listedEvents(row.activity).length > 0 || hasActivity(row.activity)),
+  );
+  const events = REAL_EVENT_CHOICES.map((name) => ({
+    name,
+    count: uniqueCount(formal, (row) => listedEvents(row.activity).includes(name)),
+  }));
 
   function rate(part, whole) {
     if (!Number.isFinite(whole) || whole <= 0) return null;
@@ -717,17 +791,20 @@ export function buildRecruitmentDashboard(input = {}) {
     return layer;
   });
 
-  const daily = Array.from({ length: 7 }, (_, index) => {
-    const day = shiftIsoDate(date, index - 6);
-    const dayContacts = clusterGamePeople(attempts.filter((row) => onDate(row.completedAt, day))).length;
-    const dayRows = completed.filter((row) => recruitOnDate(row, day));
-    return {
+  const trendDays = [];
+  const trendEnd = new Date(`${today}T12:00:00+08:00`);
+  for (let i = 6; i >= 0; i -= 1) {
+    const day = dateInTaipei(new Date(trendEnd.getTime() - i * 86400000));
+    trendDays.push({
       date: day,
-      contacts: dayContacts,
-      activity: uniqueActivityPeople(dayRows),
-      joined: dayRows.filter((row) => isYes(row.joined)).length,
-    };
-  });
+      contacts: clusterGamePeople(attempts.filter((row) => onDate(row.completedAt, day))).length,
+      signups: uniqueCount(
+        formal,
+        (row) => rosterDay(row, day) && (listedEvents(row.activity).length > 0 || hasActivity(row.activity)),
+      ),
+      joined: uniqueCount(formal, (row) => rosterDay(row, day) && isYes(row.joined)),
+    });
+  }
 
   const gatekeeperNames = [...new Set([
     ...attempts.map((row) => row.gatekeeper || UNCLASSIFIED),
@@ -781,22 +858,25 @@ export function buildRecruitmentDashboard(input = {}) {
     ok: true,
     date,
     summary: {
-      playedToday: played,
-      playedTotal: people.length,
+      playedToday: todayPeople.length,
+      playedOnDate: played,
+      playedAll: people.length,
       pending: pending.length,
       pendingToday,
-      recruited: completed.length,
+      recruited: uniqueByIdentity(completed).length,
       recruitedToday: completedToday,
       activity: activityCount,
       activityToday,
+      events,
       joined: joinedCount,
       depositPaid: depositCount,
       depositNeedsReview: deposit.needsReview,
       depositTotal,
-      roster: master.length || completed.length,
+      roster: uniqueByIdentity(master.length ? master : completed).length,
+      conflicts: people.filter((person) => person.status === "ambiguous").length,
     },
-    activities,
-    daily,
+    events,
+    trend: trendDays,
     funnel,
     pending,
     profiles,

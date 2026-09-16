@@ -26,7 +26,7 @@
   "shortcuts": [
     {
       "name": "今日戰情",
-      "short_name": "今日戰情",
+      "short_name": "戰情",
       "url": "/admin?view=today",
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     },
@@ -39,13 +39,13 @@
     {
       "name": "名單",
       "short_name": "名單",
-      "url": "/admin?view=roster",
+      "url": "/admin?view=contacts",
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     },
     {
-      "name": "今日排行榜",
-      "short_name": "今日排行榜",
-      "url": "/admin?view=today-board",
+      "name": "我的釘選",
+      "short_name": "釘選",
+      "url": "/admin?view=pinned",
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     }
   ]

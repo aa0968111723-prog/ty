@@ -17,8 +17,8 @@ test("admin PWA manifest opens the pinned view and exposes operational shortcuts
     [
       ["今日戰情", "/admin?view=today"],
       ["待處理", "/admin?view=pending"],
-      ["名單", "/admin?view=roster"],
-      ["今日排行榜", "/admin?view=today-board"],
+      ["名單", "/admin?view=contacts"],
+      ["我的釘選", "/admin?view=pinned"],
     ],
   );
   assert.ok(manifest.icons.every(({ src }) => src.startsWith("/brand/tkuzen-turtle-3d-icon-")));

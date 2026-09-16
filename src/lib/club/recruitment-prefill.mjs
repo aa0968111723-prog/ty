@@ -284,3 +284,19 @@ export function prefillUsesViewform(url) {
 }
 
 export const RECRUITER_STORAGE_KEY = "club-official-recruiter";
+
+export function readStoredRecruiter() {
+  try {
+    return localStorage.getItem(RECRUITER_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function rememberStoredRecruiter(name) {
+  try {
+    localStorage.setItem(RECRUITER_STORAGE_KEY, name);
+  } catch {
+    /* ignore */
+  }
+}

@@ -136,15 +136,13 @@ export function initialView(): Tab {
     (
       {
         today: "recruitment",
-        recruitment: "recruitment",
-        pending: "pending",
-        roster: "roster",
         ranking: "podium",
-        "today-board": "podium",
-        "history-board": "history",
+        history: "history",
         contacts: "roster",
         gatekeepers: "leaders",
         pinned: "pinned",
+        recruitment: "recruitment",
+        pending: "pending",
         form: "contacts",
         results: "results",
         sync: "system",

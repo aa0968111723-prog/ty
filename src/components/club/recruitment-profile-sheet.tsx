@@ -20,6 +20,7 @@ export type RecruitmentProfile = {
   recruitedAt?: string;
   submittedAt?: string;
   activity?: string;
+  events?: string[];
   joined?: string;
   depositPaid?: string;
   depositAmount?: string;
@@ -28,8 +29,17 @@ export type RecruitmentProfile = {
   studentId?: string;
   interest?: string;
   prefillUrl?: string;
+  submissionId?: string;
+  status?: string;
   timeline?: Array<{ at: string; kind: string; title: string; detail: string }>;
 };
+
+function redactNote(value?: string) {
+  return String(value || "")
+    .replace(/submissionId[：:]\s*[0-9a-f-]{8,}/gi, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+}
 
 function clock(value?: string) {
   if (!value) return "";
@@ -80,9 +90,32 @@ export function RecruitmentProfileSheet({
             <div><dt>活動</dt><dd>{profile?.activity || "尚未填"}</dd></div>
             <div><dt>入社</dt><dd>{profile?.joined || "尚未填"}</dd></div>
             <div><dt>保證金</dt><dd>{profile?.depositPaid || "尚未填"}{profile?.depositAmount ? ` · ${profile.depositAmount}` : ""}</dd></div>
-            <div><dt>處理狀態</dt><dd>{handlingStatus(profile)}</dd></div>
+            <div><dt>學號</dt><dd>{profile?.studentId || "尚未填"}</dd></div>
+            <div><dt>生日</dt><dd>{profile?.birthday || "尚未填"}</dd></div>
+            <div><dt>備註</dt><dd>{redactNote(profile?.note) || "尚未填"}</dd></div>
           </dl>
-          {profile?.pending && profile.prefillUrl ? (
+          <ol className="recruitment-timeline">
+            {(profile?.timeline || []).length ? (
+              profile?.timeline?.map((item, index) => (
+                <li key={`${item.kind}-${index}`}>
+                  <strong>{item.title}</strong>
+                  <span>{item.detail}</span>
+                  <small>{clock(item.at)}</small>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>尚無時間線</strong>
+                <span>只顯示已發生的真實紀錄</span>
+              </li>
+            )}
+          </ol>
+          {profile?.pending ? (
+            <a className="admin-primary" href={`/follow-up?personKey=${encodeURIComponent(profile.personKey)}`}>
+              填寫正式資料
+            </a>
+          ) : null}
+          {profile?.prefillUrl ? (
             <a className="admin-primary" href={profile.prefillUrl} target="_blank" rel="noreferrer">
               開啟表單 <ExternalLink size={16} />
             </a>

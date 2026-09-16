@@ -5,19 +5,19 @@ import {
   Radio,
   ClipboardList,
   Users,
-  MoreHorizontal,
-  LogOut,
   Trophy,
   History,
   Sheet,
-  RefreshCw,
   Settings,
   Pin,
+  MoreHorizontal,
+  LogOut,
+  Shield,
+  Medal,
   X,
 } from "lucide-react";
 
 export type AdminView =
-  | "overview"
   | "recruitment"
   | "pending"
   | "roster"
@@ -28,22 +28,30 @@ export type AdminView =
   | "leaders"
   | "system"
   | "pinned"
-  | "security";
+  | "security"
+  | "overview";
 
 const primaryNav = [
-  { id: "recruitment", label: "戰情", shortcut: "today", icon: Radio },
-  { id: "pending", label: "待處理", shortcut: "pending", icon: ClipboardList },
-  { id: "roster", label: "名單", shortcut: "roster", icon: Users },
-] as const;
+  { id: "recruitment" as const, label: "今日招生戰情", mobile: "戰情", shortcut: "today" },
+  { id: "pending" as const, label: "待處理", mobile: "待處理", shortcut: "pending" },
+  { id: "roster" as const, label: "名單", mobile: "名單", shortcut: "contacts" },
+];
 
 const moreNav = [
-  { id: "podium", label: "今日排行榜", shortcut: "today-board", icon: Trophy },
-  { id: "history", label: "歷史排行榜", shortcut: "history-board", icon: History },
-  { id: "contacts", label: "表單資料", shortcut: "form", icon: Sheet },
-  { id: "system", label: "同步狀態", shortcut: "sync", icon: RefreshCw },
-  { id: "security", label: "系統設定", shortcut: "security", icon: Settings },
-  { id: "pinned", label: "我的釘選", shortcut: "pinned", icon: Pin },
-] as const;
+  { id: "podium" as const, label: "今日排行榜", mobile: "今日榜", icon: Trophy, shortcut: "ranking" },
+  { id: "history" as const, label: "歷史排行榜", mobile: "歷史榜", icon: History, shortcut: "history" },
+  { id: "contacts" as const, label: "表單資料", mobile: "表單", icon: Sheet, shortcut: "form" },
+  { id: "system" as const, label: "同步狀態", mobile: "同步", icon: Settings, shortcut: "sync" },
+  { id: "security" as const, label: "系統設定", mobile: "設定", icon: Shield, shortcut: "security" },
+  { id: "pinned" as const, label: "我的釘選", mobile: "釘選", icon: Pin, shortcut: "pinned" },
+  { id: "results" as const, label: "比賽成績", mobile: "成績", icon: Medal, shortcut: "results" },
+];
+
+const primaryIcons = {
+  recruitment: Radio,
+  pending: ClipboardList,
+  roster: Users,
+};
 
 export function AdminShell({
   view,
@@ -59,28 +67,25 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
-  const moreActive = moreOpen || moreNav.some(({ id, shortcut }) =>
-    view === id && (id !== "contacts" || forms === (shortcut === "form")),
-  );
-  const renderItem = (
-    item: (typeof primaryNav)[number] | (typeof moreNav)[number],
+  const moreActive = moreNav.some((item) => item.id === view) || forms;
+  const itemButton = (
+    id: AdminView,
+    label: string,
+    shortcut: string,
+    Icon: typeof Radio,
     extraClass?: string,
   ) => (
     <button
-      key={item.shortcut}
+      key={shortcut}
       className={extraClass}
-      aria-current={
-        view === item.id && (item.id !== "contacts" || forms === (item.shortcut === "form"))
-          ? "page"
-          : undefined
-      }
+      aria-current={view === id && (id !== "contacts" || forms === (shortcut === "form")) ? "page" : undefined}
       onClick={() => {
-        onNavigate(item.id, item.shortcut);
+        onNavigate(id, shortcut);
         setMoreOpen(false);
       }}
     >
-      <item.icon size={18} aria-hidden="true" />
-      <span>{item.label}</span>
+      <Icon size={18} aria-hidden="true" />
+      <span>{label}</span>
     </button>
   );
 
@@ -90,20 +95,18 @@ export function AdminShell({
         <a className="admin-brand" href="/">
           <BrandLogo />
           <span>
-            淡江禪學社<small>招生戰情</small>
+            淡江禪學社<small>招生戰情後台</small>
           </span>
         </a>
-        <p className="admin-nav-label">夥伴入口</p>
+        <p className="admin-nav-label">工作空間</p>
         <nav aria-label="後台導覽">
-          {primaryNav.map((item) => renderItem(item))}
-          <button
-            type="button"
-            aria-current={moreActive ? "page" : undefined}
-            onClick={() => setMoreOpen(true)}
-          >
-            <MoreHorizontal size={18} aria-hidden="true" />
-            <span>更多</span>
-          </button>
+          {primaryNav.map((item) =>
+            itemButton(item.id, item.label, item.shortcut, primaryIcons[item.id]),
+          )}
+        </nav>
+        <p className="admin-nav-label">更多</p>
+        <nav aria-label="更多後台導覽">
+          {moreNav.map((item) => itemButton(item.id, item.label, item.shortcut, item.icon))}
         </nav>
         <div className="admin-sidebar-footer">
           <span>現場工作人員</span>
@@ -122,7 +125,9 @@ export function AdminShell({
       </div>
       <div className="admin-content">{children}</div>
       <nav className="admin-bottom-nav" aria-label="手機後台導覽">
-        {primaryNav.map((item) => renderItem(item))}
+        {primaryNav.map((item) =>
+          itemButton(item.id, item.mobile, item.shortcut, primaryIcons[item.id]),
+        )}
         <button
           type="button"
           aria-label="更多"
@@ -143,7 +148,9 @@ export function AdminShell({
             <Dialog.Close className="admin-close" aria-label="關閉更多">
               <X size={20} />
             </Dialog.Close>
-            <nav aria-label="更多後台導覽">{moreNav.map((item) => renderItem(item))}</nav>
+            <nav aria-label="更多後台導覽">
+              {moreNav.map((item) => itemButton(item.id, item.label, item.shortcut, item.icon))}
+            </nav>
             <button className="admin-logout" onClick={onLogout}>
               <LogOut size={18} />
               登出

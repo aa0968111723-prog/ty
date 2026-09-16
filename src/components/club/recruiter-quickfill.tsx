@@ -141,6 +141,7 @@ export function RecruiterQuickfill() {
   const [staff, setStaff] = useState<StaffFields>(emptyStaff);
   const [hiddenKeys, setHiddenKeys] = useState(() => new Set<string>());
   const [hiddenIds, setHiddenIds] = useState(() => new Set<string>());
+  const [lastFormUrl, setLastFormUrl] = useState("");
   const [{ personKey: preferredPersonKey, submissionId: preferredSubmissionId }] = useState(readPreferredCandidate);
 
   useEffect(() => {
@@ -320,6 +321,7 @@ export function RecruiterQuickfill() {
       }
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "無法送出招生資料");
+      if (prefillUrl) setLastFormUrl(prefillUrl);
       hideCandidate(preview.personKey, preview.submissionId || "");
       setSentPrefillUrl(prefillUrl || OFFICIAL_VIEWFORM_URL);
       setSuccess(body.duplicate ? "這位同學已有招生紀錄，已從待跟進名單移除" : "已送出招生資料");
@@ -343,7 +345,7 @@ export function RecruiterQuickfill() {
   return (
     <div className="quickfill-page" data-quickfill="page">
       <header className="quickfill-top">
-        <a href="/admin?view=today">今日招生戰情</a>
+        <a href="/admin?view=today">招生戰情</a>
         <strong>接引人快速填表</strong>
         <button type="button" onClick={() => void load(true)} disabled={busy} aria-label="重新同步">
           <RefreshCw size={18} />
@@ -354,24 +356,26 @@ export function RecruiterQuickfill() {
       {success ? (
         <div role="status" className="admin-success quickfill-success">
           <span>{success}</span>
-          <a
-            className="quickfill-google"
-            href={sentPrefillUrl || OFFICIAL_VIEWFORM_URL}
-            target="_blank"
-            rel="noreferrer"
-            data-quickfill="open-form"
-          >
-            開啟正式招生表單 <ExternalLink size={16} />
-          </a>
-          <a
-            className="quickfill-google"
-            href={OFFICIAL_FORM_EDIT_URL}
-            target="_blank"
-            rel="noreferrer"
-            data-quickfill="open-backoffice"
-          >
-            查看招生表單後台 <ExternalLink size={16} />
-          </a>
+          <div className="quickfill-actions">
+            {lastFormUrl ? (
+              <a
+                className="quickfill-google"
+                href={lastFormUrl}
+                target="_blank"
+                rel="noreferrer"
+                data-quickfill="open-form"
+              >
+                開啟正式招生表單 <ExternalLink size={16} />
+              </a>
+            ) : null}
+            <a
+              className="quickfill-google"
+              href="/admin?view=today"
+              data-quickfill="open-backoffice"
+            >
+              查看招生表單後台 <ExternalLink size={16} />
+            </a>
+          </div>
         </div>
       ) : null}
       {stale && !error ? <p className="admin-caption">同步異常，顯示上次讀到的名單</p> : null}
@@ -439,7 +443,7 @@ export function RecruiterQuickfill() {
                   <p>{row.phone || "電話未填"}</p>
                   <small>{waitLabel(row.waitMinutes)} · 遊戲關主 {row.gameGatekeeper || "未填"}</small>
                   <button type="button" className="admin-primary" onClick={() => chooseStudent(row)}>
-                    跟進這位同學
+                    填寫正式資料
                   </button>
                 </article>
               ))}
@@ -600,7 +604,7 @@ export function RecruiterQuickfill() {
               rel="noreferrer"
               data-quickfill="open-form"
             >
-              打開正式招生表單 <ExternalLink size={16} />
+              開啟正式招生表單 <ExternalLink size={16} />
             </a>
             <button type="button" onClick={() => void load(true)}>
               我已送出表單，更新名單
