@@ -3,7 +3,7 @@ import {
   CalendarDays,
   CircleDollarSign,
   ClipboardList,
-  RefreshCw,
+  Star,
   Ticket,
   TrendingUp,
   UserPlus,
@@ -18,6 +18,7 @@ type CommandData = {
     pendingFormal?: number;
     activityToday?: number | null;
     activity: number | null;
+    popularActivity?: { name: string; count: number; today: number } | null;
     joined: number | null;
     depositPaid: number | null;
     depositTotal: number | null;
@@ -42,13 +43,6 @@ type CommandData = {
 function metric(value: number | null | undefined) {
   if (value == null) return "—";
   return value.toLocaleString("zh-Hant");
-}
-
-function syncState(flag?: { ok?: boolean; stale?: boolean }) {
-  if (!flag) return "尚未讀取";
-  if (flag.ok) return "正常";
-  if (flag.stale) return "顯示上次資料";
-  return "同步失敗";
 }
 
 function Ring({
@@ -107,7 +101,7 @@ function ExpandCard({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <article className={`battle-kpi${open ? " is-open" : ""}`}>
+    <article className={`battle-kpi${open ? " is-open" : ""}${id === "pending" ? " is-wide" : ""}${id === "popular" ? " is-text" : ""}`}>
       <button
         type="button"
         className="battle-kpi-toggle"
@@ -147,6 +141,13 @@ export function BattleCommand({
   const contactsToday = summary.contactsToday ?? summary.playedToday;
   const contactsTotal = summary.contactsTotal ?? contactsToday;
   const pending = summary.pendingFormal ?? summary.pending;
+  const popular = summary.popularActivity
+    ?? (summary.activity == null
+      ? null
+      : (data.activities || [])
+        .filter((row) => row.count > 0)
+        .slice()
+        .sort((a, b) => b.count - a.count || b.today - a.today || a.name.localeCompare(b.name, "zh-Hant"))[0] || null);
 
   return (
     <div className="battle-command">
@@ -178,23 +179,28 @@ export function BattleCommand({
           }
         />
         <ExpandCard
-          id="activity-today"
+          id="activity"
           icon={CalendarDays}
-          label="今日活動報名"
-          value={metric(summary.activityToday)}
-          hint="一人多活動只計一次"
-          details={<p>今天至少報名一項活動的人數。不含「無／考慮中」。</p>}
+          label="活動報名"
+          value={metric(summary.activity)}
+          hint={`今日 ${metric(summary.activityToday)} · 一人多活動只計一次`}
+          details={<p>正式招生表至少報名一項活動的人數。不含「無／考慮中」。今日 {metric(summary.activityToday)} 人。</p>}
         />
         <ExpandCard
-          id="pending"
-          icon={ClipboardList}
-          label="待填正式資料"
-          value={metric(pending)}
-          hint="已玩遊戲、尚未完成招生表"
+          id="popular"
+          icon={Star}
+          label="最受歡迎活動"
+          value={popular?.name || "—"}
+          hint={popular ? `${metric(popular.count)} 人` : "尚無正式報名"}
           details={
-            <button type="button" className="admin-primary" onClick={onOpenQueue}>
-              查看待處理名單
-            </button>
+            popular ? (
+              <p>
+                正式招生表「報名了那個活動」人數最多。今日 {metric(popular.today)} 人。
+                不含「無／考慮中」，不用遊戲分數推論。
+              </p>
+            ) : (
+              <p>還沒有活動報名資料。資料不足時不會顯示成 0。</p>
+            )
           }
         />
         <ExpandCard
@@ -214,23 +220,15 @@ export function BattleCommand({
           details={<p>{summary.depositTotal != null ? `已登錄金額合計 ${metric(summary.depositTotal)}。` : "尚未讀到保證金金額欄。"}</p>}
         />
         <ExpandCard
-          id="sync"
-          icon={RefreshCw}
-          label="資料同步狀態"
-          value={
-            data.sync.gameResults.ok && data.sync.recruitmentResponses.ok && data.sync.recruitmentMaster.ok
-              ? "正常"
-              : data.sync.gameResults.stale || data.sync.recruitmentResponses.stale || data.sync.recruitmentMaster.stale
-                ? "等待重試"
-                : "異常"
-          }
-          hint="遊戲／招生表／總表"
+          id="pending"
+          icon={ClipboardList}
+          label="待填正式資料"
+          value={metric(pending)}
+          hint="已玩遊戲、尚未完成招生表"
           details={
-            <ul className="battle-sync-sources">
-              <li>遊戲資料 {syncState(data.sync.gameResults)}</li>
-              <li>招生狀況表 {syncState(data.sync.recruitmentResponses)}</li>
-              <li>總表 {syncState(data.sync.recruitmentMaster)}</li>
-            </ul>
+            <button type="button" className="admin-primary" onClick={onOpenQueue}>
+              查看待處理名單
+            </button>
           }
         />
       </section>
@@ -304,9 +302,9 @@ export function BattleCommand({
         </div>
         <div className="battle-activity-grid">
           {data.activities?.length ? data.activities.map((row) => (
-            <article key={row.name}>
+            <article key={row.name} className={popular?.name === row.name ? "is-popular" : undefined}>
               <header>
-                <strong>{row.name}</strong>
+                <strong>{row.name}{popular?.name === row.name ? " · 最受歡迎" : ""}</strong>
                 <b>{row.count.toLocaleString("zh-Hant")}</b>
               </header>
               <div

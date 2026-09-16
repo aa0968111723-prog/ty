@@ -598,6 +598,12 @@ export function buildRecruitmentDashboard(input = {}) {
     today: uniqueCompleted.filter((row) =>
       signupActivitiesOf(row.activity).includes(name) && rowOnDate(row, date)).length,
   }));
+  const popularActivity = activityCount == null
+    ? null
+    : activities
+      .filter((row) => row.count > 0)
+      .slice()
+      .sort((a, b) => b.count - a.count || b.today - a.today || a.name.localeCompare(b.name, "zh-Hant"))[0] || null;
 
   const played = datedPeople.length;
   const pendingToday = datedPending.length;
@@ -695,6 +701,9 @@ export function buildRecruitmentDashboard(input = {}) {
       recruitedToday: completedToday,
       activityToday: activityTodayCount,
       activity: activityCount,
+      popularActivity: popularActivity
+        ? { name: popularActivity.name, count: popularActivity.count, today: popularActivity.today }
+        : null,
       joined: joinedCount,
       depositPaid: depositCount,
       depositTotal,

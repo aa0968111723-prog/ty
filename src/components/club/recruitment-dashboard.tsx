@@ -20,6 +20,7 @@ export type RecruitmentData = {
     recruitedToday?: number;
     activity: number | null;
     activityToday?: number | null;
+    popularActivity?: { name: string; count: number; today: number } | null;
     joined: number | null;
     depositPaid: number | null;
     depositTotal: number | null;
@@ -439,7 +440,7 @@ export function RecruitmentDashboard({
             <h2>現在該處理</h2>
             <button type="button" onClick={() => onOpenQueue?.()}>待處理名單</button>
           </div>
-          <RecruiterPicker value={selfRecruiter} onChange={rememberRecruiter} compact />
+          <RecruiterPicker value={selfRecruiter} onChange={rememberRecruiter} asSelect />
           {!selfRecruiter ? (
             <p className="admin-empty" role="status">
               先選「這位有緣人的接引人」，這裡會出現你現在該找的同學。

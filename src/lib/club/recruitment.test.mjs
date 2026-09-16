@@ -266,6 +266,7 @@ test("missing activity, joined and deposit fields are 資料不足 instead of ze
   assert.equal(data.summary.depositPaid, null);
   assert.equal(data.summary.joined, null);
   assert.equal(data.funnel.find((layer) => layer.id === "activity")?.missing, true);
+  assert.equal(data.summary.popularActivity, null);
   assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 1);
   assert.equal(data.funnel.some((layer) => layer.id === "s" || /S|A|B|分級/.test(layer.label)), false);
   assert.deepEqual(data.funnel.map((layer) => layer.id), ["played", "activity", "joined", "deposit"]);
@@ -405,6 +406,44 @@ test("one person signing two activities counts once today and once per activity"
   assert.equal(data.dailyTrend.at(-1)?.date, "2026-09-14");
   assert.equal(data.dailyTrend.at(-1)?.contacts, 2);
   assert.equal(data.dailyTrend.at(-1)?.activity, 1);
+});
+
+test("popular activity is the signup with the most people, not a game score", () => {
+  const tea = [
+    game({ 姓名: "甲", 電話: "0910000101", _submissionId: "pop-1" }),
+    game({ 姓名: "乙", 電話: "0910000102", _submissionId: "pop-2" }),
+    game({ 姓名: "丙", 電話: "0910000103", _submissionId: "pop-3" }),
+  ];
+  const talk = game({ 姓名: "丁", 電話: "0910000104", _submissionId: "pop-4", 分數: 3500 });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [...tea, talk],
+    recruitmentRows: [
+      ...tea.map((row, index) => ({
+        時間戳記: "2026/9/14 下午 3:00:00",
+        同學的姓名: row.姓名,
+        "同學電話/LINE": row.電話,
+        報名了那個活動: index === 0 ? "9/30茶會, 10/07演講" : "9/30茶會",
+        是否入社: "否",
+        保證金是否繳費: "否",
+        _gameSubmissionId: row._submissionId,
+      })),
+      {
+        時間戳記: "2026/9/14 下午 3:00:00",
+        同學的姓名: talk.姓名,
+        "同學電話/LINE": talk.電話,
+        報名了那個活動: "10/07演講",
+        是否入社: "否",
+        保證金是否繳費: "否",
+        _gameSubmissionId: talk._submissionId,
+      },
+    ],
+    masterRows: [],
+  });
+  assert.equal(data.summary.activity, 4);
+  assert.deepEqual(data.summary.popularActivity, { name: "9/30茶會", count: 3, today: 3 });
+  assert.equal(data.activities.find((row) => row.name === "10/07演講")?.count, 2);
+  assert.equal(data.summary.s, undefined);
 });
 
 test("same name different phones stay separate and are flagged for confirmation", () => {
