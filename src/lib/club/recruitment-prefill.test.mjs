@@ -11,6 +11,7 @@ import {
   parseGameMetadataNote,
   prefillUsesViewform,
   resolveViewformUrl,
+  visibleStaffNote,
 } from "./recruitment-prefill.mjs";
 
 const candidate = {
@@ -86,6 +87,18 @@ test("metadata note stays editable and extra notes append after the three game f
   const note = buildGameMetadataNote(candidate, "喜歡茶會");
   assert.match(note, /喜歡茶會$/);
   assert.equal(parseGameMetadataNote(note).submissionId, candidate.submissionId);
+});
+
+test("visible staff note keeps extras and hides submissionId metadata", () => {
+  const note = buildGameMetadataNote(candidate, "喜歡茶會");
+  assert.equal(visibleStaffNote(note), "喜歡茶會");
+  assert.doesNotMatch(visibleStaffNote(note), /submissionId/i);
+  assert.equal(visibleStaffNote("喜歡茶會"), "喜歡茶會");
+  assert.equal(visibleStaffNote(buildGameMetadataNote(candidate)), "");
+  assert.equal(
+    visibleStaffNote("先打電話\nsubmissionId：11111111-1111-4111-8111-111111111111\n再約茶會"),
+    "先打電話\n再約茶會",
+  );
 });
 
 test("unknown extra entry keys are ignored so invented IDs cannot ship", () => {

@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ExternalLink, X } from "lucide-react";
-import { officialFormUrl } from "@/lib/club/recruitment-prefill.mjs";
+import { officialFormUrl, visibleStaffNote } from "@/lib/club/recruitment-prefill.mjs";
 
 export type RecruitmentProfile = {
   personKey: string;
@@ -102,24 +102,8 @@ export function RecruitmentProfileSheet({
             <div><dt>保證金</dt><dd>{profile?.depositPaid || "尚未填"}{profile?.depositAmount ? ` · ${profile.depositAmount}` : ""}</dd></div>
             <div><dt>學號</dt><dd>{profile?.studentId || "尚未填"}</dd></div>
             <div><dt>生日</dt><dd>{profile?.birthday || "尚未填"}</dd></div>
-            <div><dt>備註</dt><dd>{profile?.note || "尚未填"}</dd></div>
+            <div><dt>備註</dt><dd>{visibleStaffNote(profile?.note) || "尚未填"}</dd></div>
           </dl>
-          <ol className="recruitment-timeline">
-            {(profile?.timeline || []).length ? (
-              profile?.timeline?.map((item, index) => (
-                <li key={`${item.kind}-${index}`}>
-                  <strong>{item.title}</strong>
-                  <span>{item.detail}</span>
-                  <small>{clock(item.at)}</small>
-                </li>
-              ))
-            ) : (
-              <li>
-                <strong>尚無時間線</strong>
-                <span>只顯示已發生的真實紀錄</span>
-              </li>
-            )}
-          </ol>
           {profile ? (
             <div className="recruitment-sheet-actions">
               {profile.pending ? (
@@ -152,6 +136,22 @@ export function RecruitmentProfileSheet({
               </a>
             </div>
           ) : null}
+          <ol className="recruitment-timeline">
+            {(profile?.timeline || []).length ? (
+              profile?.timeline?.map((item, index) => (
+                <li key={`${item.kind}-${index}`}>
+                  <strong>{item.title}</strong>
+                  <span>{item.detail}</span>
+                  <small>{clock(item.at)}</small>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>尚無時間線</strong>
+                <span>只顯示已發生的真實紀錄</span>
+              </li>
+            )}
+          </ol>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

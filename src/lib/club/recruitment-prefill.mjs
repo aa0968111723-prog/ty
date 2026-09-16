@@ -160,6 +160,26 @@ export function parseGameMetadataNote(value) {
   };
 }
 
+/**
+ * Staff-facing 備註: keep human extras, drop the three game-metadata lines
+ * that already have dedicated fields (and must not show submissionId).
+ * @param {unknown} value
+ */
+export function visibleStaffNote(value) {
+  return text(value)
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (/^遊戲完成[：:]/.test(trimmed)) return false;
+      if (/^遊戲關主[：:]/.test(trimmed)) return false;
+      if (/^submissionId[：:]/i.test(trimmed)) return false;
+      return true;
+    })
+    .join("\n")
+    .trim();
+}
+
 /** @param {unknown} overrides @returns {Record<string, string>} */
 function mergeEntries(overrides) {
   const extra = overrides && typeof overrides === "object" && !Array.isArray(overrides)

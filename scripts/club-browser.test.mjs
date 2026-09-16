@@ -513,11 +513,19 @@ test(
       await page.getByRole("button", { name: "看全部尚未填表" }).click();
       assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
       assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 1);
-      await page.getByRole("article").filter({ hasText: "別人的同學" }).getByRole("button", { name: "查看詳細" }).click();
+      const otherDetail = page.getByRole("article").filter({ hasText: "別人的同學" }).getByRole("button", { name: "查看詳細" });
+      const otherDetailBox = await otherDetail.boundingBox();
+      const queueNav = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
+      assert.ok(
+        otherDetailBox && queueNav && otherDetailBox.y + otherDetailBox.height <= queueNav.y + 1,
+        `查看詳細 behind nav detail=${JSON.stringify(otherDetailBox)} nav=${JSON.stringify(queueNav)}`,
+      );
+      await otherDetail.click();
       const sheet = page.getByRole("dialog");
       await sheet.getByRole("heading", { name: "別人的同學" }).waitFor();
       await sheet.getByText("遊戲關主").waitFor();
       assert.match(await sheet.locator("dd").filter({ hasText: "安倢" }).innerText(), /安倢/);
+      assert.match(await sheet.locator("dt").filter({ hasText: "正式接引人" }).locator("xpath=following-sibling::dd[1]").innerText(), /尚未填表/);
       const sheetForm = sheet.getByRole("link", { name: /開啟正式招生表單/ });
       const sheetFill = sheet.getByRole("link", { name: "填寫正式資料" });
       const sheetBackoffice = sheet.getByRole("link", { name: /查看招生表單後台/ });
@@ -543,6 +551,13 @@ test(
       assert.ok(
         fillTap && sheetTap && fillTap.y + fillTap.height <= sheetTap.y + 1,
         `sheet actions overlap fill=${JSON.stringify(fillTap)} form=${JSON.stringify(sheetTap)}`,
+      );
+      assert.ok(
+        fillTap && sheetTap && backTap
+          && fillTap.y + fillTap.height <= 736
+          && sheetTap.y + sheetTap.height <= 736
+          && backTap.y + backTap.height <= 736,
+        `sheet actions below fold fill=${JSON.stringify(fillTap)} form=${JSON.stringify(sheetTap)} back=${JSON.stringify(backTap)}`,
       );
       await capture(page, "profile-sheet-prefill-390");
       assert.equal(await page.locator("text=submissionId").count(), 0);
@@ -1435,6 +1450,7 @@ test(
             報名了那個活動: "9/30茶會",
             是否入社: "是",
             保證金是否繳費: "是",
+            備註: "遊戲完成：2026/09/14 10:00\n遊戲關主：安倢\nsubmissionId：bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\n喜歡茶會",
             _gameSubmissionId: filled._submissionId,
           }],
           masterRows: [],
@@ -1466,6 +1482,9 @@ test(
       await page.getByRole("article").filter({ hasText: "已填乙" }).getByRole("button", { name: "查看詳細" }).click();
       const filledSheet = page.getByRole("dialog");
       await filledSheet.getByRole("heading", { name: "已填乙" }).waitFor();
+      assert.match(await filledSheet.locator("dt").filter({ hasText: "遊戲關主" }).locator("xpath=following-sibling::dd[1]").innerText(), /安倢/);
+      assert.match(await filledSheet.locator("dt").filter({ hasText: "正式接引人" }).locator("xpath=following-sibling::dd[1]").innerText(), /小哲/);
+      assert.match(await filledSheet.locator("dt").filter({ hasText: "備註" }).locator("xpath=following-sibling::dd[1]").innerText(), /喜歡茶會/);
       const filledForm = filledSheet.getByRole("link", { name: /開啟正式招生表單/ });
       const filledBackoffice = filledSheet.getByRole("link", { name: /查看招生表單後台/ });
       assert.equal(await filledForm.count(), 1);
@@ -1474,6 +1493,16 @@ test(
       assert.doesNotMatch(decodeURIComponent(String(await filledForm.getAttribute("href"))), /entry\.1318284482=安倢/);
       assert.equal(await filledBackoffice.getAttribute("href"), "/admin?view=form");
       assert.doesNotMatch(await filledSheet.innerText(), /submissionId/);
+      const filledFormTap = await filledForm.boundingBox();
+      const filledBackTap = await filledBackoffice.boundingBox();
+      assert.ok(
+        filledFormTap && filledFormTap.y + filledFormTap.height <= 736,
+        `filled open-form below fold ${JSON.stringify(filledFormTap)}`,
+      );
+      assert.ok(
+        filledBackTap && filledBackTap.y + filledBackTap.height <= 736,
+        `filled backoffice below fold ${JSON.stringify(filledBackTap)}`,
+      );
       await capture(page, "sheet-filled-links-390");
       await capture(page, "roster-from-command-390");
       assert.deepEqual(errors, []);

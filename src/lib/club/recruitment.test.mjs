@@ -513,6 +513,37 @@ test("official form for one name on a shared phone leaves the other person pendi
   assert.equal(wang?.needsConfirmation, true);
 });
 
+test("official-form 備註 keeps extras and does not carry submissionId into profiles", () => {
+  const player = game({
+    姓名: "已填乙",
+    電話: "0920000002",
+    遊戲關主: "安倢",
+    _submissionId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [player],
+    recruitmentRows: [{
+      時間戳記: "2026/9/14 下午 3:00:00",
+      同學的姓名: player.姓名,
+      "同學電話/LINE": player.電話,
+      "接引人(可複選)": "小哲",
+      報名了那個活動: "9/30茶會",
+      是否入社: "是",
+      保證金是否繳費: "是",
+      備註: "遊戲完成：2026/09/14 10:00\n遊戲關主：安倢\nsubmissionId：cccccccc-cccc-4ccc-8ccc-cccccccccccc\n喜歡茶會",
+      _gameSubmissionId: player._submissionId,
+    }],
+    masterRows: [],
+  });
+  const profile = data.profiles.find((row) => row.name === "已填乙");
+  assert.equal(profile?.note, "喜歡茶會");
+  assert.doesNotMatch(String(profile?.note), /submissionId/i);
+  assert.equal(profile?.gameGatekeeper, "安倢");
+  assert.ok(profile?.recruiterList?.includes("小哲"));
+  assert.doesNotMatch(JSON.stringify(data.profiles.map((row) => row.note)), /submissionId/i);
+});
+
 test("empty game and form sheets stay at zero without inventing funnel counts", () => {
   const data = buildRecruitmentDashboard({
     date: "2026-09-14",

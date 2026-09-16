@@ -11,7 +11,7 @@ import {
   text,
 } from "./recruitment-identity.mjs";
 import { fieldFromAliases, formatTaipeiTimestamp, internalizedGameRow } from "./sheets.mjs";
-import { generatePrefilledFormUrl, LIVE_ACTIVITY_CHOICES } from "./recruitment-prefill.mjs";
+import { generatePrefilledFormUrl, LIVE_ACTIVITY_CHOICES, visibleStaffNote } from "./recruitment-prefill.mjs";
 
 const UNCLASSIFIED = "未分類";
 const UNKNOWN_GATEKEEPER = "未知關主";
@@ -334,7 +334,7 @@ function profileFromSources({
     depositPaid: source?.depositPaid || "",
     depositAmount: source?.depositAmount || "",
     birthday: source?.birthday || "",
-    note: source?.note || "",
+    note: visibleStaffNote(source?.note),
     studentId: source?.studentId || "",
     interest: source?.interest || "",
     activityList: signupActivitiesOf(source?.activity),
