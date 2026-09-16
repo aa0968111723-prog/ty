@@ -87,10 +87,12 @@ export function AdminLogin({
   onClose,
   onSuccess,
   gate,
+  expired,
 }: {
   onClose?: () => void;
   onSuccess?: () => void;
   gate?: AdminGate | null;
+  expired?: boolean;
 }) {
   const search = useMemo(() => (
     typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search)
@@ -256,6 +258,11 @@ export function AdminLogin({
       ) : (
         <p>現場工作人員專用</p>
       )}
+      {expired && view !== "setup" && view !== "pin" ? (
+        <p role="status" data-login-state="expired" className="admin-login-expired">
+          登入已失效，請重新登入。
+        </p>
+      ) : null}
 
       {view === "password" && (
         <form onSubmit={loginPassword}>

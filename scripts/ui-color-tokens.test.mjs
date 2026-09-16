@@ -91,5 +91,5 @@ test("admin styles use semantic surfaces for navigation and pinned hierarchy", (
   assert.match(admin, /\.admin-summary\s*\{[\s\S]*background:\s*var\(--surface-primary\)/);
   assert.match(admin, /\.admin-widget\[data-widget="topThree"\][\s\S]*var\(--surface-highlight\)/);
   assert.match(admin, /\.admin-widget\[data-widget="todayContacts"\][\s\S]*var\(--surface-secondary\)/);
-  assert.match(admin, /\.admin-bottom-nav button\[aria-current\][\s\S]*var\(--surface-selected\)/);
+  assert.match(admin, /\.admin-bottom-nav button\[aria-current(?:="page")?\][\s\S]*var\(--surface-selected\)/);
 });

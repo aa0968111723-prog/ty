@@ -5,9 +5,10 @@ import {
   LIVE_ACTIVITY_CHOICES,
   LIVE_INTEREST_TOPICS,
   LIVE_NOTE_TITLE,
-  LIVE_TIER_CHOICES,
   LIVE_YES_NO,
+  OFFICIAL_FORM_EDIT_URL,
   OFFICIAL_RECRUITERS,
+  OFFICIAL_VIEWFORM_URL,
   RECRUITER_STORAGE_KEY,
   datetimeLocalTaipei,
   generatePrefilledFormUrl,
@@ -23,7 +24,6 @@ type Candidate = RecruitmentData["pending"][number] & {
 
 type StaffFields = {
   recruitedAt: string;
-  tier: string;
   activities: string[];
   joined: string;
   depositPaid: string;
@@ -37,7 +37,6 @@ type StaffFields = {
 function emptyStaff(): StaffFields {
   return {
     recruitedAt: taipeiDate(new Date()),
-    tier: "",
     activities: [],
     joined: "",
     depositPaid: "",
@@ -129,6 +128,7 @@ export function RecruiterQuickfill() {
   const [data, setData] = useState<RecruitmentData | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [sentPrefillUrl, setSentPrefillUrl] = useState("");
   const [stale, setStale] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -264,7 +264,6 @@ export function RecruiterQuickfill() {
       recruiter: officialRecruiter,
       extraNotes,
       recruitedAt: staff.recruitedAt,
-      tier: staff.tier,
       activities: staff.activities,
       joined: staff.joined,
       depositPaid: staff.depositPaid,
@@ -305,7 +304,6 @@ export function RecruiterQuickfill() {
           completedAt: preview.completedAt,
           submissionId: preview.submissionId,
           extraNotes,
-          tier: staff.tier,
           activities: staff.activities,
           joined: staff.joined,
           depositPaid: staff.depositPaid,
@@ -323,6 +321,7 @@ export function RecruiterQuickfill() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "無法送出招生資料");
       hideCandidate(preview.personKey, preview.submissionId || "");
+      setSentPrefillUrl(prefillUrl || OFFICIAL_VIEWFORM_URL);
       setSuccess(body.duplicate ? "這位同學已有招生紀錄，已從待跟進名單移除" : "已送出招生資料");
       void load(true);
     } catch (cause) {
@@ -344,7 +343,7 @@ export function RecruiterQuickfill() {
   return (
     <div className="quickfill-page" data-quickfill="page">
       <header className="quickfill-top">
-        <a href="/admin?view=recruitment">招生戰情</a>
+        <a href="/admin?view=today">今日招生戰情</a>
         <strong>接引人快速填表</strong>
         <button type="button" onClick={() => void load(true)} disabled={busy} aria-label="重新同步">
           <RefreshCw size={18} />
@@ -357,12 +356,21 @@ export function RecruiterQuickfill() {
           <span>{success}</span>
           <a
             className="quickfill-google"
-            href="/admin?view=recruitment"
+            href={sentPrefillUrl || OFFICIAL_VIEWFORM_URL}
+            target="_blank"
+            rel="noreferrer"
+            data-quickfill="open-form"
+          >
+            開啟正式招生表單 <ExternalLink size={16} />
+          </a>
+          <a
+            className="quickfill-google"
+            href={OFFICIAL_FORM_EDIT_URL}
             target="_blank"
             rel="noreferrer"
             data-quickfill="open-backoffice"
           >
-            查看招生狀況表後台 <ExternalLink size={16} />
+            查看招生表單後台 <ExternalLink size={16} />
           </a>
         </div>
       ) : null}
@@ -496,13 +504,7 @@ export function RecruiterQuickfill() {
             />
           </label>
           <ChoiceRow
-            label="這位同學是屬於那個分級呢:-)"
-            choices={LIVE_TIER_CHOICES}
-            value={staff.tier}
-            onChange={(value) => setStaff({ ...staff, tier: String(value) })}
-          />
-          <ChoiceRow
-            label="報名了那個活動"
+            label="這位同學報名了哪個活動？"
             choices={LIVE_ACTIVITY_CHOICES}
             value={staff.activities}
             multiple

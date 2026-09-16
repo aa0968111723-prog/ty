@@ -4,8 +4,9 @@ import { SECURITY_HEADERS } from "./api.mjs";
 import { adminServiceEnabled, buildSessionView, issuePasswordLogin, passwordConfig, readV2Session, revokeCurrentV2Session } from "./admin-auth.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured, spreadsheetEditUrl, EXPECTED_SHEET_IDS } from "./sheets.mjs";
-import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
+import { buildPrefilledFormUrl, buildRecruitmentDashboard, toPartnerRecruitmentDashboard } from "./recruitment.mjs";
 import { normalizeStaffRecruitmentPayload } from "./recruitment-staff-form.mjs";
+import { bestResultsByPlayer, compareLeaderboardRows } from "./leaderboard.mjs";
 
 /** @typedef {import("./admin").AdminContact} AdminContact */
 /** @typedef {import("./admin").OfficialResult} OfficialResult */
@@ -212,8 +213,11 @@ export function buildDashboard(input = {}) {
     hour: `${String(hour).padStart(2, "0")}:00`, count: 0,
   }));
   for (const row of contacts) trend[Number(taipeiHour.format(new Date(row.completedAt)))].count += 1;
+  const historyTop = bestResultsByPlayer(rankOfficialResults(input.results || []))
+    .sort(compareLeaderboardRows)
+    .slice(0, 20);
   return {
-    ok: true, date, contacts, results, topThree: results.slice(0, 3),
+    ok: true, date, contacts, results, topThree: results.slice(0, 3), historyTop,
     kpis: {
       contacts: contacts.length,
       rawRecords: raw.length,
@@ -630,8 +634,9 @@ export async function handleAdminRecruitment(request) {
   } catch {
     /* Tab titles are optional diagnostics. */
   }
-  recruitmentCache = { at: Date.now(), key: date, body: dashboard };
-  return json(dashboard);
+  const partner = toPartnerRecruitmentDashboard(dashboard);
+  recruitmentCache = { at: Date.now(), key: date, body: partner };
+  return json(partner);
 }
 
 /** @param {Request} request */
@@ -674,7 +679,7 @@ export async function handleAdminRecruitmentSubmit(request) {
       ok: true,
       duplicate: Boolean(result.duplicate),
       saved: Boolean(result.saved && !result.duplicate),
-      pending: dashboard.pending,
+      pending: toPartnerRecruitmentDashboard(dashboard).pending,
     });
   } catch {
     return json({ error: "無法寫入招生狀況表，請稍後重試或改用正式表單" }, 502);

@@ -1,14 +1,41 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, ClipboardPen, Flag, LayoutDashboard, ListFilter, Medal, RefreshCw, RotateCcw, Sheet, Shield, Trophy, Users } from "lucide-react";
+import { Check, LayoutDashboard, Medal, RefreshCw, RotateCcw } from "lucide-react";
 import { AdminShell } from "@/components/club/admin-shell";
 import { AdminLogin, type AdminGate } from "@/components/admin-login";
 import { AdminSecurity } from "@/components/club/admin-security";
 import "@/admin.css";
 import { DashboardWidget } from "@/components/club/dashboard-widget";
-import { DEFAULT_LAYOUT, STORAGE_KEY, readLayout, initialView, taipeiDate, time, type Dashboard, type Tab, type LayoutPreference, type WidgetId, type Result } from "@/components/club/admin-presentation";
-import { Kpi, Bars, Podium } from "@/components/club/admin-metrics";
-import { RecruitmentDashboard, RecruitmentSync, type RecruitmentData } from "@/components/club/recruitment-dashboard";
+import { DEFAULT_LAYOUT, STORAGE_KEY, readLayout, initialView, taipeiDate, time, type Dashboard, type Tab, type LayoutPreference, type WidgetId } from "@/components/club/admin-presentation";
+import { Bars, Podium } from "@/components/club/admin-metrics";
+import { PendingQueue, RosterList, RecruitmentSync, type RecruitmentData } from "@/components/club/recruitment-dashboard";
+import { WarRoom } from "@/components/club/war-room";
+import { publicError } from "@/lib/club/public-error.mjs";
+
+const SYNC_LABEL = { ok: "成功", wait: "等待", fail: "失敗" } as const;
+
+function isAuthFailure(result: PromiseSettledResult<unknown>) {
+  return result.status === "rejected" && result.reason instanceof Error && result.reason.message === "AUTH";
+}
+
+function headingSyncState(options: {
+  tab: Tab;
+  error: string;
+  data: Dashboard | null;
+  recruitment: RecruitmentData | null;
+}): keyof typeof SYNC_LABEL {
+  const recruitmentView = options.tab === "recruitment" || options.tab === "pending" || options.tab === "roster";
+  if (options.error) return "fail";
+  if (recruitmentView) {
+    if (!options.recruitment) return "wait";
+    const ok = options.recruitment.sync.gameResults.ok
+      && options.recruitment.sync.recruitmentResponses.ok
+      && options.recruitment.sync.recruitmentMaster.ok;
+    return ok ? "ok" : "fail";
+  }
+  if (!options.data) return "wait";
+  return options.data.sync.forms.ok && options.data.sync.results.ok ? "ok" : "fail";
+}
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -30,10 +57,10 @@ function AdminDashboard() {
   const [recruitment, setRecruitment] = useState<RecruitmentData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [query, setQuery] = useState("");
   const [leader, setLeader] = useState("");
   const [recruiter, setRecruiter] = useState("");
-  const [tier, setTier] = useState("");
   const [track, setTrack] = useState("");
   const [source, setSource] = useState(() =>
     typeof window !== "undefined" &&
@@ -43,7 +70,6 @@ function AdminDashboard() {
   );
   const [department, setDepartment] = useState("");
   const [editing, setEditing] = useState(false);
-  const [showMore, setShowMore] = useState(false);
   const [layout, setLayout] = useState<LayoutPreference>(DEFAULT_LAYOUT);
   const [layoutReady, setLayoutReady] = useState(false);
   const [dragging, setDragging] = useState<WidgetId | null>(null);
@@ -72,14 +98,21 @@ function AdminDashboard() {
     setBusy(true);
     try {
       const current = taipeiDate();
+      const readBody = async (response: Response) => {
+        try {
+          return await response.json();
+        } catch {
+          return {};
+        }
+      };
       const load = async (target: string) => {
         const response = await fetch(`/api/admin/dashboard?date=${encodeURIComponent(target)}`, {
           cache: "no-store",
           signal: AbortSignal.timeout(15000),
         });
         if (response.status === 401) throw new Error("AUTH");
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "同步失敗");
+        const body = await readBody(response);
+        if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "同步失敗");
         return body as Dashboard;
       };
       const loadRecruitment = async (target: string) => {
@@ -88,33 +121,50 @@ function AdminDashboard() {
           { cache: "no-store", signal: AbortSignal.timeout(15000) },
         );
         if (response.status === 401) throw new Error("AUTH");
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "同步失敗");
+        const body = await readBody(response);
+        if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "同步失敗");
         return body as RecruitmentData;
       };
-      const selected = await load(date);
-      const today = date === current ? selected : await load(current);
-      const board = await loadRecruitment(date).catch(() => null);
-      if (id === generation.current) {
-        setData(selected);
-        setTodayData(today);
-        if (board) setRecruitment(board);
-        setError("");
+      const selectedPromise = load(date);
+      const todayPromise = date === current ? selectedPromise : load(current);
+      const [selectedResult, todayResult, boardResult] = await Promise.allSettled([
+        selectedPromise,
+        todayPromise,
+        loadRecruitment(date),
+      ]);
+      if (id !== generation.current) return;
+      if (isAuthFailure(selectedResult) || isAuthFailure(todayResult) || isAuthFailure(boardResult)) {
+        throw new Error("AUTH");
       }
+      const nextErrors: string[] = [];
+      if (selectedResult.status === "fulfilled") {
+        setData(selectedResult.value);
+        if (date === current) setTodayData(selectedResult.value);
+      } else {
+        nextErrors.push(publicError(selectedResult.reason, "同步失敗"));
+      }
+      if (date !== current) {
+        if (todayResult.status === "fulfilled") setTodayData(todayResult.value);
+        else nextErrors.push(publicError(todayResult.reason, "同步失敗"));
+      }
+      if (boardResult.status === "fulfilled") setRecruitment(boardResult.value);
+      else nextErrors.push(publicError(boardResult.reason, "招生資料同步失敗"));
+      setError(nextErrors[0] || "");
     } catch (cause) {
       if (id !== generation.current) return;
       if (cause instanceof Error && cause.message === "AUTH") {
+        setSessionExpired(true);
         setGate((current) => ({ ...(current || { authenticated: false }), authenticated: false, setupRequired: false }));
         setData(null);
+        setTodayData(null);
         setRecruitment(null);
-      } else setError(cause instanceof Error ? cause.message : "同步失敗，請重新整理");
+      } else setError(publicError(cause, "同步失敗，請重新整理"));
     } finally {
       if (id === generation.current) setBusy(false);
     }
   }, [date]);
   useEffect(() => {
     if (!authenticated) return;
-    setData(null);
     void refresh();
     const timer = window.setInterval(() => {
       void refresh();
@@ -138,8 +188,11 @@ function AdminDashboard() {
       if (!response.ok) throw new Error();
       generation.current++;
       const nextGate = await fetch("/api/admin/session").then((res) => res.json()).catch(() => ({ authenticated: false }));
+      setSessionExpired(false);
       setGate(nextGate);
       setData(null);
+      setTodayData(null);
+      setRecruitment(null);
     } catch {
       setError("登出失敗，請再試一次");
     }
@@ -178,7 +231,7 @@ function AdminDashboard() {
   }
   function selectLeader(name: string) {
     setLeader(name);
-    setView("contacts", "contacts");
+    setView("roster", "roster");
   }
 
   const orderedVisible = useMemo(
@@ -186,7 +239,6 @@ function AdminDashboard() {
     [layout],
   );
   const pinned = orderedVisible.filter((id) => layout.pinned.includes(id));
-  const more = orderedVisible.filter((id) => !layout.pinned.includes(id));
   const rows = (tab === "results" ? data?.results : data?.contacts) ?? [];
   const filtered = rows.filter(
     (row) =>
@@ -203,6 +255,10 @@ function AdminDashboard() {
     return <DashboardWidget key={id} id={id} editor={editor} data={data} todayData={todayData} date={date} layout={layout} dragging={dragging} setDragging={setDragging} togglePinned={togglePinned} toggleVisible={toggleVisible} moveWidget={moveWidget} selectLeader={selectLeader} />;
   }
 
+  const syncState = headingSyncState({ tab, error, data, recruitment });
+  const recruitmentView = tab === "recruitment" || tab === "pending" || tab === "roster";
+  const hasLastGood = recruitmentView ? Boolean(recruitment) : Boolean(data);
+
   if (gate === null)
     return (
       <main className="admin-page admin-auth">
@@ -214,7 +270,9 @@ function AdminDashboard() {
       <main className="admin-page admin-auth">
         <AdminLogin
           gate={gate}
+          expired={sessionExpired}
           onSuccess={() => {
+            setSessionExpired(false);
             const standalone = window.matchMedia("(display-mode: standalone)").matches
               || ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
             const url = new URL(window.location.href);
@@ -241,33 +299,35 @@ function AdminDashboard() {
         setDepartment("");
         setQuery("");
         setRecruiter("");
-        setTier("");
         setTrack("");
         setView(view, shortcut);
       }}
     >
       <header className="admin-heading">
         <div>
-          <span className="admin-eyebrow">活動工作台 / {date.replaceAll("-", ".")}</span>
+          <span className="admin-eyebrow">招生戰情 / {date.replaceAll("-", ".")}</span>
           <h1>
             {
               {
                 overview: "活動總覽",
-                recruitment: "招生戰情",
+                recruitment: "今日招生戰情",
+                pending: "待處理",
+                roster: "名單",
                 pinned: "我的釘選",
-                contacts: source === "Google Form" ? "Google 表單" : "聯絡名單",
+                contacts: "表單資料",
                 results: "比賽成績",
-                podium: "前三名",
+                podium: "今日排行榜",
+                history: "歷史排行榜",
                 leaders: "關主",
-                system: "系統",
-                security: "安全與登入",
+                system: "同步狀態",
+                security: "系統設定",
               }[tab]
             }
           </h1>
           <p>115-1 社團博覽會</p>
         </div>
         <div className="admin-heading-actions">
-          {(tab === "overview" || tab === "pinned") && (
+          {(tab === "pinned") && (
             <button
               className={editing ? "admin-done" : "admin-customize"}
               onClick={() => setEditing((value) => !value)}
@@ -307,32 +367,77 @@ function AdminDashboard() {
           />
         </label>
       </div>
-      <div className="admin-sync-line" role="status">
+      <div className="admin-sync-line" role="status" data-sync-state={syncState}>
         <span>
-          {data || recruitment
-            ? (
-                tab === "recruitment"
-                  ? recruitment?.sync.gameResults.ok
-                    && recruitment.sync.recruitmentResponses.ok
-                    && recruitment.sync.recruitmentMaster.ok
-                    && !error
-                  : data?.sync.forms.ok && data?.sync.results.ok && !error
-              )
-              ? "● 已連線"
-              : "○ 同步異常 · 部分資料可能缺漏"
-            : busy
-              ? "同步中…"
-              : "尚未同步"}
+          {syncState === "ok" ? "●" : "○"} {SYNC_LABEL[syncState]}
         </span>
         <span>最後同步 {recruitment || data ? time((recruitment?.sync.updatedAt || data?.sync.updatedAt) as string) : "—"}</span>
       </div>
       {error && (
-        <p className="admin-error" role="alert">
-          {error} · 保留上次成功資料
-        </p>
+        <div className="admin-error admin-error-banner" role="alert">
+          <span>{error} · {hasLastGood ? "顯示上次成功資料" : "請按更新再試"}</span>
+          <button type="button" data-sync-retry disabled={busy} onClick={() => void refresh(true)}>
+            再試一次
+          </button>
+        </div>
       )}
 
-      {data && (tab === "overview" || tab === "pinned") && (
+      {tab === "recruitment" && (
+        <WarRoom
+          data={recruitment}
+          syncError={error}
+          lastSyncAt={recruitment?.sync.updatedAt || data?.sync.updatedAt}
+          onRetry={() => void refresh(true)}
+          onOpenPending={() => setView("pending", "pending")}
+          onOpenRoster={() => setView("roster", "roster")}
+        />
+      )}
+
+      {tab === "pending" && !recruitment && (
+        <section className="admin-panel" data-empty="pending-sync">
+          <p className="admin-empty">{busy && !error ? "讀取待處理名單…" : "招生資料同步失敗"}</p>
+          {error || !busy ? (
+            <button type="button" className="admin-primary" data-sync-retry disabled={busy} onClick={() => void refresh(true)}>
+              再試一次
+            </button>
+          ) : null}
+        </section>
+      )}
+      {recruitment && tab === "pending" && (
+        <PendingQueue
+          data={recruitment}
+          query={query}
+          setQuery={setQuery}
+          gameGatekeeper={leader}
+          setGameGatekeeper={setLeader}
+        />
+      )}
+
+      {tab === "roster" && !recruitment && (
+        <section className="admin-panel" data-empty="roster-sync">
+          <p className="admin-empty">{busy && !error ? "讀取名單…" : "招生資料同步失敗"}</p>
+          {error || !busy ? (
+            <button type="button" className="admin-primary" data-sync-retry disabled={busy} onClick={() => void refresh(true)}>
+              再試一次
+            </button>
+          ) : null}
+        </section>
+      )}
+      {recruitment && tab === "roster" && (
+        <RosterList
+          data={recruitment}
+          query={query}
+          setQuery={setQuery}
+          gameGatekeeper={leader}
+          setGameGatekeeper={setLeader}
+          recruiter={recruiter}
+          setRecruiter={setRecruiter}
+          status={track}
+          setStatus={setTrack}
+        />
+      )}
+
+      {data && tab === "pinned" && (
         <>
           {editing ? (
             <section className="admin-editor" aria-label="自訂儀表板">
@@ -352,119 +457,47 @@ function AdminDashboard() {
             </section>
           ) : (
             <>
-              {tab === "overview" && (
-                <section className="admin-summary" aria-label="活動摘要">
-                  <Kpi label="今日接觸" value={todayData?.kpis.contacts ?? "—"} hint="去重複人數" />
-                  <Kpi label="正式挑戰" value={data.kpis.officialChallenges} hint="所選日期" />
-                  <Kpi label="最高分" value={data.kpis.highestScore} hint="所選日期" />
-                  <Kpi
-                    label="同步狀態"
-                    value={
-                      data.sync.forms.ok && data.sync.results.ok && !error ? "已連線" : "同步異常"
-                    }
-                    hint={time(data.sync.updatedAt)}
-                  />
-                </section>
-              )}
               <div className="admin-section-heading">
-                <h2>{tab === "pinned" ? "已釘選" : "關注資訊"}</h2>
+                <h2>已釘選</h2>
                 <span className="admin-caption">依你的偏好排列</span>
               </div>
-              <section
-                className="admin-widget-grid admin-pinned-grid"
-                aria-label={tab === "pinned" ? "我的戰情" : "釘選資訊"}
-              >
+              <section className="admin-widget-grid admin-pinned-grid" aria-label="我的戰情">
                 {pinned.map((id) => widget(id))}
                 {!pinned.length && (
                   <div className="admin-panel admin-empty">尚未釘選卡片，點「自訂」開始設定。</div>
                 )}
-              </section>
-              {tab === "overview" && more.length > 0 && (
-                <section className="admin-more">
-                  <button
-                    className="admin-more-toggle"
-                    aria-expanded={showMore}
-                    onClick={() => setShowMore((value) => !value)}
-                  >
-                    <span>
-                      <ListFilter size={19} />
-                      更多資訊
-                    </span>
-                    <ChevronDown size={20} className={showMore ? "is-open" : ""} />
-                  </button>
-                  {showMore && (
-                    <div className="admin-widget-grid">{more.map((id) => widget(id))}</div>
-                  )}
-                </section>
-              )}
-              <section className="admin-quick" aria-label="快速入口">
-                <h2>快速入口</h2>
-                <div>
-                  {[
-                    ["戰情", Flag, "recruitment", "recruitment"],
-                    ["填表", ClipboardPen, "follow-up", "follow-up"],
-                    ["名單", Users, "contacts", "contacts"],
-                    ["前三名", Medal, "podium", "ranking"],
-                    ["關主", Flag, "leaders", "gatekeepers"],
-                    ["表單", Sheet, "contacts", "form"],
-                    ["成績", Trophy, "results", "results"],
-                    ["同步", RefreshCw, "system", "sync"],
-                    ["安全", Shield, "security", "security"],
-                  ].map(([label, Icon, next, shortcut]) => (
-                    shortcut === "follow-up" ? (
-                      <a key="follow-up" href="/follow-up">
-                        <Icon size={21} />
-                        <span>{label as string}</span>
-                      </a>
-                    ) : (
-                    <button
-                      key={label as string}
-                      onClick={() => {
-                        setSource(shortcut === "form" ? "Google Form" : "");
-                        setView(next as Tab, shortcut as string);
-                      }}
-                    >
-                      <Icon size={21} />
-                      <span>{label as string}</span>
-                    </button>
-                    )
-                  ))}
-                </div>
               </section>
             </>
           )}
         </>
       )}
 
-      {recruitment && tab === "recruitment" && (
-        <RecruitmentDashboard
-          data={recruitment}
-          query={query}
-          setQuery={setQuery}
-          gameGatekeeper={leader}
-          setGameGatekeeper={setLeader}
-          recruiter={recruiter}
-          setRecruiter={setRecruiter}
-          tier={tier}
-          setTier={setTier}
-          status={track}
-          setStatus={setTrack}
-        />
-      )}
-
       {data && tab === "podium" && (
         <section className="admin-panel">
           <h2>
-            <Medal size={20} /> {date === taipeiDate() ? "今日" : "當日"}前三名
+            <Medal size={20} /> {date === taipeiDate() ? "今日" : "當日"}排行榜
           </h2>
-          <p className="admin-caption">僅正式挑戰 · 指定日期 · 排名不公開</p>
+          <p className="admin-caption">僅正式挑戰 · 指定日期 · 不出現在公開前台</p>
           <Podium rows={data.topThree} />
+          <p className="admin-caption">公開今日排行榜仍在前台，只顯示遮罩姓名。</p>
+          <a className="admin-primary" href="/leaderboard?scope=today">打開公開今日排行榜</a>
+        </section>
+      )}
+      {data && tab === "history" && (
+        <section className="admin-panel">
+          <h2>
+            <Medal size={20} /> 歷史排行榜
+          </h2>
+          <p className="admin-caption">個人最高分 · 僅工作人員可見全名</p>
+          <Podium rows={data.historyTop ?? []} />
+          <p className="admin-caption">公開歷史排行榜仍在前台，只顯示遮罩姓名。</p>
+          <a className="admin-primary" href="/leaderboard?scope=history">打開公開歷史排行榜</a>
         </section>
       )}
       {(tab === "contacts" || tab === "results") && (
         <section className="admin-panel">
           <div className="admin-section-heading">
-            <h2>{tab === "contacts" ? "聯絡名單" : "比賽成績"}</h2>
+            <h2>{tab === "contacts" ? "表單資料" : "比賽成績"}</h2>
             {tab === "results" && (
               <button onClick={() => setView("podium", "ranking")}>查看前三名</button>
             )}
@@ -512,67 +545,23 @@ function AdminDashboard() {
           {!filtered.length ? (
             <p className="admin-empty">{busy ? "讀取中…" : "沒有符合條件的紀錄"}</p>
           ) : (
-            <>
-              <div className="admin-person-list">
-                {filtered.map((row, index) => (
-                  <article key={`${row.completedAt}-${index}`}>
-                    <div>
-                      <strong>{row.name}</strong>
-                      <span className="admin-badge">{row.source}</span>
-                    </div>
-                    <p>
-                      {row.department || "科系未填"} · {row.grade || "年級未填"}
-                    </p>
-                    <p>{row.phone || "電話未填"}</p>
-                    <small>
-                      {time(row.completedAt)} · 關主 {row.gatekeeper || "未填"}
-                    </small>
-                    {"score" in row && (
-                      <b className="admin-person-score">
-                        {Number(row.score).toLocaleString()} 分 · 正確率 {(row as Result).accuracy}%
-                      </b>
-                    )}
-                  </article>
-                ))}
-              </div>
-              <div className="admin-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>姓名</th>
-                      <th>時間</th>
-                      <th>科系／年級</th>
-                      <th>電話</th>
-                      <th>來源</th>
-                      <th>關主</th>
-                      {tab === "results" && <th>分數／正確率</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((row, index) => (
-                      <tr key={`${row.completedAt}-${index}`}>
-                        <td>{row.name}</td>
-                        <td>{time(row.completedAt)}</td>
-                        <td>
-                          {row.department}
-                          <small>{row.grade}</small>
-                        </td>
-                        <td>{row.phone}</td>
-                        <td>
-                          <span className="admin-badge">{row.source}</span>
-                        </td>
-                        <td>{row.gatekeeper}</td>
-                        {tab === "results" && (
-                          <td>
-                            {(row as Result).score} / {(row as Result).accuracy}%
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <div className="admin-person-list is-always">
+              {filtered.map((row, index) => (
+                <article key={`${row.completedAt}-${index}`}>
+                  <div>
+                    <strong>{row.name}</strong>
+                    <span className="admin-badge">{row.source}</span>
+                  </div>
+                  <p>
+                    {row.department || "科系未填"} · {row.grade || "年級未填"}
+                  </p>
+                  <p>{row.phone || "電話未填"}</p>
+                  <small>
+                    {time(row.completedAt)} · 關主 {row.gatekeeper || "未填"}
+                  </small>
+                </article>
+              ))}
+            </div>
           )}
         </section>
       )}

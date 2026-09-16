@@ -52,6 +52,16 @@ test("staff payload keeps game gatekeeper separate from official recruiter", () 
   assert.equal(record.recruitDate, "9/14");
 });
 
+test("staff form can omit 分級 and still write activity choices", () => {
+  const parsed = normalizeStaffRecruitmentPayload({ ...payloadBody, tier: "" }, { now: new Date("2026-09-14T08:00:00+08:00") });
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.payload.tier, "");
+  assert.deepEqual(parsed.payload.activities, ["9/30茶會", "社課"]);
+  const record = staffRecruitmentRecord(parsed.payload);
+  assert.equal(record.tier, "");
+  assert.equal(record.activity, "9/30茶會, 社課");
+});
+
 test("invented choices and missing recruiter/name are rejected", () => {
   const parsed = normalizeStaffRecruitmentPayload({
     ...payloadBody,

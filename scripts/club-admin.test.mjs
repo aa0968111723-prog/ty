@@ -81,6 +81,7 @@ test("official ranking rejects invalid aggregates, practice settings, and repeat
   assert.deepEqual(ranked.map((row) => row.submissionId), [first.submissionId, second.submissionId]);
   assert.equal(ranked[0].title, "Lv.1 心靈修煉者");
   assert.equal(buildDashboard({ date: "2026-09-12", results: rows }).topThree.length, 2);
+  assert.equal(buildDashboard({ date: "2026-09-12", results: rows }).historyTop.length, 1);
   const legacy = official({ submissionId: "", settings: JSON.stringify(DEFAULT_SETTINGS) });
   assert.equal(rankOfficialResults([legacy])[0].id, rankOfficialResults([legacy])[0].id);
 });
@@ -169,7 +170,7 @@ test("admin authentication and private read API contracts with mocked Google onl
     spreadsheets: { values: {
       get: async ({ spreadsheetId, range }) => {
         assert.equal(spreadsheetId, "fixture-sheet");
-        const action = range === "'results'" ? "results" : "formResponses";
+        const action = /results|14後玩遊戲/.test(String(range)) ? "results" : "formResponses";
         calls.push(action);
         if (failForms && action === "formResponses") {
           throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
@@ -208,9 +209,16 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.ok("funnel" in recruitment);
   assert.ok("summary" in recruitment);
   assert.ok(Array.isArray(recruitment.pending));
+  assert.equal("s" in recruitment.summary, false);
+  assert.equal("a" in recruitment.summary, false);
+  assert.equal("b" in recruitment.summary, false);
+  assert.equal(recruitment.candidatesByGatekeeper, undefined);
   if (recruitment.pending.length) {
     assert.match(String(recruitment.pending[0].prefillUrl), /\/viewform\?/);
     assert.doesNotMatch(String(recruitment.pending[0].prefillUrl), /forms\.gle/);
+    assert.equal(recruitment.pending[0].latestAttempt, undefined);
+    assert.equal(recruitment.pending[0].choiceLabel, undefined);
+    assert.equal(recruitment.pending[0].score, undefined);
   }
   assert.equal((await handleAdminRecruitment(request("recruitment"))).status, 401);
   assert.equal((await handleAdminFormResponses(request("form-responses", { cookie }))).status, 502);
@@ -221,7 +229,7 @@ test("admin authentication and private read API contracts with mocked Google onl
         if (String(range).includes("總表")) {
           throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
         }
-        const action = range === "'results'" ? "results" : "formResponses";
+        const action = /results|14後玩遊戲/.test(String(range)) ? "results" : "formResponses";
         const rows = action === "results" ? [result] : [
           { 姓名: "小明", 時間戳記: "2026/9/12 10:00:00" },
         ];

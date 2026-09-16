@@ -9,6 +9,7 @@ export const OFFICIAL_FORM_ID = "12fk5ubMY0fnCSSTEljFJ1l-gcao1hDMkw7F8I8qTlOw";
 export const OFFICIAL_VIEWFORM_PATH =
   "/forms/d/e/1FAIpQLSdzbqD9Bq4qaRu5HVfUS-pTNLSKiFcmGNs72w2lWuZ9u6TE7A/viewform";
 export const OFFICIAL_VIEWFORM_URL = `https://docs.google.com${OFFICIAL_VIEWFORM_PATH}`;
+export const OFFICIAL_FORM_EDIT_URL = `https://docs.google.com/forms/d/${OFFICIAL_FORM_ID}/edit`;
 export const FORMS_GLE_SHORT_URL = "https://forms.gle/CBmNvkcvSQMzvh9X7";
 
 export const OFFICIAL_RECRUITERS = Object.freeze([
