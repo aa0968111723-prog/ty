@@ -1058,6 +1058,9 @@ test(
       assert.equal(await cards.count(), 1);
       assert.equal(await cards.getByText("茶會同學", { exact: true }).count(), 1);
       assert.equal(await page.getByText("待填同學").count(), 0);
+      const firstCard = await cards.first().boundingBox();
+      const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
+      assert.ok(firstCard && navBox && firstCard.y + 24 < navBox.y, `filtered person must sit above the nav: card=${JSON.stringify(firstCard)} nav=${JSON.stringify(navBox)}`);
       assert.equal(await page.getByText("submissionId").count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await capture(page, "war-event-roster-filter-390");

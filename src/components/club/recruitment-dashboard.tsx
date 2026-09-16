@@ -301,7 +301,7 @@ export function RosterList({
   setDate: (value: string) => void;
   initialActivity?: string;
 }) {
-  const [filtersOpen, setFiltersOpen] = useState(Boolean(initialActivity));
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [profile, setProfile] = useState<RecruitmentProfile | null>(null);
   const [gameGatekeeper, setGameGatekeeper] = useState("");
   const [recruiter, setRecruiter] = useState("");
