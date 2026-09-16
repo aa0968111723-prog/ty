@@ -129,3 +129,17 @@ test("unknown extra entry keys are ignored so invented IDs cannot ship", () => {
   assert.equal(new URL(url).searchParams.has("not-an-entry"), false);
   assert.equal(new URL(url).searchParams.has("invented"), false);
 });
+
+test("prefill never fills 分級 / S/A/B even when candidate.tier is set", () => {
+  const url = generatePrefilledFormUrl(
+    { ...candidate, tier: "S(已報名)" },
+    { recruiter: "柏能", tier: "A(有興趣再考慮)" },
+  );
+  const parsed = new URL(url);
+  const decoded = decodeURIComponent(url);
+  assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.tier), null);
+  assert.doesNotMatch(decoded, /S\(已報名\)/);
+  assert.doesNotMatch(decoded, /A\(有興趣再考慮\)/);
+  assert.doesNotMatch(decoded, /B\(還好沒興趣\)/);
+  assert.doesNotMatch(decoded, /分級/);
+});

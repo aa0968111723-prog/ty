@@ -31,6 +31,7 @@ export const LIVE_PREFILL_ENTRIES = Object.freeze({
   phone: "entry.1668669667",
   departmentGrade: "entry.628075911",
   note: "entry.88032894",
+  /** Live Form still has 分級; never prefill this entry. */
   tier: "entry.1322037614",
   activity: "entry.1403707043",
   joined: "entry.425502120",
@@ -241,7 +242,6 @@ export function formatRecruitDateMd(isoDate) {
  *   recruitedAt?: Date | string,
  *   responderUrl?: string,
  *   entries?: Record<string, string>,
- *   tier?: string,
  *   activities?: unknown,
  *   joined?: string,
  *   depositPaid?: string,
@@ -267,7 +267,6 @@ export function generatePrefilledFormUrl(candidate = {}, options = {}) {
   setEntry(params, entries.note, buildGameMetadataNote(candidate, options.extraNotes));
   setEntry(params, entries.completedAt, formatCompletedAt(candidateCompletedAt(candidate)));
   setEntry(params, entries.gameGatekeeper, gameGatekeeper);
-  setEntry(params, entries.tier, options.tier || candidate.tier);
   setChoices(params, entries.activity, options.activities || candidate.activities || candidate.activity);
   setEntry(params, entries.joined, options.joined || candidate.joined);
   setEntry(params, entries.depositPaid, options.depositPaid || candidate.depositPaid);
