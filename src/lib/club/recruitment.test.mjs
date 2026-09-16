@@ -492,6 +492,10 @@ test("today vs history contacts exclude practice and keep name-normalized unique
   assert.equal(data.summary.playedToday, 1);
   assert.equal(data.summary.playedAll, 2);
   assert.equal(data.summary.playedOnDate, 1);
+  const partnerContacts = toPartnerRecruitmentDashboard(data);
+  assert.equal(partnerContacts.summary.playedAll, 2);
+  assert.equal(partnerContacts.summary.playedToday, 1);
+  assert.equal(partnerContacts.summary.playedTotal, 2);
   assert.equal(data.pending.length, 2);
   assert.deepEqual(data.kpiPeople.todayContacts.map((row) => row.name), ["王小明"]);
   assert.equal(data.kpiPeople.allContacts.length, 2);
@@ -617,6 +621,10 @@ test("event signup counts a person once today and once per event", () => {
     false,
   );
   const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal(partner.summary.playedAll, data.summary.playedAll);
+  assert.equal(partner.summary.playedToday, data.summary.playedToday);
+  assert.equal(partner.summary.conflicts, data.summary.conflicts);
+  assert.equal(typeof partner.summary.playedAll, "number");
   assert.equal(partner.events.find((row) => row.name === "9/30茶會")?.count, 2);
   assert.deepEqual(
     partner.events.find((row) => row.name === "9/30茶會")?.people.map((row) => row.name).sort(),

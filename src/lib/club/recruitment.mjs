@@ -1057,6 +1057,8 @@ export function toPartnerRecruitmentDashboard(dashboard = {}) {
     date: dashboard.date,
     summary: {
       playedToday: summary.playedToday,
+      playedOnDate: summary.playedOnDate,
+      playedAll: summary.playedAll ?? summary.playedTotal,
       playedTotal: summary.playedTotal ?? summary.playedAll,
       pending: summary.pending,
       pendingToday: summary.pendingToday,
@@ -1069,6 +1071,7 @@ export function toPartnerRecruitmentDashboard(dashboard = {}) {
       depositNeedsReview: Boolean(summary.depositNeedsReview),
       depositTotal: summary.depositTotal,
       roster: summary.roster,
+      conflicts: summary.conflicts,
     },
     activities: dashboard.activities,
     daily: dashboard.daily,
