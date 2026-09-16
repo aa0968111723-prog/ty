@@ -1239,6 +1239,10 @@ test(
       await page.getByRole("button", { name: "這位同學報名了哪個活動？ 9/30茶會" }).click();
       await page.getByRole("button", { name: "是否入社 否" }).click();
       await page.getByRole("button", { name: "保證金是否繳費 否" }).click();
+      const fillBackoffice = page.locator("[data-quickfill=open-backoffice]");
+      assert.equal(await fillBackoffice.count(), 1);
+      assert.equal(await fillBackoffice.getAttribute("href"), OFFICIAL_FORM_EDIT_URL);
+      assert.equal(await fillBackoffice.getAttribute("target"), "_blank");
       const submit = page.locator("[data-quickfill=submit]");
       const tap = await submit.evaluate((el) => {
         const box = el.getBoundingClientRect();
@@ -1253,8 +1257,8 @@ test(
       assert.equal(submitted[0].gameGatekeeper, "安倢");
       assert.ok(submitted[0].activities.includes("9/30茶會"));
       assert.equal(await page.getByRole("button", { name: "填寫正式資料" }).count(), 0);
-      const backoffice = page.locator("[data-quickfill=open-backoffice]");
-      assert.equal(await backoffice.count(), 1);
+      const backoffice = page.locator("[data-quickfill=open-backoffice]").last();
+      assert.ok(await backoffice.count() >= 1);
       assert.equal(await backoffice.getAttribute("href"), OFFICIAL_FORM_EDIT_URL);
       assert.equal(await backoffice.getAttribute("target"), "_blank");
       assert.match(String(await backoffice.getAttribute("href")), /\/forms\/d\/12fk5ubMY0fnCSSTEljFJ1l-gcao1hDMkw7F8I8qTlOw\/edit$/);

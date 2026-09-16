@@ -620,6 +620,15 @@ export function RecruiterQuickfill() {
             >
               開啟正式招生表單 <ExternalLink size={16} />
             </a>
+            <a
+              className="quickfill-google"
+              href={OFFICIAL_FORM_EDIT_URL}
+              target="_blank"
+              rel="noreferrer"
+              data-quickfill="open-backoffice"
+            >
+              查看招生表單後台 <ExternalLink size={16} />
+            </a>
             <button type="button" onClick={() => void load(true)}>
               我已送出表單，更新名單
             </button>
