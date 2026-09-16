@@ -313,7 +313,7 @@ function AdminDashboard() {
         <span>
           {data || recruitment
             ? (
-                tab === "recruitment" || tab === "pending" || tab === "roster"
+                tab === "roster"
                   ? recruitment?.sync.gameResults.ok
                     && recruitment.sync.recruitmentResponses.ok
                     && recruitment.sync.recruitmentMaster.ok
