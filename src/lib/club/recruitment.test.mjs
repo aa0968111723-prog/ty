@@ -9,6 +9,7 @@ import {
   parseGameAttempts,
   parseMasterRows,
   parseRecruitmentResponses,
+  toPartnerRecruitmentDashboard,
 } from "./recruitment.mjs";
 import {
   applyLastKnownGood,
@@ -303,7 +304,7 @@ test("招生狀況表 plus 總表 formula-shaped row keeps game gatekeeper separ
     }],
   });
   assert.equal(data.pending.length, 0);
-  assert.equal(data.summary.s, 1);
+  assert.equal(data.summary.s, undefined);
   assert.equal(data.summary.activity, 1);
   assert.equal(data.summary.joined, 1);
   assert.equal(data.summary.depositPaid, 1);
@@ -337,7 +338,7 @@ test("總表-only roster rows appear even without a game attempt", () => {
   });
   assert.equal(data.profiles.length, 1);
   assert.equal(data.profiles[0].name, "歷史生");
-  assert.equal(data.summary.s, 1);
+  assert.equal(data.summary.s, undefined);
   assert.equal(data.summary.joined, 1);
   assert.equal(data.summary.depositTotal, 300);
   assert.equal(data.pending.length, 0);
@@ -427,4 +428,26 @@ test("same name different phones is flagged for review and not silently merged",
   assert.equal(data.summary.playedToday, 2);
   assert.equal(data.pending.length, 2);
   assert.equal(data.pending.every((row) => row.needsReview), true);
+});
+
+test("partner dashboard hides grading, scores, and form choice tokens", () => {
+  const player = game({ _submissionId: "dddddddd-dddd-4ddd-8ddd-dddddddddd01", 分數: 900 });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [player],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.ok(data.pending[0].latestAttempt);
+  assert.ok(data.pending[0].choiceLabel);
+  const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal("s" in partner.summary, false);
+  assert.equal("a" in partner.summary, false);
+  assert.equal("b" in partner.summary, false);
+  assert.equal(partner.candidatesByGatekeeper, undefined);
+  assert.equal(partner.pending[0].latestAttempt, undefined);
+  assert.equal(partner.pending[0].choiceLabel, undefined);
+  assert.equal(partner.pending[0].score, undefined);
+  assert.equal(partner.pending[0].name, "王小明");
+  assert.doesNotMatch(JSON.stringify(partner), /S\(已報名\)/);
 });

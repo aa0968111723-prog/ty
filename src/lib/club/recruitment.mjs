@@ -363,14 +363,6 @@ function appendUnmatchedRoster(profiles, rows, { prefix }) {
   });
 }
 
-function tierLetter(value) {
-  const raw = text(value);
-  if (/^S/i.test(raw) || raw.includes("已報名")) return "S";
-  if (/^A/i.test(raw) || raw.includes("有興趣")) return "A";
-  if (/^B/i.test(raw) || raw.includes("沒興趣") || raw.includes("還好")) return "B";
-  return "";
-}
-
 /** @param {unknown} value */
 export function splitActivities(value) {
   return text(value)
@@ -568,9 +560,6 @@ export function buildRecruitmentDashboard(input = {}) {
     if (!known.length) return null;
     return rows.filter(predicate).length;
   }
-  const sCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "S");
-  const aCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "A");
-  const bCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "B");
   const activityKnown = completed.some((row) => Boolean(text(row.activity)));
   const activityCount = !completed.length || !activityKnown ? null : uniqueActivityPeople(completed);
   const joinedCount = presentCount(completed, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
@@ -683,9 +672,6 @@ export function buildRecruitmentDashboard(input = {}) {
       depositPaid: depositCount,
       depositTotal,
       roster: master.length || completed.length,
-      s: sCount,
-      a: aCount,
-      b: bCount,
     },
     activities,
     daily,
@@ -697,7 +683,6 @@ export function buildRecruitmentDashboard(input = {}) {
     distributions: {
       departments: distribution(completed.map((row) => row.department)),
       grades: distribution(completed.map((row) => row.grade)),
-      tiers: distribution(completed.map((row) => tierLetter(row.tier) || row.tier)),
     },
     candidatesByGatekeeper,
     duplicates: allRecruitsIncludingDup.filter((row) => row.duplicate).length,
@@ -741,6 +726,77 @@ export function recruitmentChoiceGroups(dashboard) {
     if (leftover.length) groups[UNKNOWN_GATEKEEPER] = leftover;
   }
   return groups;
+}
+
+function partnerPerson(row = {}) {
+  return {
+    personKey: row.personKey,
+    needsReview: Boolean(row.needsReview),
+    name: row.name,
+    phone: row.phone,
+    department: row.department,
+    grade: row.grade,
+    gameGatekeeper: row.gameGatekeeper,
+    gameCompletedAt: row.gameCompletedAt,
+    completedAt: row.completedAt,
+    waitMinutes: row.waitMinutes,
+    pending: row.pending,
+    recruiters: row.recruiters,
+    recruiterList: row.recruiterList,
+    recruitedAt: row.recruitedAt,
+    submittedAt: row.submittedAt,
+    activity: row.activity,
+    joined: row.joined,
+    depositPaid: row.depositPaid,
+    depositAmount: row.depositAmount,
+    birthday: row.birthday,
+    note: row.note,
+    studentId: row.studentId,
+    interest: row.interest,
+    timeline: Array.isArray(row.timeline)
+      ? row.timeline.map((item) => ({
+        at: item.at,
+        kind: item.kind,
+        title: item.title,
+        detail: item.detail,
+      }))
+      : undefined,
+    prefillUrl: row.prefillUrl || "",
+    submissionId: row.submissionId,
+    attemptCount: row.attemptCount,
+  };
+}
+
+/** Partner-facing payload: no S/A/B, no game scores, no Google Form choice tokens. */
+export function toPartnerRecruitmentDashboard(dashboard = {}) {
+  const summary = dashboard.summary || {};
+  return {
+    ok: dashboard.ok,
+    date: dashboard.date,
+    summary: {
+      playedToday: summary.playedToday,
+      playedTotal: summary.playedTotal,
+      pending: summary.pending,
+      pendingToday: summary.pendingToday,
+      recruited: summary.recruited,
+      recruitedToday: summary.recruitedToday,
+      activity: summary.activity,
+      activityToday: summary.activityToday,
+      joined: summary.joined,
+      depositPaid: summary.depositPaid,
+      depositTotal: summary.depositTotal,
+      roster: summary.roster,
+    },
+    activities: dashboard.activities,
+    daily: dashboard.daily,
+    funnel: dashboard.funnel,
+    pending: (dashboard.pending || []).map(partnerPerson),
+    profiles: (dashboard.profiles || []).map(partnerPerson),
+    gameGatekeepers: dashboard.gameGatekeepers,
+    recruiters: dashboard.recruiters,
+    duplicates: dashboard.duplicates,
+    sync: dashboard.sync,
+  };
 }
 
 export function stableDashboardId(value) {

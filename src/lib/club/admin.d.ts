@@ -59,13 +59,14 @@ export interface RecruitmentSyncStatus extends SyncStatus {
 export interface RecruitmentDashboard {
   ok: true;
   date: string;
-  summary: Record<string, number>;
+  summary: Record<string, number | null | undefined>;
+  activities?: Array<{ name: string; count: number }>;
+  daily?: Array<{ date: string; contacts: number; activity: number; joined: number }>;
   funnel: Array<{ id: string; label: string; count: number; fromPrevious: number | null; fromStart: number | null; missing?: boolean }>;
   pending: unknown[];
   profiles: unknown[];
   gameGatekeepers: unknown[];
   recruiters: unknown[];
-  distributions: unknown;
   sync: {
     gameResults: RecruitmentSyncStatus;
     recruitmentResponses: RecruitmentSyncStatus;

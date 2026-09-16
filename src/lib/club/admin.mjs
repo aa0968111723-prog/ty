@@ -4,7 +4,7 @@ import { SECURITY_HEADERS } from "./api.mjs";
 import { adminServiceEnabled, buildSessionView, issuePasswordLogin, passwordConfig, readV2Session, revokeCurrentV2Session } from "./admin-auth.mjs";
 import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured, spreadsheetEditUrl, EXPECTED_SHEET_IDS } from "./sheets.mjs";
-import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
+import { buildPrefilledFormUrl, buildRecruitmentDashboard, toPartnerRecruitmentDashboard } from "./recruitment.mjs";
 import { normalizeStaffRecruitmentPayload } from "./recruitment-staff-form.mjs";
 import { bestResultsByPlayer, compareLeaderboardRows } from "./leaderboard.mjs";
 
@@ -634,8 +634,9 @@ export async function handleAdminRecruitment(request) {
   } catch {
     /* Tab titles are optional diagnostics. */
   }
-  recruitmentCache = { at: Date.now(), key: date, body: dashboard };
-  return json(dashboard);
+  const partner = toPartnerRecruitmentDashboard(dashboard);
+  recruitmentCache = { at: Date.now(), key: date, body: partner };
+  return json(partner);
 }
 
 /** @param {Request} request */
@@ -678,7 +679,7 @@ export async function handleAdminRecruitmentSubmit(request) {
       ok: true,
       duplicate: Boolean(result.duplicate),
       saved: Boolean(result.saved && !result.duplicate),
-      pending: dashboard.pending,
+      pending: toPartnerRecruitmentDashboard(dashboard).pending,
     });
   } catch {
     return json({ error: "無法寫入招生狀況表，請稍後重試或改用正式表單" }, 502);

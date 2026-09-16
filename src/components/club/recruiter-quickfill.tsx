@@ -22,7 +22,6 @@ type Candidate = RecruitmentData["pending"][number] & {
 
 type StaffFields = {
   recruitedAt: string;
-  tier: string;
   activities: string[];
   joined: string;
   depositPaid: string;
@@ -36,7 +35,6 @@ type StaffFields = {
 function emptyStaff(): StaffFields {
   return {
     recruitedAt: taipeiDate(new Date()),
-    tier: "",
     activities: [],
     joined: "",
     depositPaid: "",
@@ -263,7 +261,6 @@ export function RecruiterQuickfill() {
       recruiter: officialRecruiter,
       extraNotes,
       recruitedAt: staff.recruitedAt,
-      tier: staff.tier,
       activities: staff.activities,
       joined: staff.joined,
       depositPaid: staff.depositPaid,
@@ -304,7 +301,6 @@ export function RecruiterQuickfill() {
           completedAt: preview.completedAt,
           submissionId: preview.submissionId,
           extraNotes,
-          tier: staff.tier,
           activities: staff.activities,
           joined: staff.joined,
           depositPaid: staff.depositPaid,

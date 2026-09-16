@@ -209,9 +209,16 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.ok("funnel" in recruitment);
   assert.ok("summary" in recruitment);
   assert.ok(Array.isArray(recruitment.pending));
+  assert.equal("s" in recruitment.summary, false);
+  assert.equal("a" in recruitment.summary, false);
+  assert.equal("b" in recruitment.summary, false);
+  assert.equal(recruitment.candidatesByGatekeeper, undefined);
   if (recruitment.pending.length) {
     assert.match(String(recruitment.pending[0].prefillUrl), /\/viewform\?/);
     assert.doesNotMatch(String(recruitment.pending[0].prefillUrl), /forms\.gle/);
+    assert.equal(recruitment.pending[0].latestAttempt, undefined);
+    assert.equal(recruitment.pending[0].choiceLabel, undefined);
+    assert.equal(recruitment.pending[0].score, undefined);
   }
   assert.equal((await handleAdminRecruitment(request("recruitment"))).status, 401);
   assert.equal((await handleAdminFormResponses(request("form-responses", { cookie }))).status, 502);

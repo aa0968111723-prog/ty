@@ -89,12 +89,25 @@ export function WarRoom({
   onOpenPending: () => void;
   onOpenRoster: () => void;
 }) {
-  const [expanded, setExpanded] = useState<string | null>("contacts");
-  const summary = data?.summary;
-  const activities = data?.activities ?? [];
-  const daily = data?.daily ?? [];
-  const funnel = data?.funnel ?? [];
-  const pending = data?.pending ?? [];
+  const [expanded, setExpanded] = useState<string | null>(null);
+  function toggle(id: string) {
+    setExpanded((current) => (current === id ? null : id));
+  }
+  if (!data) {
+    return (
+      <div className="war-room" data-war-room="home">
+        <p className="admin-empty">
+          {syncError ? "同步異常，請再按更新。上次成功的資料會留在這裡。" : "正在載入今日戰情…"}
+        </p>
+      </div>
+    );
+  }
+
+  const summary = data.summary;
+  const activities = data.activities ?? [];
+  const daily = data.daily ?? [];
+  const funnel = data.funnel ?? [];
+  const pending = data.pending ?? [];
   const popular = activities[0];
   const runnerUp = activities[1];
   const playedToday = summary?.playedToday ?? 0;
@@ -104,15 +117,11 @@ export function WarRoom({
   const priority = pending[0];
   const maxDaily = Math.max(1, ...daily.flatMap((row) => [row.contacts, row.activity, row.joined]));
   const syncOk = Boolean(
-    data?.sync.gameResults.ok
+    data.sync.gameResults.ok
       && data.sync.recruitmentResponses.ok
       && data.sync.recruitmentMaster.ok
       && !syncError,
   );
-
-  function toggle(id: string) {
-    setExpanded((current) => (current === id ? null : id));
-  }
 
   return (
     <div className="war-room" data-war-room="home">
@@ -273,7 +282,7 @@ export function WarRoom({
         <Radio size={18} />
         <div>
           <strong>{syncOk ? "資料已同步" : "同步異常，顯示上次成功資料"}</strong>
-          <span>最後同步 {data ? time(data.sync.updatedAt) : "—"} · Asia/Taipei</span>
+          <span>最後同步 {time(data.sync.updatedAt)} · Asia/Taipei</span>
         </div>
         <button type="button" onClick={onOpenRoster}>看名單</button>
       </div>

@@ -16,7 +16,6 @@ export type RecruitmentProfile = {
   recruiterList?: string[];
   recruitedAt?: string;
   submittedAt?: string;
-  tier?: string;
   activity?: string;
   joined?: string;
   depositPaid?: string;
@@ -64,7 +63,7 @@ export function RecruitmentProfileSheet({
           </Dialog.Close>
           <dl className="recruitment-identity">
             <div><dt>遊戲關主</dt><dd>{profile?.gameGatekeeper || "未填"}</dd></div>
-            <div><dt>招生接引人</dt><dd>{profile?.recruiters || "尚未填表"}</dd></div>
+            <div><dt>這位有緣人的接引人</dt><dd>{profile?.recruiters || "尚未填表"}</dd></div>
             <div><dt>活動報名</dt><dd>{profile?.activity || "尚未填"}</dd></div>
             <div><dt>入社</dt><dd>{profile?.joined || "尚未填"}</dd></div>
             <div><dt>保證金</dt><dd>{profile?.depositPaid || "尚未填"}{profile?.depositAmount ? ` · ${profile.depositAmount}` : ""}</dd></div>

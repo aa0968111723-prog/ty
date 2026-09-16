@@ -341,6 +341,9 @@ function AdminDashboard() {
         />
       )}
 
+      {tab === "pending" && !recruitment && (
+        <p className="admin-empty">{busy ? "讀取待處理名單…" : "同步異常，請再按更新。上次成功的資料會留在戰情。"}</p>
+      )}
       {recruitment && tab === "pending" && (
         <PendingQueue
           data={recruitment}
@@ -351,6 +354,9 @@ function AdminDashboard() {
         />
       )}
 
+      {tab === "roster" && !recruitment && (
+        <p className="admin-empty">{busy ? "讀取名單…" : "同步異常，請再按更新。上次成功的資料會留在戰情。"}</p>
+      )}
       {recruitment && tab === "roster" && (
         <RosterList
           data={recruitment}

@@ -18,9 +18,6 @@ export type RecruitmentData = {
     depositPaid: number | null;
     depositTotal: number | null;
     roster: number;
-    s?: number | null;
-    a?: number | null;
-    b?: number | null;
   };
   activities?: Array<{ name: string; count: number }>;
   daily?: Array<{ date: string; contacts: number; activity: number; joined: number }>;
