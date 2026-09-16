@@ -12,7 +12,7 @@ export type RecruitmentTrendPoint = {
   signups: number;
   joined: number;
 };
-export type RecruitmentEventCount = { name: string; count: number };
+export type RecruitmentEventCount = { name: string; count: number; people?: KpiPersonChip[] };
 export type KpiPersonChip = { name: string; personKey: string };
 export type RecruitmentData = {
   date: string;
@@ -292,18 +292,20 @@ export function RosterList({
   setQuery,
   date,
   setDate,
+  initialActivity = "",
 }: {
   data: RecruitmentData;
   query: string;
   setQuery: (value: string) => void;
   date: string;
   setDate: (value: string) => void;
+  initialActivity?: string;
 }) {
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(Boolean(initialActivity));
   const [profile, setProfile] = useState<RecruitmentProfile | null>(null);
   const [gameGatekeeper, setGameGatekeeper] = useState("");
   const [recruiter, setRecruiter] = useState("");
-  const [activity, setActivity] = useState("");
+  const [activity, setActivity] = useState(initialActivity);
   const [joined, setJoined] = useState("");
   const [deposit, setDeposit] = useState("");
   const [filled, setFilled] = useState("");
@@ -412,10 +414,10 @@ export function RosterList({
             <option value="yes">已填正式資料</option>
           </select>
         </div>
-        {dateScope === "custom" ? (
-          <p className="admin-caption">依上方查詢日期 {data.date.replaceAll("-", ".")}</p>
-        ) : null}
-        <p className="admin-caption">{people.length} 位 · 僅工作人員可見</p>
+        <p className="admin-caption">
+          {people.length} 位 · 僅工作人員可見
+          {activity ? ` · ${activity}` : ""}
+        </p>
         {!people.length ? (
           <p className="admin-empty">沒有符合條件的同學</p>
         ) : (

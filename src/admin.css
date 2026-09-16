@@ -1622,6 +1622,12 @@
   align-items: center;
   text-align: left;
   padding: var(--space-3);
+  min-width: 0;
+  min-height: 44px;
+}
+.war-event-detail {
+  margin-top: var(--space-4);
+  min-width: 0;
 }
 .war-event-name {
   display: inline-flex;

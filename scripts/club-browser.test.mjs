@@ -942,6 +942,128 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("war-room event bar shows who signed up then filters 名單", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route((url) => {
+        try { return new URL(url).origin !== origin; } catch { return false; }
+      }, async (route) => {
+        await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+      });
+      const taipeiToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+      const signed = {
+        name: "茶會同學",
+        phone: "0912000101",
+        department: "歷史學系",
+        grade: "大一",
+        gatekeeper: "柏能",
+        completedAt: `${taipeiToday}T04:00:00.000Z`,
+        kind: "official",
+        skipSave: false,
+        duration: 60,
+        settings: DEFAULT_SETTINGS,
+        score: 600,
+        correct: 5,
+        wrong: 0,
+        maxCombo: 5,
+        accuracy: 100,
+        submissionId: crypto.randomUUID(),
+      };
+      const pendingOnly = {
+        ...signed,
+        name: "待填同學",
+        phone: "0912000102",
+        submissionId: crypto.randomUUID(),
+        completedAt: `${taipeiToday}T05:00:00.000Z`,
+      };
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({ json: buildDashboard({ date, results: [signed, pendingOnly], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date,
+            now: new Date(`${taipeiToday}T12:00:00+08:00`),
+            gameRows: [
+              {
+                姓名: signed.name,
+                電話: signed.phone,
+                科系: signed.department,
+                年級: signed.grade,
+                遊戲關主: signed.gatekeeper,
+                遊戲時間: signed.completedAt,
+                _submissionId: signed.submissionId,
+                _kind: "official",
+                _skipSave: false,
+              },
+              {
+                姓名: pendingOnly.name,
+                電話: pendingOnly.phone,
+                科系: pendingOnly.department,
+                年級: pendingOnly.grade,
+                遊戲關主: pendingOnly.gatekeeper,
+                遊戲時間: pendingOnly.completedAt,
+                _submissionId: pendingOnly.submissionId,
+                _kind: "official",
+                _skipSave: false,
+              },
+            ],
+            recruitmentRows: [{
+              時間戳記: `${taipeiToday.replaceAll("-", "/")} 10:00:00`,
+              "接引人(可複選)": "安倢",
+              同學的姓名: signed.name,
+              "同學電話/LINE": signed.phone,
+              系級: "歷史學系大一",
+              報名了那個活動: "9/30茶會",
+              是否入社: "是",
+              _gameSubmissionId: signed.submissionId,
+            }],
+            masterRows: [],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const tea = page.locator('[data-event="9/30茶會"]');
+      await tea.waitFor();
+      await tea.evaluate((el) => el.scrollIntoView({ block: "center" }));
+      assert.equal(await tea.getAttribute("aria-expanded"), "false");
+      await tea.click();
+      assert.equal(await tea.getAttribute("aria-expanded"), "true");
+      const detail = page.locator('[data-event-detail="9/30茶會"]');
+      await detail.waitFor();
+      assert.equal(await detail.getByText("茶會同學", { exact: true }).count(), 1);
+      assert.equal(await detail.getByText("待填同學").count(), 0);
+      assert.equal(await detail.getByText("0912000101").count(), 0);
+      assert.equal(await detail.getByText("submissionId").count(), 0);
+      assert.equal(await detail.getByText("分級").count(), 0);
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "war-event-people-390-viewport.png") });
+      }
+      await capture(page, "war-event-people-390");
+      await detail.getByRole("button", { name: "到名單篩選", exact: true }).click();
+      await page.getByRole("heading", { name: "名單" }).first().waitFor();
+      assert.equal(await page.getByLabel("篩選活動").inputValue(), "9/30茶會");
+      assert.equal(await page.getByText(/1 位 · 僅工作人員可見 · 9\/30茶會/).count(), 1);
+      const cards = page.locator(".admin-person-list article");
+      assert.equal(await cards.count(), 1);
+      assert.equal(await cards.getByText("茶會同學", { exact: true }).count(), 1);
+      assert.equal(await page.getByText("待填同學").count(), 0);
+      assert.equal(await page.getByText("submissionId").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await capture(page, "war-event-roster-filter-390");
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("war-room 401 after session expiry shows 登入失效", async () => {
       async function expireAfterWarRoom(viewport, shot) {
         const context = await browser.newContext(viewport);

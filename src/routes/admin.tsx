@@ -45,6 +45,7 @@ function AdminDashboard() {
       ? "Google Form"
       : "",
   );
+  const [rosterActivity, setRosterActivity] = useState("");
   const [department, setDepartment] = useState("");
   const [editing, setEditing] = useState(false);
   const [layout, setLayout] = useState<LayoutPreference>(DEFAULT_LAYOUT);
@@ -282,6 +283,7 @@ function AdminDashboard() {
         setLeader("");
         setDepartment("");
         setQuery("");
+        setRosterActivity("");
         setView(view, shortcut);
       }}
     >
@@ -391,7 +393,10 @@ function AdminDashboard() {
             busy={busy}
             error={error}
             onOpenPending={() => setView("pending", "pending")}
-            onOpenRoster={() => setView("roster", "contacts")}
+            onOpenRoster={(activity) => {
+              setRosterActivity(activity || "");
+              setView("roster", "contacts");
+            }}
           />
         </>
       )}
@@ -430,6 +435,7 @@ function AdminDashboard() {
             setQuery={setQuery}
             date={date}
             setDate={setDate}
+            initialActivity={rosterActivity}
           />
         ) : (
           <p className="admin-empty">{error || (busy ? "讀取中…" : "尚無名單")}</p>

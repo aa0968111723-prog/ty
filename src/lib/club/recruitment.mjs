@@ -766,10 +766,19 @@ export function buildRecruitmentDashboard(input = {}) {
     (row) => Boolean(text(row.activity)),
     (row) => rosterDay(row, today) && (listedEvents(row.activity).length > 0 || hasActivity(row.activity)),
   );
-  const events = REAL_EVENT_CHOICES.map((name) => ({
-    name,
-    count: uniqueCount(formal, (row) => listedEvents(row.activity).includes(name)),
-  }));
+  const events = REAL_EVENT_CHOICES.map((name) => {
+    const signed = uniqueByIdentity(formal.filter((row) => listedEvents(row.activity).includes(name)));
+    return {
+      name,
+      count: signed.length,
+      people: signed.map((row) => ({
+        name: text(row.name) || "未填姓名",
+        personKey: row.normalizedPhone
+          ? `phone:${row.normalizedPhone}`
+          : `name:${row.normalizedName || row.name || "未填"}`,
+      })),
+    };
+  }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-Hant"));
 
   function rate(part, whole) {
     if (!Number.isFinite(whole) || whole <= 0) return null;

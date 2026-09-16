@@ -157,7 +157,7 @@ export function WarRoom({
   busy: boolean;
   error: string;
   onOpenPending: () => void;
-  onOpenRoster: () => void;
+  onOpenRoster: (activity?: string) => void;
 }) {
   const [openEvent, setOpenEvent] = useState("");
   const summary = data?.summary;
@@ -233,7 +233,7 @@ export function WarRoom({
               missing={!ready}
               empty="今天還沒有新的接觸"
               actionLabel="到名單"
-              onAction={onOpenRoster}
+              onAction={() => onOpenRoster()}
             />
           }
         />
@@ -249,7 +249,7 @@ export function WarRoom({
               missing={!ready}
               empty="尚無正式遊戲接觸"
               actionLabel="到名單"
-              onAction={onOpenRoster}
+              onAction={() => onOpenRoster()}
             />
           }
         />
@@ -266,7 +266,7 @@ export function WarRoom({
               missing={!ready || summary?.activityToday == null}
               empty="今天還沒有活動報名"
               actionLabel="到名單"
-              onAction={onOpenRoster}
+              onAction={() => onOpenRoster()}
             />
           }
         />
@@ -282,7 +282,7 @@ export function WarRoom({
               missing={!ready || summary?.joined == null}
               empty="尚無入社紀錄"
               actionLabel="到名單"
-              onAction={onOpenRoster}
+              onAction={() => onOpenRoster()}
             />
           }
         />
@@ -298,7 +298,7 @@ export function WarRoom({
               missing={!ready || summary?.depositPaid == null}
               empty="尚無保證金紀錄"
               actionLabel="到名單"
-              onAction={onOpenRoster}
+              onAction={() => onOpenRoster()}
             />
           }
         />
@@ -361,7 +361,10 @@ export function WarRoom({
               <button
                 key={row.name}
                 type="button"
+                data-event={row.name}
                 aria-pressed={openEvent === row.name}
+                aria-expanded={openEvent === row.name}
+                aria-controls={openEvent === row.name ? "war-event-detail" : undefined}
                 onClick={() => setOpenEvent((current) => (current === row.name ? "" : row.name))}
               >
                 <span className="war-event-name">
@@ -381,12 +384,15 @@ export function WarRoom({
           </div>
         )}
         {openEvent ? (
-          <p className="admin-caption">
-            {openEvent}：同一人只算一次。
-            <button type="button" className="recruitment-name" onClick={onOpenRoster}>
-              到名單篩選
-            </button>
-          </p>
+          <div id="war-event-detail" className="war-event-detail" data-event-detail={openEvent}>
+            <NamePeek
+              names={events.find((row) => row.name === openEvent)?.people || []}
+              missing={!ready}
+              empty={`${openEvent} 目前還沒有人報名`}
+              actionLabel="到名單篩選"
+              onAction={() => onOpenRoster(openEvent)}
+            />
+          </div>
         ) : null}
       </section>
 
