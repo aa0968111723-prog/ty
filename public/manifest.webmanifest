@@ -31,21 +31,21 @@
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     },
     {
-      "name": "前三名",
-      "short_name": "前三名",
-      "url": "/admin?view=ranking",
+      "name": "待處理",
+      "short_name": "待處理",
+      "url": "/admin?view=pending",
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     },
     {
-      "name": "聯絡名單",
-      "short_name": "聯絡名單",
-      "url": "/admin?view=contacts",
+      "name": "名單",
+      "short_name": "名單",
+      "url": "/admin?view=roster",
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     },
     {
-      "name": "關主統計",
-      "short_name": "關主統計",
-      "url": "/admin?view=gatekeepers",
+      "name": "今日排行榜",
+      "short_name": "今日排行榜",
+      "url": "/admin?view=today-board",
       "icons": [{ "src": "/brand/tkuzen-turtle-3d-icon-192-v2.png", "sizes": "192x192" }]
     }
   ]

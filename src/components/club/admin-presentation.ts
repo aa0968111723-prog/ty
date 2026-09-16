@@ -23,6 +23,7 @@ export type Dashboard = {
   contacts: Contact[];
   results: Result[];
   topThree: Result[];
+  historyTop?: Result[];
   kpis: {
     contacts: number;
     rawRecords: number;
@@ -129,22 +130,26 @@ export function time(value: string) {
       });
 }
 export function initialView(): Tab {
-  if (typeof window === "undefined") return "overview";
+  if (typeof window === "undefined") return "recruitment";
   const view = new URLSearchParams(window.location.search).get("view");
   return (
     (
       {
-        today: "overview",
+        today: "recruitment",
+        recruitment: "recruitment",
+        pending: "pending",
+        roster: "roster",
         ranking: "podium",
-        contacts: "contacts",
+        "today-board": "podium",
+        "history-board": "history",
+        contacts: "roster",
         gatekeepers: "leaders",
         pinned: "pinned",
-        recruitment: "recruitment",
         form: "contacts",
         results: "results",
         sync: "system",
         security: "security",
       } as Record<string, Tab>
-    )[view || ""] ?? "overview"
+    )[view || ""] ?? "recruitment"
   );
 }

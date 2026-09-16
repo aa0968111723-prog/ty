@@ -5,7 +5,6 @@ import {
   LIVE_ACTIVITY_CHOICES,
   LIVE_INTEREST_TOPICS,
   LIVE_NOTE_TITLE,
-  LIVE_TIER_CHOICES,
   LIVE_YES_NO,
   OFFICIAL_RECRUITERS,
   RECRUITER_STORAGE_KEY,
@@ -344,7 +343,7 @@ export function RecruiterQuickfill() {
   return (
     <div className="quickfill-page" data-quickfill="page">
       <header className="quickfill-top">
-        <a href="/admin?view=recruitment">招生戰情</a>
+        <a href="/admin?view=today">今日招生戰情</a>
         <strong>接引人快速填表</strong>
         <button type="button" onClick={() => void load(true)} disabled={busy} aria-label="重新同步">
           <RefreshCw size={18} />
@@ -357,7 +356,7 @@ export function RecruiterQuickfill() {
           <span>{success}</span>
           <a
             className="quickfill-google"
-            href="/admin?view=recruitment"
+            href="/admin?view=today"
             target="_blank"
             rel="noreferrer"
             data-quickfill="open-backoffice"
@@ -496,13 +495,7 @@ export function RecruiterQuickfill() {
             />
           </label>
           <ChoiceRow
-            label="這位同學是屬於那個分級呢:-)"
-            choices={LIVE_TIER_CHOICES}
-            value={staff.tier}
-            onChange={(value) => setStaff({ ...staff, tier: String(value) })}
-          />
-          <ChoiceRow
-            label="報名了那個活動"
+            label="這位同學報名了哪個活動？"
             choices={LIVE_ACTIVITY_CHOICES}
             value={staff.activities}
             multiple
