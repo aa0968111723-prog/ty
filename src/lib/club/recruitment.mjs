@@ -334,9 +334,8 @@ function profileFromSources({
     studentId: source?.studentId || "",
     interest: source?.interest || "",
     timeline: [
-      gameCompletedAt ? { at: gameCompletedAt, kind: "game", title: "遊戲完成", detail: `${gameGatekeeper || UNCLASSIFIED}${score !== "" ? ` · ${score} 分` : ""}` } : null,
+      gameCompletedAt ? { at: gameCompletedAt, kind: "game", title: "遊戲完成", detail: gameGatekeeper || UNCLASSIFIED } : null,
       (recruited?.submittedAt || source?.submittedAt) ? { at: recruited?.submittedAt || source?.submittedAt, kind: "recruitment", title: "招生表提交", detail: recruited?.recruiters || source?.recruiters || "" } : null,
-      source?.tier ? { at: recruited?.submittedAt || source?.submittedAt || "", kind: "tier", title: source.tier, detail: "分級" } : null,
       source?.activity && hasActivity(source.activity) ? { at: "", kind: "activity", title: source.activity, detail: "活動報名" } : null,
       source?.joined && isYes(source.joined) ? { at: "", kind: "joined", title: "入社", detail: "" } : null,
       source?.depositPaid && isYes(source.depositPaid) ? { at: "", kind: "deposit", title: "保證金", detail: String(source.depositAmount || "") } : null,
@@ -372,11 +371,102 @@ function tierLetter(value) {
   return "";
 }
 
-function hasActivity(value) {
+/** @param {unknown} value */
+export function splitActivities(value) {
+  return text(value)
+    .split(/[,，、]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** @param {unknown} value */
+export function isCountedActivity(value) {
   const raw = text(value);
   if (!raw) return false;
-  if (/無|考慮中|未報/.test(raw) && !/[0-9]/.test(raw)) return false;
+  if (/^無/.test(raw) || /考慮中|沒興趣|未報/.test(raw)) return false;
   return true;
+}
+
+function countedActivityList(value) {
+  return [...new Set(splitActivities(value).filter(isCountedActivity))];
+}
+
+function hasActivity(value) {
+  return countedActivityList(value).length > 0;
+}
+
+function personIdentityKey(row) {
+  if (text(row?.normalizedPhone)) return `phone:${row.normalizedPhone}`;
+  if (text(row?.normalizedName)) return `name:${row.normalizedName}`;
+  return `row:${text(row?.name)}:${text(row?.phone)}`;
+}
+
+function uniqueActivityPeople(rows) {
+  const keys = new Set();
+  for (const row of rows || []) {
+    if (!hasActivity(row.activity)) continue;
+    keys.add(personIdentityKey(row));
+  }
+  return keys.size;
+}
+
+function activityBreakdown(rows) {
+  /** @type {Map<string, Set<string>>} */
+  const map = new Map();
+  for (const row of rows || []) {
+    const key = personIdentityKey(row);
+    for (const activity of countedActivityList(row.activity)) {
+      const set = map.get(activity) || new Set();
+      set.add(key);
+      map.set(activity, set);
+    }
+  }
+  return [...map]
+    .map(([name, set]) => ({ name, count: set.size }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-Hant"));
+}
+
+/** @param {string} iso @param {number} days */
+export function shiftIsoDate(iso, days) {
+  const [year, month, day] = String(iso).split("-").map(Number);
+  const utc = Date.UTC(year, month - 1, day + Number(days || 0));
+  return new Date(utc).toISOString().slice(0, 10);
+}
+
+function recruitOnDate(row, date) {
+  if (!date) return true;
+  const at = timestamp(row?.submittedAt) || "";
+  if (at && onDate(at, date)) return true;
+  const day = text(row?.recruitedAt);
+  if (!day) return false;
+  const parsed = day.match(/(\d{1,2})[/-](\d{1,2})/);
+  if (!parsed) return false;
+  const [, month, d] = parsed;
+  return date.slice(5) === `${month.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+function reviewPersonKeys(people) {
+  const keys = new Set();
+  /** @type {Map<string, typeof people>} */
+  const byName = new Map();
+  for (const person of people || []) {
+    if (person.status === "ambiguous") keys.add(person.personKey);
+    const attemptNames = new Set(
+      (person.attempts || []).map((attempt) => normalizeName(attempt.name)).filter(Boolean),
+    );
+    if (attemptNames.size > 1) keys.add(person.personKey);
+    if (!person.normalizedName) continue;
+    const list = byName.get(person.normalizedName) || [];
+    list.push(person);
+    byName.set(person.normalizedName, list);
+  }
+  for (const group of byName.values()) {
+    const phones = new Set(group.map((person) => person.normalizedPhone).filter(Boolean));
+    if (group.length > 1 && phones.size > 1) {
+      for (const person of group) keys.add(person.personKey);
+    }
+  }
+  return keys;
 }
 
 function isYes(value) {
@@ -407,12 +497,15 @@ export function buildRecruitmentDashboard(input = {}) {
   const master = parseMasterRows(input.masterRows || []);
   const pendingPeople = people.filter((person) => !personIsRecruited(person, recruits));
   const datedPending = datedPeople.filter((person) => !personIsRecruited(person, recruits));
+  const reviewKeys = reviewPersonKeys(people);
 
   const pending = pendingPeople.map((person) => {
     const latest = latestAttempt(person.attempts);
+    const needsReview = person.status === "ambiguous" || reviewKeys.has(person.personKey);
     return {
       personKey: person.personKey,
       status: person.status,
+      needsReview,
       name: latest.name,
       phone: latest.phone,
       normalizedPhone: person.normalizedPhone,
@@ -420,7 +513,6 @@ export function buildRecruitmentDashboard(input = {}) {
       grade: person.grade || latest.grade,
       gameGatekeeper: latest.gatekeeper || UNCLASSIFIED,
       completedAt: latest.completedAt,
-      score: latest.score,
       waitMinutes: waitMinutes(latest.completedAt, now),
       submissionId: latest.submissionId,
       attemptCount: person.attempts.length,
@@ -459,9 +551,15 @@ export function buildRecruitmentDashboard(input = {}) {
       source,
       recruited,
     });
-  });
+  }).map((row) => ({
+    ...row,
+    needsReview: row.status === "ambiguous" || reviewKeys.has(row.personKey),
+  }));
   appendUnmatchedRoster(profiles, master, { prefix: "master" });
   appendUnmatchedRoster(profiles, recruits, { prefix: "recruit", pending: false });
+  for (const row of profiles) {
+    if (row.needsReview == null) row.needsReview = row.status === "ambiguous" || reviewKeys.has(row.personKey);
+  }
 
   const completed = master.length ? master : recruits;
   function presentCount(rows, hasField, predicate) {
@@ -473,28 +571,21 @@ export function buildRecruitmentDashboard(input = {}) {
   const sCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "S");
   const aCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "A");
   const bCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "B");
-  const activityCount = presentCount(completed, (row) => Boolean(text(row.activity)), (row) => hasActivity(row.activity));
+  const activityKnown = completed.some((row) => Boolean(text(row.activity)));
+  const activityCount = !completed.length || !activityKnown ? null : uniqueActivityPeople(completed);
   const joinedCount = presentCount(completed, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
   const depositCount = presentCount(completed, (row) => Boolean(text(row.depositPaid)), (row) => isYes(row.depositPaid));
   const depositKnown = completed.filter((row) => text(row.depositAmount) !== "" || isYes(row.depositPaid));
   const depositTotal = !completed.length || !depositKnown.length
     ? null
     : completed.reduce((sum, row) => sum + amount(row.depositAmount), 0);
+  const activities = activityBreakdown(completed);
+  const completedOnDate = date ? completed.filter((row) => recruitOnDate(row, date)) : completed;
+  const activityToday = uniqueActivityPeople(completedOnDate);
 
   const played = datedPeople.length;
   const pendingToday = datedPending.length;
-  const completedToday = date
-    ? completed.filter((row) => {
-      const at = timestamp(row.submittedAt) || "";
-      const day = row.recruitedAt;
-      if (at && onDate(at, date)) return true;
-      if (!day) return false;
-      const parsed = day.match(/(\d{1,2})[/-](\d{1,2})/);
-      if (!parsed) return false;
-      const [, month, d] = parsed;
-      return date.slice(5) === `${month.padStart(2, "0")}-${d.padStart(2, "0")}`;
-    }).length
-    : completed.length;
+  const completedToday = completedOnDate.length;
 
   function rate(part, whole) {
     if (!Number.isFinite(whole) || whole <= 0) return null;
@@ -503,19 +594,29 @@ export function buildRecruitmentDashboard(input = {}) {
   }
 
   const funnelPlayed = people.length;
-  const funnelRecruited = completed.length;
   const funnel = [
-    { id: "played", label: "玩遊戲", count: funnelPlayed, fromPrevious: null, fromStart: funnelPlayed ? 100 : null },
-    { id: "recruited", label: "已完成招生表單", count: funnelRecruited, fromPrevious: rate(funnelRecruited, funnelPlayed), fromStart: rate(funnelRecruited, funnelPlayed) },
-    { id: "s", label: "S／已報名", count: sCount, fromPrevious: rate(sCount, funnelRecruited), fromStart: rate(sCount, funnelPlayed) },
-    { id: "activity", label: "活動報名", count: activityCount, fromPrevious: rate(activityCount, sCount), fromStart: rate(activityCount, funnelPlayed) },
+    { id: "played", label: "遊戲接觸", count: funnelPlayed, fromPrevious: null, fromStart: funnelPlayed ? 100 : null },
+    { id: "activity", label: "活動報名", count: activityCount, fromPrevious: rate(activityCount, funnelPlayed), fromStart: rate(activityCount, funnelPlayed) },
     { id: "joined", label: "入社", count: joinedCount, fromPrevious: rate(joinedCount, activityCount), fromStart: rate(joinedCount, funnelPlayed) },
+    { id: "deposit", label: "保證金", count: depositCount, fromPrevious: rate(depositCount, joinedCount), fromStart: rate(depositCount, funnelPlayed) },
   ].map((layer, index) => {
     if (index === 0) return layer;
     if (layer.count == null) {
       return { ...layer, fromPrevious: null, fromStart: null, missing: true };
     }
     return layer;
+  });
+
+  const daily = Array.from({ length: 7 }, (_, index) => {
+    const day = shiftIsoDate(date, index - 6);
+    const dayContacts = clusterGamePeople(attempts.filter((row) => onDate(row.completedAt, day))).length;
+    const dayRows = completed.filter((row) => recruitOnDate(row, day));
+    return {
+      date: day,
+      contacts: dayContacts,
+      activity: uniqueActivityPeople(dayRows),
+      joined: dayRows.filter((row) => isYes(row.joined)).length,
+    };
   });
 
   const gatekeeperNames = [...new Set([
@@ -539,9 +640,6 @@ export function buildRecruitmentDashboard(input = {}) {
       played: groupPeople.length,
       pending: groupPending.length,
       recruited: groupRecruited.length,
-      s: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.tier)), (row) => tierLetter(row.source?.tier) === "S"),
-      a: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.tier)), (row) => tierLetter(row.source?.tier) === "A"),
-      b: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.tier)), (row) => tierLetter(row.source?.tier) === "B"),
       activity: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.activity)), (row) => hasActivity(row.source?.activity)),
       joined: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.joined)), (row) => isYes(row.source?.joined)),
     };
@@ -574,19 +672,23 @@ export function buildRecruitmentDashboard(input = {}) {
     date,
     summary: {
       playedToday: played,
+      playedTotal: people.length,
       pending: pending.length,
       pendingToday,
       recruited: completed.length,
       recruitedToday: completedToday,
-      s: sCount,
-      a: aCount,
-      b: bCount,
       activity: activityCount,
+      activityToday,
       joined: joinedCount,
       depositPaid: depositCount,
       depositTotal,
       roster: master.length || completed.length,
+      s: sCount,
+      a: aCount,
+      b: bCount,
     },
+    activities,
+    daily,
     funnel,
     pending,
     profiles,

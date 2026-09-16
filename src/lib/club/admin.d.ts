@@ -37,6 +37,7 @@ export interface AdminDashboard {
   contacts: AdminContact[];
   results: OfficialResult[];
   topThree: OfficialResult[];
+  historyTop: OfficialResult[];
   kpis: {
     contacts: number;
     rawRecords: number;

@@ -6,6 +6,7 @@ import { accuracyOf, scoreIsConsistent, titleForScore } from "./runtime.mjs";
 import { diagnoseSheetMappings, invalidateSheetCache, readSheetRows, appendRecruitmentResponse, sheetsConfigured, spreadsheetEditUrl, EXPECTED_SHEET_IDS } from "./sheets.mjs";
 import { buildPrefilledFormUrl, buildRecruitmentDashboard } from "./recruitment.mjs";
 import { normalizeStaffRecruitmentPayload } from "./recruitment-staff-form.mjs";
+import { bestResultsByPlayer, compareLeaderboardRows } from "./leaderboard.mjs";
 
 /** @typedef {import("./admin").AdminContact} AdminContact */
 /** @typedef {import("./admin").OfficialResult} OfficialResult */
@@ -212,8 +213,11 @@ export function buildDashboard(input = {}) {
     hour: `${String(hour).padStart(2, "0")}:00`, count: 0,
   }));
   for (const row of contacts) trend[Number(taipeiHour.format(new Date(row.completedAt)))].count += 1;
+  const historyTop = bestResultsByPlayer(rankOfficialResults(input.results || []))
+    .sort(compareLeaderboardRows)
+    .slice(0, 20);
   return {
-    ok: true, date, contacts, results, topThree: results.slice(0, 3),
+    ok: true, date, contacts, results, topThree: results.slice(0, 3), historyTop,
     kpis: {
       contacts: contacts.length,
       rawRecords: raw.length,

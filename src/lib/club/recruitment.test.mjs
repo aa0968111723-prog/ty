@@ -247,7 +247,7 @@ test("practice-like rows are ignored by game attempt parser", () => {
   assert.equal(rows.length, 1);
 });
 
-test("missing S/A/B and deposit fields are 資料不足 instead of zero", () => {
+test("missing activity and deposit fields are 資料不足 instead of zero", () => {
   const player = game({ _submissionId: "ffffffff-ffff-4fff-8fff-ffffffffffff" });
   const data = buildRecruitmentDashboard({
     date: "2026-09-14",
@@ -260,11 +260,13 @@ test("missing S/A/B and deposit fields are 資料不足 instead of zero", () => 
     }],
     masterRows: [],
   });
-  assert.equal(data.summary.s, null);
+  assert.equal(data.summary.activity, null);
   assert.equal(data.summary.depositPaid, null);
-  assert.equal(data.funnel.find((layer) => layer.id === "s")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "activity")?.missing, true);
+  assert.deepEqual(data.funnel.map((layer) => layer.id), ["played", "activity", "joined", "deposit"]);
   assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 1);
-  assert.equal(data.funnel.find((layer) => layer.id === "recruited")?.count, 1);
+  assert.equal(data.summary.playedToday, 1);
+  assert.equal(data.summary.playedTotal, 1);
 });
 
 test("招生狀況表 plus 總表 formula-shaped row keeps game gatekeeper separate from recruiter", () => {
@@ -341,4 +343,88 @@ test("總表-only roster rows appear even without a game attempt", () => {
   assert.equal(data.pending.length, 0);
   assert.equal(data.profiles[0].gameGatekeeper, "");
   assert.ok(data.profiles[0].timeline.every((item) => item.kind !== "game"));
+});
+
+test("today contact ignores practice and counts one person twice-played", () => {
+  const official = game({ _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa11" });
+  const replay = game({
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa12",
+    遊戲時間: "2026-09-14T08:00:00.000Z",
+  });
+  const practice = game({
+    姓名: "練習生",
+    電話: "0910000099",
+    _kind: "practice",
+    _skipSave: true,
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa13",
+  });
+  const yesterday = game({
+    姓名: "昨日生",
+    電話: "0910000088",
+    遊戲時間: "2026-09-13T06:32:00.000Z",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa14",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T18:00:00+08:00"),
+    gameRows: [official, replay, practice, yesterday],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.summary.playedToday, 1);
+  assert.equal(data.summary.playedTotal, 2);
+  assert.equal(data.daily.length, 7);
+  assert.equal(data.daily.at(-1)?.date, "2026-09-14");
+  assert.equal(data.daily.at(-1)?.contacts, 1);
+});
+
+test("activity signup counts unique people and ignores 無(考慮中", () => {
+  const a = game({ 姓名: "甲", 電話: "0910000001", _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb01" });
+  const b = game({ 姓名: "乙", 電話: "0910000002", _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb02" });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T18:00:00+08:00"),
+    gameRows: [a, b],
+    recruitmentRows: [
+      {
+        時間戳記: "2026/9/14 下午 3:00:00",
+        同學的姓名: "甲",
+        "同學電話/LINE": "0910000001",
+        報名了那個活動: "9/30茶會, 社課",
+        是否入社: "是",
+        保證金是否繳費: "是",
+        _gameSubmissionId: a._submissionId,
+      },
+      {
+        時間戳記: "2026/9/14 下午 4:00:00",
+        同學的姓名: "乙",
+        "同學電話/LINE": "0910000002",
+        報名了那個活動: "無(考慮中",
+        是否入社: "否",
+        _gameSubmissionId: b._submissionId,
+      },
+    ],
+    masterRows: [],
+  });
+  assert.equal(data.summary.activity, 1);
+  assert.equal(data.summary.activityToday, 1);
+  assert.equal(data.activities.find((row) => row.name === "9/30茶會")?.count, 1);
+  assert.equal(data.activities.find((row) => row.name === "社課")?.count, 1);
+  assert.equal(data.activities.some((row) => row.name.startsWith("無")), false);
+  assert.equal(data.funnel.find((layer) => layer.id === "activity")?.count, 1);
+  assert.equal(data.funnel.find((layer) => layer.id === "joined")?.count, 1);
+});
+
+test("same name different phones is flagged for review and not silently merged", () => {
+  const left = game({ 姓名: "林同學", 電話: "0911111111", _submissionId: "cccccccc-cccc-4ccc-8ccc-cccccccccc01" });
+  const right = game({ 姓名: "林同學", 電話: "0922222222", _submissionId: "cccccccc-cccc-4ccc-8ccc-cccccccccc02" });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [left, right],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.summary.playedToday, 2);
+  assert.equal(data.pending.length, 2);
+  assert.equal(data.pending.every((row) => row.needsReview), true);
 });
