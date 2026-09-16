@@ -409,7 +409,7 @@ test(
       });
       assert.ok(tap.height >= 44);
       await submit.click();
-      await page.getByRole("status").waitFor();
+      await page.getByRole("status").filter({ hasText: "已送出招生資料" }).waitFor();
       assert.equal(submitted.length, 1);
       assert.equal(submitted[0].recruiter, "柏能");
       assert.equal(submitted[0].submissionId, pendingStudent._submissionId);
