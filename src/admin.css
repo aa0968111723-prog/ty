@@ -570,7 +570,7 @@
   left: 0;
   right: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-1);
   padding: var(--space-2) var(--space-2) max(var(--space-2), env(safe-area-inset-bottom));
   background: var(--surface-primary);
@@ -594,7 +594,9 @@
 }
 .admin-bottom-nav button[aria-current],
 .admin-sidebar nav button[aria-current],
-.admin-more-dialog nav button[aria-current] {
+.admin-sidebar nav a[aria-current],
+.admin-more-dialog nav button[aria-current],
+.admin-more-dialog nav a[aria-current] {
   color: var(--brand);
   background: var(--surface-selected);
 }
@@ -796,12 +798,16 @@
   margin: var(--space-5) 0;
 }
 .admin-more-dialog nav button,
+.admin-more-dialog nav a,
 .admin-more-dialog .admin-logout {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   border: 0;
   text-align: left;
+  min-height: 44px;
+  text-decoration: none;
+  color: inherit;
 }
 .admin-spinning {
   animation: admin-spin 1s linear infinite;
@@ -843,10 +849,10 @@
     width: 100%;
   }
   .admin-person-list {
-    display: none;
+    display: grid;
   }
   .admin-table-wrap {
-    display: block;
+    display: none;
     max-width: 100%;
     overflow-x: auto;
   }
@@ -917,7 +923,8 @@
     display: grid;
     gap: var(--space-1);
   }
-  .admin-sidebar nav button {
+  .admin-sidebar nav button,
+  .admin-sidebar nav a {
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -927,8 +934,11 @@
     color: var(--text-secondary);
     background: transparent;
     font-size: var(--text-small);
+    text-decoration: none;
+    min-height: 44px;
   }
-  .admin-sidebar nav button:hover:not([aria-current]) {
+  .admin-sidebar nav button:hover:not([aria-current]),
+  .admin-sidebar nav a:hover {
     background: var(--page-bg);
     color: var(--text-primary);
   }
@@ -1087,10 +1097,11 @@
 }
 @media (min-width: 720px) {
   .recruitment-board .admin-summary {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .recruitment-funnel ol {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+  .recruitment-funnel ol,
+  .battle-funnel ol {
+    grid-template-columns: 1fr;
   }
   .recruitment-filters {
     display: grid;
@@ -1213,4 +1224,239 @@
   gap: var(--space-2);
   margin: 0;
   font-size: var(--text-h3);
+}
+.admin-page,
+.admin-content,
+.battle-home,
+.recruitment-board {
+  overflow-x: clip;
+  min-width: 0;
+}
+.battle-home {
+  display: grid;
+  gap: var(--space-5);
+}
+.battle-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.battle-kpi {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+.battle-kpi button {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  min-height: 72px;
+  padding: var(--space-3);
+}
+.battle-kpi small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+.battle-kpi strong {
+  display: block;
+  font-size: var(--text-h2);
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+.battle-kpi-note {
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+}
+.battle-kpi .is-open,
+.battle-kpi svg.is-open {
+  transform: rotate(180deg);
+}
+.battle-ring {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: none;
+}
+.battle-ring svg {
+  width: 40px;
+  height: 40px;
+}
+.battle-ring-track,
+.battle-ring-fill {
+  fill: none;
+  stroke-width: 3;
+}
+.battle-ring-track {
+  stroke: var(--border-strong);
+}
+.battle-ring-fill {
+  stroke: var(--brand);
+}
+.battle-ring-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.battle-sync {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+}
+.battle-sync.is-ok {
+  border-style: solid;
+}
+.battle-sync.is-wait {
+  border-style: dashed;
+  background: var(--warning-soft);
+}
+.battle-sync.is-fail {
+  border-style: dotted;
+  background: var(--danger-soft);
+}
+.battle-sync p,
+.battle-sync strong {
+  margin: 0;
+  font-size: var(--text-small);
+}
+.battle-funnel ol {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.battle-funnel-track {
+  display: block;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--surface-secondary);
+  overflow: hidden;
+}
+.battle-funnel-track i {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+}
+.battle-event-bars,
+.battle-event-bars button {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+}
+.battle-event-bars button {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) auto;
+  align-items: center;
+  text-align: left;
+  min-height: 44px;
+}
+.battle-daily {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+  align-items: end;
+  min-height: 120px;
+  margin-top: var(--space-4);
+}
+.battle-daily > div {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.battle-daily-col {
+  display: flex;
+  align-items: flex-end;
+  width: 8px;
+  height: 88px;
+  background: var(--surface-secondary);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.battle-daily-col i {
+  display: block;
+  width: 100%;
+  min-height: 2px;
+}
+.battle-daily-col i.is-contact {
+  background: var(--brand);
+}
+.battle-daily-col i.is-signup {
+  background: repeating-linear-gradient(
+    to top,
+    var(--accent-highlight),
+    var(--accent-highlight) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+}
+.battle-daily-col i.is-join {
+  background: var(--text-primary);
+  opacity: 0.35;
+}
+.battle-daily-date {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.battle-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+.battle-legend span {
+  display: inline-block;
+  width: 12px;
+  height: 8px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.battle-legend .is-contact { background: var(--brand); }
+.battle-legend .is-signup {
+  background: repeating-linear-gradient(90deg, var(--accent-highlight), var(--accent-highlight) 3px, transparent 3px, transparent 6px);
+  border: 1px solid var(--border-strong);
+}
+.battle-legend .is-join { background: var(--text-primary); opacity: 0.35; }
+.battle-next {
+  display: grid;
+  gap: var(--space-2);
+  position: sticky;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  padding-top: var(--space-2);
+}
+.battle-next .admin-primary {
+  width: 100%;
+}
+@media (min-width: 720px) {
+  .battle-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .battle-next {
+    bottom: var(--space-4);
+    max-width: 320px;
+  }
+  .battle-funnel ol {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }

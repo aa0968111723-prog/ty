@@ -89,9 +89,14 @@ export function RecruitmentProfileSheet({
             )}
           </ol>
           {profile?.pending && profile.prefillUrl ? (
-            <a className="admin-primary" href={profile.prefillUrl} target="_blank" rel="noreferrer">
-              填招生資料 <ExternalLink size={16} />
-            </a>
+            <div className="recruitment-actions">
+              <a className="admin-primary" href={`/follow-up?personKey=${encodeURIComponent(profile.personKey)}`}>
+                填寫正式資料
+              </a>
+              <a href={profile.prefillUrl} target="_blank" rel="noreferrer">
+                開啟正式招生表單 <ExternalLink size={16} />
+              </a>
+            </div>
           ) : null}
         </Dialog.Content>
       </Dialog.Portal>

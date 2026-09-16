@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, ClipboardPen, Flag, LayoutDashboard, ListFilter, Medal, RefreshCw, RotateCcw, Sheet, Shield, Trophy, Users } from "lucide-react";
+import { Check, LayoutDashboard, Medal, RefreshCw, RotateCcw } from "lucide-react";
 import { AdminShell } from "@/components/club/admin-shell";
 import { AdminLogin, type AdminGate } from "@/components/admin-login";
 import { AdminSecurity } from "@/components/club/admin-security";
 import "@/admin.css";
 import { DashboardWidget } from "@/components/club/dashboard-widget";
 import { DEFAULT_LAYOUT, STORAGE_KEY, readLayout, initialView, taipeiDate, time, type Dashboard, type Tab, type LayoutPreference, type WidgetId, type Result } from "@/components/club/admin-presentation";
-import { Kpi, Bars, Podium } from "@/components/club/admin-metrics";
+import { Bars, Podium } from "@/components/club/admin-metrics";
 import { RecruitmentDashboard, RecruitmentSync, type RecruitmentData } from "@/components/club/recruitment-dashboard";
 
 export const Route = createFileRoute("/admin")({
@@ -33,7 +33,6 @@ function AdminDashboard() {
   const [query, setQuery] = useState("");
   const [leader, setLeader] = useState("");
   const [recruiter, setRecruiter] = useState("");
-  const [tier, setTier] = useState("");
   const [track, setTrack] = useState("");
   const [source, setSource] = useState(() =>
     typeof window !== "undefined" &&
@@ -43,7 +42,6 @@ function AdminDashboard() {
   );
   const [department, setDepartment] = useState("");
   const [editing, setEditing] = useState(false);
-  const [showMore, setShowMore] = useState(false);
   const [layout, setLayout] = useState<LayoutPreference>(DEFAULT_LAYOUT);
   const [layoutReady, setLayoutReady] = useState(false);
   const [dragging, setDragging] = useState<WidgetId | null>(null);
@@ -178,7 +176,7 @@ function AdminDashboard() {
   }
   function selectLeader(name: string) {
     setLeader(name);
-    setView("contacts", "contacts");
+    setView("roster", "contacts");
   }
 
   const orderedVisible = useMemo(
@@ -186,7 +184,6 @@ function AdminDashboard() {
     [layout],
   );
   const pinned = orderedVisible.filter((id) => layout.pinned.includes(id));
-  const more = orderedVisible.filter((id) => !layout.pinned.includes(id));
   const rows = (tab === "results" ? data?.results : data?.contacts) ?? [];
   const filtered = rows.filter(
     (row) =>
@@ -237,37 +234,39 @@ function AdminDashboard() {
       onLogout={() => void logout()}
       onNavigate={(view, shortcut) => {
         setSource(shortcut === "form" ? "Google Form" : "");
-        setLeader("");
+        if (shortcut !== "pending" && shortcut !== "contacts" && shortcut !== "today") {
+          setLeader("");
+          setQuery("");
+        }
         setDepartment("");
-        setQuery("");
-        setRecruiter("");
-        setTier("");
         setTrack("");
         setView(view, shortcut);
       }}
     >
       <header className="admin-heading">
         <div>
-          <span className="admin-eyebrow">活動工作台 / {date.replaceAll("-", ".")}</span>
+          <span className="admin-eyebrow">招生戰情後台 / {date.replaceAll("-", ".")}</span>
           <h1>
             {
               {
-                overview: "活動總覽",
-                recruitment: "招生戰情",
+                overview: "我的釘選",
+                recruitment: "今日招生戰情",
+                pending: "待處理",
+                roster: "名單",
                 pinned: "我的釘選",
-                contacts: source === "Google Form" ? "Google 表單" : "聯絡名單",
+                contacts: source === "Google Form" ? "表單資料" : "表單資料",
                 results: "比賽成績",
-                podium: "前三名",
+                podium: "今日排行榜",
                 leaders: "關主",
-                system: "系統",
-                security: "安全與登入",
+                system: "同步狀態",
+                security: "系統設定",
               }[tab]
             }
           </h1>
           <p>115-1 社團博覽會</p>
         </div>
         <div className="admin-heading-actions">
-          {(tab === "overview" || tab === "pinned") && (
+          {tab === "pinned" && (
             <button
               className={editing ? "admin-done" : "admin-customize"}
               onClick={() => setEditing((value) => !value)}
@@ -311,7 +310,7 @@ function AdminDashboard() {
         <span>
           {data || recruitment
             ? (
-                tab === "recruitment"
+                tab === "recruitment" || tab === "pending" || tab === "roster"
                   ? recruitment?.sync.gameResults.ok
                     && recruitment.sync.recruitmentResponses.ok
                     && recruitment.sync.recruitmentMaster.ok
@@ -332,7 +331,7 @@ function AdminDashboard() {
         </p>
       )}
 
-      {data && (tab === "overview" || tab === "pinned") && (
+      {data && tab === "pinned" && (
         <>
           {editing ? (
             <section className="admin-editor" aria-label="自訂儀表板">
@@ -352,104 +351,44 @@ function AdminDashboard() {
             </section>
           ) : (
             <>
-              {tab === "overview" && (
-                <section className="admin-summary" aria-label="活動摘要">
-                  <Kpi label="今日接觸" value={todayData?.kpis.contacts ?? "—"} hint="去重複人數" />
-                  <Kpi label="正式挑戰" value={data.kpis.officialChallenges} hint="所選日期" />
-                  <Kpi label="最高分" value={data.kpis.highestScore} hint="所選日期" />
-                  <Kpi
-                    label="同步狀態"
-                    value={
-                      data.sync.forms.ok && data.sync.results.ok && !error ? "已連線" : "同步異常"
-                    }
-                    hint={time(data.sync.updatedAt)}
-                  />
-                </section>
-              )}
               <div className="admin-section-heading">
-                <h2>{tab === "pinned" ? "已釘選" : "關注資訊"}</h2>
+                <h2>已釘選</h2>
                 <span className="admin-caption">依你的偏好排列</span>
               </div>
-              <section
-                className="admin-widget-grid admin-pinned-grid"
-                aria-label={tab === "pinned" ? "我的戰情" : "釘選資訊"}
-              >
+              <section className="admin-widget-grid admin-pinned-grid" aria-label="我的戰情">
                 {pinned.map((id) => widget(id))}
                 {!pinned.length && (
                   <div className="admin-panel admin-empty">尚未釘選卡片，點「自訂」開始設定。</div>
                 )}
-              </section>
-              {tab === "overview" && more.length > 0 && (
-                <section className="admin-more">
-                  <button
-                    className="admin-more-toggle"
-                    aria-expanded={showMore}
-                    onClick={() => setShowMore((value) => !value)}
-                  >
-                    <span>
-                      <ListFilter size={19} />
-                      更多資訊
-                    </span>
-                    <ChevronDown size={20} className={showMore ? "is-open" : ""} />
-                  </button>
-                  {showMore && (
-                    <div className="admin-widget-grid">{more.map((id) => widget(id))}</div>
-                  )}
-                </section>
-              )}
-              <section className="admin-quick" aria-label="快速入口">
-                <h2>快速入口</h2>
-                <div>
-                  {[
-                    ["戰情", Flag, "recruitment", "recruitment"],
-                    ["填表", ClipboardPen, "follow-up", "follow-up"],
-                    ["名單", Users, "contacts", "contacts"],
-                    ["前三名", Medal, "podium", "ranking"],
-                    ["關主", Flag, "leaders", "gatekeepers"],
-                    ["表單", Sheet, "contacts", "form"],
-                    ["成績", Trophy, "results", "results"],
-                    ["同步", RefreshCw, "system", "sync"],
-                    ["安全", Shield, "security", "security"],
-                  ].map(([label, Icon, next, shortcut]) => (
-                    shortcut === "follow-up" ? (
-                      <a key="follow-up" href="/follow-up">
-                        <Icon size={21} />
-                        <span>{label as string}</span>
-                      </a>
-                    ) : (
-                    <button
-                      key={label as string}
-                      onClick={() => {
-                        setSource(shortcut === "form" ? "Google Form" : "");
-                        setView(next as Tab, shortcut as string);
-                      }}
-                    >
-                      <Icon size={21} />
-                      <span>{label as string}</span>
-                    </button>
-                    )
-                  ))}
-                </div>
               </section>
             </>
           )}
         </>
       )}
 
-      {recruitment && tab === "recruitment" && (
-        <RecruitmentDashboard
-          data={recruitment}
-          query={query}
-          setQuery={setQuery}
-          gameGatekeeper={leader}
-          setGameGatekeeper={setLeader}
-          recruiter={recruiter}
-          setRecruiter={setRecruiter}
-          tier={tier}
-          setTier={setTier}
-          status={track}
-          setStatus={setTrack}
-        />
+      {(tab === "recruitment" || tab === "pending" || tab === "roster") && (
+        recruitment ? (
+          <RecruitmentDashboard
+            data={recruitment}
+            panel={tab === "pending" ? "pending" : tab === "roster" ? "roster" : "home"}
+            query={query}
+            setQuery={setQuery}
+            gameGatekeeper={leader}
+            setGameGatekeeper={setLeader}
+            recruiter={recruiter}
+            setRecruiter={setRecruiter}
+            status={track}
+            setStatus={setTrack}
+            error={error}
+            busy={busy}
+            onOpenPending={() => setView("pending", "pending")}
+            onOpenRoster={() => setView("roster", "contacts")}
+          />
+        ) : (
+          <p className="admin-empty" role="status">
+            {busy ? "讀取招生戰情…" : error || "目前沒有招生資料，請稍後再更新"}
+          </p>
+        )
       )}
 
       {data && tab === "podium" && (
@@ -464,7 +403,7 @@ function AdminDashboard() {
       {(tab === "contacts" || tab === "results") && (
         <section className="admin-panel">
           <div className="admin-section-heading">
-            <h2>{tab === "contacts" ? "聯絡名單" : "比賽成績"}</h2>
+            <h2>{tab === "contacts" ? "表單資料" : "比賽成績"}</h2>
             {tab === "results" && (
               <button onClick={() => setView("podium", "ranking")}>查看前三名</button>
             )}

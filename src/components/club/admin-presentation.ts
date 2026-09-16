@@ -129,22 +129,26 @@ export function time(value: string) {
       });
 }
 export function initialView(): Tab {
-  if (typeof window === "undefined") return "overview";
+  if (typeof window === "undefined") return "recruitment";
   const view = new URLSearchParams(window.location.search).get("view");
   return (
     (
       {
-        today: "overview",
+        today: "recruitment",
+        recruitment: "recruitment",
+        pending: "pending",
+        followup: "pending",
         ranking: "podium",
-        contacts: "contacts",
+        contacts: "roster",
+        roster: "roster",
         gatekeepers: "leaders",
         pinned: "pinned",
-        recruitment: "recruitment",
         form: "contacts",
         results: "results",
         sync: "system",
         security: "security",
+        overview: "pinned",
       } as Record<string, Tab>
-    )[view || ""] ?? "overview"
+    )[view || ""] ?? "recruitment"
   );
 }
