@@ -504,6 +504,85 @@ test(
         empty: "admin-empty-desktop",
       });
     });
+    await t.test("admin roster lists same-phone different names separately with 需確認", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) =>
+        new URL(route.request().url()).origin !== origin
+          ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+          : route.continue(),
+      );
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+        return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date,
+            gameRows: [],
+            recruitmentRows: [],
+            masterRows: [
+              {
+                接引日期: "9/16",
+                "接引人(可複選)": "安倢",
+                同學的姓名: "唐同學",
+                科系: "歷史學系",
+                年級: "大一",
+                是否入社: "否",
+                保證金是否繳費: "是",
+                繳了多少: "300",
+                "同學電話/LINE": "0917777174",
+              },
+              {
+                接引日期: "9/16",
+                "接引人(可複選)": "安倢",
+                同學的姓名: "陳同學甲乙丙",
+                科系: "資訊工程學系",
+                年級: "大二",
+                是否入社: "否",
+                保證金是否繳費: "是",
+                繳了多少: "300",
+                "同學電話/LINE": "0917777174",
+              },
+              {
+                接引日期: "9/16",
+                "接引人(可複選)": "柏能",
+                同學的姓名: "已繳保證金甲",
+                科系: "歷史學系",
+                年級: "大一",
+                是否入社: "否",
+                保證金是否繳費: "是",
+                繳了多少: "300",
+                "同學電話/LINE": "0912000601",
+              },
+            ],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.locator("[data-war-room=home]").waitFor();
+      await page.getByRole("navigation", { name: "手機後台導覽", exact: true }).getByRole("button", { name: "名單", exact: true }).click();
+      await page.getByRole("heading", { name: "名單", level: 1 }).waitFor();
+      await page.getByText("唐同學", { exact: true }).waitFor();
+      await page.getByText("陳同學甲乙丙", { exact: true }).waitFor();
+      assert.equal(await page.locator("[data-review=true]").count(), 2);
+      assert.equal(await page.locator("[data-review=true] .admin-badge.is-review").count(), 2);
+      assert.ok(await page.getByText("姓名或電話有重複，分開列出請先對過。").count());
+      await assertAdminSafeCopy(page);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await capture(page, "admin-roster-review-390");
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

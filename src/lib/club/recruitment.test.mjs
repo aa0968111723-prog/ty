@@ -509,7 +509,44 @@ test("same-phone different-name deposit rows stay two people and need review", (
   assert.equal(summarized.phoneCount, 1);
   assert.equal(summarized.nameCount, 2);
   assert.equal(summarized.count, 2);
-  assert.ok(data.profiles.some((row) => row.needsReview && row.depositPaid === "是"));
+  const paid = data.profiles.filter((row) => row.depositPaid === "是");
+  assert.equal(paid.length, 2);
+  assert.deepEqual(paid.map((row) => row.name).sort(), ["唐同學", "陳同學甲乙丙"].sort());
+  assert.equal(new Set(paid.map((row) => row.personKey)).size, 2);
+  assert.equal(paid.every((row) => row.needsReview), true);
+  const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal(partner.profiles.filter((row) => row.depositPaid === "是").length, 2);
+  assert.equal(partner.profiles.every((row) => row.score == null && !row.tier), true);
+});
+
+test("roster keeps same-phone different names apart even when a game row shares the phone", () => {
+  const played = game({
+    姓名: "唐同學",
+    電話: "0917777174",
+    分數: 3600,
+    _submissionId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [played],
+    recruitmentRows: [],
+    masterRows: [
+      paidDeposit("唐同學", "0917777174"),
+      paidDeposit("陳同學甲乙丙", "0917777174"),
+    ],
+  });
+  assert.equal(data.summary.playedToday, 1);
+  assert.equal(data.summary.depositPaid, 2);
+  const paid = data.profiles.filter((row) => row.depositPaid === "是");
+  assert.equal(paid.length, 2);
+  assert.ok(paid.some((row) => row.name === "唐同學"));
+  assert.ok(paid.some((row) => row.name === "陳同學甲乙丙"));
+  assert.equal(paid.every((row) => row.needsReview), true);
+  const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal(partner.summary.depositPaid, 2);
+  assert.equal(partner.profiles.filter((row) => row.depositPaid === "是").length, 2);
+  assert.equal(partner.profiles.every((row) => row.score == null), true);
+  assert.equal(partner.profiles.some((row) => row.tier), false);
 });
 
 test("deposit count ignores game scores and does not use phone unique as the only key", () => {
@@ -546,8 +583,14 @@ test("deposit count ignores game scores and does not use phone unique as the onl
   assert.equal(summarized.phoneCount, 9);
   assert.notEqual(data.summary.depositPaid, summarized.phoneCount);
   assert.notEqual(data.summary.depositPaid, summarized.nameCount);
+  const paidProfiles = data.profiles.filter((row) => row.depositPaid === "是");
+  assert.equal(paidProfiles.length, 11);
+  assert.ok(paidProfiles.some((row) => row.name === "唐同學"));
+  assert.ok(paidProfiles.some((row) => row.name === "陳同學甲乙丙"));
+  assert.ok(paidProfiles.filter((row) => row.name === "唐同學" || row.name === "陳同學甲乙丙").every((row) => row.needsReview));
   assert.ok(data.profiles.some((row) => row.name === "高分生" && row.score === 3600));
   assert.equal(toPartnerRecruitmentDashboard(data).profiles.find((row) => row.name === "高分生")?.score, undefined);
+  assert.equal(toPartnerRecruitmentDashboard(data).profiles.filter((row) => row.depositPaid === "是").length, 11);
 });
 
 test("partner dashboard hides grading, scores, and form choice tokens", () => {

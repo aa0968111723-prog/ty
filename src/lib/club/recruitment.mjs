@@ -271,16 +271,25 @@ export function decodeStudentChoice(value) {
   return { label, personKey, submissionId, placeholder: raw.startsWith(PLACEHOLDER_CHOICE) || raw === PLACEHOLDER_CHOICE };
 }
 
+function rosterName(row) {
+  return text(row?.normalizedName) || normalizeName(row?.name);
+}
+
 function rosterOverlap(profile, row) {
-  const profilePhone = text(profile?.normalizedPhone);
-  const rowPhone = text(row?.normalizedPhone);
-  if (profilePhone && rowPhone) return profilePhone === rowPhone;
   const profileId = text(profile?.submissionId).toLowerCase();
   const rowId = text(row?.submissionId).toLowerCase();
   if (profileId && rowId && profileId === rowId) return true;
+  const profileName = rosterName(profile);
+  const rowName = rosterName(row);
+  const profilePhone = text(profile?.normalizedPhone);
+  const rowPhone = text(row?.normalizedPhone);
+  if (profilePhone && rowPhone) {
+    if (profilePhone !== rowPhone) return false;
+    if (profileName && rowName) return profileName === rowName;
+    return !profileName && !rowName;
+  }
   if (profilePhone || rowPhone) return false;
-  const profileName = normalizeName(profile?.name);
-  return Boolean(profileName && row?.normalizedName && profileName === row.normalizedName);
+  return Boolean(profileName && rowName && profileName === rowName);
 }
 
 function profileFromSources({
@@ -347,7 +356,7 @@ function appendUnmatchedRoster(profiles, rows, { prefix }) {
   rows.forEach((row, index) => {
     if (profiles.some((profile) => rosterOverlap(profile, row))) return;
     profiles.push(profileFromSources({
-      personKey: row.normalizedPhone ? `phone:${row.normalizedPhone}` : `${prefix}:${index}`,
+      personKey: depositPersonKey(row, index),
       status: row.normalizedPhone ? "matched" : "unmatched",
       normalizedPhone: row.normalizedPhone || "",
       name: row.name,
@@ -535,6 +544,32 @@ export function summarizePaidDeposit(rows) {
   };
 }
 
+function rosterIdentityConflicts(rows) {
+  /** @type {Map<string, Set<string>>} */
+  const byName = new Map();
+  /** @type {Map<string, Set<string>>} */
+  const byPhone = new Map();
+  (rows || []).forEach((row, index) => {
+    const name = rosterName(row);
+    const phone = text(row.normalizedPhone);
+    const key = depositPersonKey({ normalizedName: name, normalizedPhone: phone }, index);
+    if (name) {
+      const set = byName.get(name) || new Set();
+      set.add(key);
+      byName.set(name, set);
+    }
+    if (phone) {
+      const set = byPhone.get(phone) || new Set();
+      set.add(key);
+      byPhone.set(phone, set);
+    }
+  });
+  return {
+    names: [...byName.entries()].filter(([, set]) => set.size > 1).map(([name]) => name),
+    phones: [...byPhone.entries()].filter(([, set]) => set.size > 1).map(([phone]) => phone),
+  };
+}
+
 function amount(value) {
   const n = number(String(value).replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
@@ -587,11 +622,14 @@ export function buildRecruitmentDashboard(input = {}) {
 
   const profiles = people.map((person) => {
     const latest = latestAttempt(person.attempts);
-    const recruited = recruits.find((row) => personIsRecruited(person, [row]));
-    const masterRow = master.find((row) => rosterOverlap({
+    const identity = {
       normalizedPhone: person.normalizedPhone,
+      normalizedName: person.normalizedName,
+      name: latest.name,
       submissionId: latest.submissionId,
-    }, row));
+    };
+    const recruited = recruits.find((row) => rosterOverlap(identity, row));
+    const masterRow = master.find((row) => rosterOverlap(identity, row));
     const source = masterRow || recruited;
     return profileFromSources({
       personKey: person.personKey,
@@ -632,13 +670,14 @@ export function buildRecruitmentDashboard(input = {}) {
   const joinedCount = presentCount(completed, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
   const deposit = summarizePaidDeposit(completed);
   const depositCount = deposit.count;
-  const conflictNames = new Set(deposit.conflictNames);
-  const conflictPhones = new Set(deposit.conflictPhones);
+  const rosterConflicts = rosterIdentityConflicts(profiles);
+  const conflictNames = new Set([...deposit.conflictNames, ...rosterConflicts.names]);
+  const conflictPhones = new Set([...deposit.conflictPhones, ...rosterConflicts.phones]);
   for (const row of profiles) {
     if (row.needsReview == null) {
       row.needsReview = row.status === "ambiguous" || reviewKeys.has(row.personKey);
     }
-    const nameHit = Boolean(normalizeName(row.name) && conflictNames.has(normalizeName(row.name)));
+    const nameHit = Boolean(rosterName(row) && conflictNames.has(rosterName(row)));
     const phoneHit = Boolean(row.normalizedPhone && conflictPhones.has(row.normalizedPhone));
     if (nameHit || phoneHit) row.needsReview = true;
   }

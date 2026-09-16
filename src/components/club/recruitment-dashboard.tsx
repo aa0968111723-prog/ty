@@ -288,6 +288,7 @@ export function RosterList({
             {people.map((row) => (
               <article
                 key={row.personKey}
+                data-review={row.needsReview ? "true" : undefined}
                 role="button"
                 tabIndex={0}
                 onClick={() => setProfile(row)}
@@ -301,6 +302,7 @@ export function RosterList({
                 <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
                 <p>遊戲關主 {row.gameGatekeeper || "未填"} · 這位有緣人的接引人 {row.recruiters || "尚未填表"}</p>
                 <small>{row.phone || "電話未填"}</small>
+                {row.needsReview ? <p className="admin-caption">姓名或電話有重複，分開列出請先對過。</p> : null}
               </article>
             ))}
           </div>
