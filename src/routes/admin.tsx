@@ -230,7 +230,11 @@ function AdminDashboard() {
   if (gate === null)
     return (
       <main className="admin-page admin-auth">
-        <p role="status">正在確認登入狀態…</p>
+        <div className="admin-auth-skeleton" data-loading="session" aria-busy="true">
+          <p role="status">正在確認登入狀態…</p>
+          <div className="admin-skeleton-card" aria-hidden="true" />
+          <div className="admin-skeleton-line" aria-hidden="true" />
+        </div>
       </main>
     );
   if (!authenticated)

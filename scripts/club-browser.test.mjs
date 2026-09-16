@@ -310,6 +310,32 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("session check shows a login skeleton", async (t) => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      let release = () => {};
+      const held = new Promise((resolve) => { release = resolve; });
+      t.after(() => release());
+      await page.route("**/api/admin/session", async (route) => {
+        await held;
+        return route.fulfill({ json: { authenticated: false, passwordEnabled: true, googleEnabled: true } });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("status").getByText("正在確認登入狀態…").waitFor();
+      await page.locator("[data-loading=session]").waitFor();
+      assert.ok(await page.locator(".admin-skeleton-card").count() >= 1);
+      await capture(page, "loading-session-390");
+      release();
+      await page.locator("[data-loading=session]").waitFor({ state: "detached" });
+      await page.getByRole("heading", { name: "管理員登入" }).waitFor();
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("command queue and roster show a loading skeleton before data arrives", async (t) => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const page = await context.newPage();
