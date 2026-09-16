@@ -1,0 +1,113 @@
+name: open-war-room-pr
+
+on:
+  push:
+    branches:
+      - cursor/admin-war-room-cf4c
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  open-draft:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft PR if this head has none
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_REF: cursor/admin-war-room-cf4c
+          BASE_REF: main
+        run: |
+          set -euo pipefail
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          existing="$(gh api "repos/${GH_REPO}/pulls?head=${OWNER}:${HEAD_REF}&state=open" --jq '.[0].html_url // empty')"
+          if [ -n "${existing}" ]; then
+            echo "PR already open for this head: ${existing}"
+            exit 0
+          fi
+
+          python3 - <<'PY'
+          import json, os, urllib.error, urllib.request
+
+          token = os.environ["GH_TOKEN"]
+          repo = os.environ["GH_REPO"]
+          owner = os.environ["GITHUB_REPOSITORY_OWNER"]
+          head = os.environ["HEAD_REF"]
+          base = os.environ["BASE_REF"]
+          sha = os.environ["GITHUB_SHA"]
+
+          body = f"""Draft：招生戰情後台（spec-correct head `{head}` @ `{sha}`）。
+
+          ## IA
+          登入後預設「今日招生戰情」。四入口：戰情 / 待處理 / 名單 / 更多。更多含今日與歷史排行榜、表單資料、同步狀態、系統設定。
+
+          ## 視覺
+          `.war-kpis` 六張卡（圖示 + ring + 數字），點開 WHO 姓名（最多 6 人 + 還有 N 人）。漏斗、各活動長條、近七日走勢。同步失敗顯示「數字暫缺，不是 0 人」，不是白屏。畫面無分級 / S/A/B。
+
+          ## 統計（Asia/Taipei）
+          今日接觸 = 當日官方遊戲去重；累積接觸 = `playedAll` 全部官方遊戲去重；活動人數不含「無(考慮中」；入社 / 保證金看正式表「是」；待填 = 玩過尚未填表。碰撞標「需要確認」，不自動合併。
+
+          ## 夥伴流程
+          「這位有緣人的接引人」不覆蓋遊戲關主。填寫正式資料預填既有 Google Form `/viewform`，備註只有遊戲完成 + 遊戲關主。不預填分級、不帶 submissionId。未重建 Form。
+
+          ## 測試
+          `node --test` club/scripts：360 pass / 0 fail / 1 skip（live sheets 選測）。typed：55 pass。前端無 `googleapis`。Live 16 項在 playedAll 修正後通過。
+
+          ## 部署
+          Zeabur `leader-dna-sheet-sync` GitTrigger 指向本分支。不改 PR #31 / #32。
+
+          ## 還缺
+          Apps Script / clasp 需表單擁有者帳號推送；不阻擋 app 內預填與戰情。
+          """
+          payload = json.dumps({
+              "title": "招生戰情後台：手機一眼看懂、夥伴快速填表",
+              "head": head,
+              "base": base,
+              "draft": True,
+              "body": body,
+          }).encode()
+
+          def api(method, url, data=None):
+              req = urllib.request.Request(
+                  url,
+                  data=data,
+                  method=method,
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Accept": "application/vnd.github+json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                      "User-Agent": "open-war-room-pr",
+                      "Content-Type": "application/json",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as res:
+                      return res.status, json.loads(res.read().decode())
+              except urllib.error.HTTPError as err:
+                  raw = err.read().decode()
+                  try:
+                      parsed = json.loads(raw)
+                  except json.JSONDecodeError:
+                      parsed = {"message": raw}
+                  return err.code, parsed
+
+          status, created = api("POST", f"https://api.github.com/repos/{repo}/pulls", payload)
+          if status in (200, 201):
+              print(created.get("html_url", ""))
+              raise SystemExit(0)
+          if status == 422:
+              again_status, again = api(
+                  "GET",
+                  f"https://api.github.com/repos/{repo}/pulls?head={owner}:{head}&state=open",
+              )
+              url = ""
+              if again_status == 200 and isinstance(again, list) and again:
+                  url = again[0].get("html_url") or ""
+              if url:
+                  print(f"PR already open for this head: {url}")
+                  raise SystemExit(0)
+          print(f"pulls.create failed HTTP {status}: {json.dumps(created, ensure_ascii=False)}")
+          raise SystemExit(1)
+          PY
