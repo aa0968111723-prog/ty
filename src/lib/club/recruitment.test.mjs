@@ -9,8 +9,7 @@ import {
   parseGameAttempts,
   parseMasterRows,
   parseRecruitmentResponses,
-  toPartnerRecruitmentDashboard,
-  summarizePaidDeposit,
+  dateInTaipei,
 } from "./recruitment.mjs";
 import {
   applyLastKnownGood,
@@ -499,6 +498,52 @@ test("today vs history contacts exclude practice and keep name-normalized unique
   assert.ok(data.kpiPeople.allContacts.some((row) => row.name === "昨日生"));
   assert.equal(data.kpiPeople.pending.length, 2);
   assert.equal(data.kpiPeople.todayContacts.some((row) => /09\d/.test(row.name)), false);
+});
+
+test("war-room today vs history contacts use Asia/Taipei midnight, not UTC", () => {
+  assert.equal(dateInTaipei(new Date("2026-09-13T15:59:59.000Z")), "2026-09-13");
+  assert.equal(dateInTaipei(new Date("2026-09-13T16:00:00.000Z")), "2026-09-14");
+  assert.equal(dateInTaipei(new Date("2026-09-14T15:59:59.000Z")), "2026-09-14");
+  assert.equal(dateInTaipei(new Date("2026-09-14T16:00:00.000Z")), "2026-09-15");
+  const justAfterMidnight = game({
+    姓名: "台北今日",
+    電話: "0912000101",
+    遊戲時間: "2026-09-13T16:00:00.000Z",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21",
+  });
+  const justBeforeMidnight = game({
+    姓名: "台北昨日",
+    電話: "0912000102",
+    遊戲時間: "2026-09-13T15:59:59.000Z",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa22",
+  });
+  const lateTaipeiToday = game({
+    姓名: "台北深夜",
+    電話: "0912000103",
+    遊戲時間: "2026-09-14T15:59:59.000Z",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa23",
+  });
+  const taipeiTomorrow = game({
+    姓名: "台北明日",
+    電話: "0912000104",
+    遊戲時間: "2026-09-14T16:00:00.000Z",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa24",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-13T16:30:00.000Z"),
+    gameRows: [justAfterMidnight, justBeforeMidnight, lateTaipeiToday, taipeiTomorrow],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.date, "2026-09-14");
+  assert.equal(data.summary.playedToday, 2);
+  assert.equal(data.summary.playedOnDate, 2);
+  assert.equal(data.summary.playedAll, 4);
+  assert.deepEqual(data.kpiPeople.todayContacts.map((row) => row.name).sort(), ["台北今日", "台北深夜"]);
+  assert.equal(data.kpiPeople.todayContacts.some((row) => row.name === "台北昨日"), false);
+  assert.equal(data.kpiPeople.todayContacts.some((row) => row.name === "台北明日"), false);
+  assert.equal(data.kpiPeople.allContacts.length, 4);
 });
 
 test("today contact chips keep eight unique names so the war-room peek can show 還有 N 人", () => {

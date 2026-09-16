@@ -360,6 +360,14 @@ test("staff recruitment POST requires admin session and only appends 招生狀�
   assert.equal(saved["接引人(可複選)"], "柏能");
   assert.equal(saved._gameGatekeeper, "安倢");
   assert.ok(!JSON.stringify(payload).includes("private_key"));
+  const rowsAfterFirst = values.length;
+  const again = await handleAdminRecruitment(request("recruitment", { body, cookie }));
+  const againPayload = await again.json();
+  assert.equal(again.status, 200);
+  assert.equal(againPayload.ok, true);
+  assert.equal(againPayload.duplicate, true);
+  assert.equal(againPayload.saved, false);
+  assert.equal(values.length, rowsAfterFirst, "duplicate form submit must not append a second 招生狀況表 row");
   const missingName = await handleAdminRecruitment(request("recruitment", {
     body: { ...body, name: "" }, cookie,
   }));
