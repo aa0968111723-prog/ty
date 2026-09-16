@@ -487,7 +487,10 @@ test(
       assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
       assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 0);
       const phoneBox = await page.getByText("0910000001").boundingBox();
-      assert.ok(phoneBox.height <= 28, `phone wrapped ${JSON.stringify(phoneBox)}`);
+      assert.ok(
+        phoneBox.width >= 70 && phoneBox.height <= 28,
+        `phone wrapped ${JSON.stringify(phoneBox)}`,
+      );
       await capture(page, "queue-card-twocol-390");
       await page.getByLabel("這位有緣人的接引人").selectOption("小哲");
       await page.getByRole("status").getByText(/目前沒有與「小哲」相關/).waitFor();
