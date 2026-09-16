@@ -61,13 +61,13 @@ function ExpandCard({
 }) {
   const open = expanded === id;
   return (
-    <article className={`war-card${tone ? ` is-${tone}` : ""}`}>
+    <article className={`war-card${tone ? ` is-${tone}` : ""}`} data-war-metric={id}>
       <button type="button" aria-expanded={open} onClick={() => onToggle(id)}>
         <span className="war-card-icon">
           <Icon size={20} />
         </span>
-        <span>
-          <small>{label}</small>
+        <span className="war-card-copy">
+          <small className="war-card-label">{label}</small>
           <strong>{value}</strong>
           <em>{hint}</em>
         </span>
@@ -173,7 +173,7 @@ export function WarRoom({
         <ExpandCard
           id="deposit"
           icon={Wallet}
-          label="已繳保證金"
+          label="保證金"
           value={summary?.depositPaid == null ? "資料不足" : metric(summary.depositPaid)}
           hint={summary?.depositTotal == null ? "金額資料不足" : `合計 ${metric(summary.depositTotal)}`}
           expanded={expanded}
