@@ -158,18 +158,29 @@
   border-bottom: 1px solid var(--border);
   margin-bottom: var(--space-6);
 }
-.admin-page:has(.battle-next) .admin-heading p {
+.admin-page:has(.recruitment-board) .admin-content {
+  padding-top: var(--space-3);
+}
+.admin-page:has(.recruitment-board) .admin-heading p {
   display: none;
 }
-.admin-page:has(.battle-next) .admin-heading h1 {
+.admin-page:has(.recruitment-board) .admin-heading h1 {
   margin-top: 0;
 }
-.admin-page:has(.battle-next) .admin-date-controls {
+.admin-page:has(.recruitment-board) .admin-date-controls {
   margin-top: var(--space-2);
 }
-.admin-page:has(.battle-next) .admin-sync-line {
+.admin-page:has(.recruitment-board) .admin-sync-line {
   padding: var(--space-2) 0;
   margin-bottom: var(--space-3);
+}
+.admin-page:has(.recruitment-board) .admin-section-heading {
+  margin: var(--space-2) 0 var(--space-3);
+}
+@media (max-width: 759px) {
+  .admin-page:has(.recruitment-board) .admin-eyebrow {
+    display: none;
+  }
 }
 .admin-section-heading {
   display: flex;

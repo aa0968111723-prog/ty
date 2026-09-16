@@ -478,9 +478,11 @@ test(
       }));
       await page.goto(`${origin}/admin?view=queue`);
       await page.getByRole("heading", { name: "待處理" }).waitFor();
+      await page.getByLabel("查詢日期").waitFor();
       assert.equal(await page.getByRole("link", { name: "填寫正式資料" }).count(), 0);
       const searchBox = await page.getByLabel("搜尋姓名或電話").boundingBox();
-      assert.ok(searchBox.y + searchBox.height < 500, `queue search ${JSON.stringify(searchBox)}`);
+      assert.ok(searchBox.y + searchBox.height < 390, `queue search ${JSON.stringify(searchBox)}`);
+      await capture(page, "queue-compact-390");
       await page.getByLabel("這位有緣人的接引人").selectOption("柏能");
       assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
       assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 0);
