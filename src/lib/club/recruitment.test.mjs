@@ -281,6 +281,26 @@ test("same-phone different-name form does not drop the pending student", () => {
   assert.equal(data.gameGatekeepers.find((row) => row.name === "安倢")?.recruited, 0);
 });
 
+test("form 備註 without submissionId still drops pending via name+phone", () => {
+  const player = game({
+    姓名: "備註無id",
+    電話: "0910000011",
+    _submissionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee03",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [player],
+    recruitmentRows: [{
+      同學的姓名: "備註無id",
+      "同學電話/LINE": "0910000011",
+      備註: "遊戲完成：2026/09/14 14:32\n遊戲關主：安倢\n喜歡茶會",
+    }],
+    masterRows: [],
+  });
+  assert.equal(data.pending.length, 0);
+  assert.equal(data.profiles.some((row) => row.name === "備註無id" && row.pending), false);
+});
+
 test("practice-like rows are ignored by game attempt parser", () => {
   const rows = parseGameAttempts([
     game({ _kind: "practice", _skipSave: true }),

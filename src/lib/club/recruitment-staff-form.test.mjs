@@ -43,6 +43,8 @@ test("staff payload keeps game gatekeeper separate from official recruiter", () 
   assert.equal(record.gameGatekeeper, "安倢");
   assert.match(record.note, /遊戲關主：安倢/);
   assert.doesNotMatch(record.note.split("遊戲關主：")[1], /^柏能/);
+  assert.doesNotMatch(record.note, /submissionId/i);
+  assert.equal(record.note.includes(payloadBody.submissionId), false);
   assert.equal(record.activity, "9/30茶會, 社課");
   assert.equal(record.tier, "S(已報名)");
   assert.equal(record.joined, "是");
@@ -135,4 +137,9 @@ test("Google Form secondary prefill still uses /viewform and carries in-app answ
   assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.activity), "9/30茶會");
   assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.joined), "是");
   assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.recruiter), "柏能");
+  const note = parsed.searchParams.get(LIVE_PREFILL_ENTRIES.note) || "";
+  assert.doesNotMatch(url, /submissionId/i);
+  assert.equal(decodeURIComponent(url).includes(payloadBody.submissionId), false);
+  assert.doesNotMatch(note, /submissionId/i);
+  assert.equal(note.includes(payloadBody.submissionId), false);
 });

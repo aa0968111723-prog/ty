@@ -1236,6 +1236,17 @@ test(
       assert.match(decodeURIComponent(String(href)), /同學|王小明|待跟進甲|entry\.887514514/);
       assert.match(decodeURIComponent(String(href)), /遊戲關主：安倢/);
       assert.match(String(href), /entry\.1318284482=/);
+      assert.doesNotMatch(String(href), /submissionId/i);
+      assert.doesNotMatch(decodeURIComponent(String(href)), /submissionId/i);
+      assert.equal(decodeURIComponent(String(href)).includes(pendingStudent._submissionId), false);
+      const fillText = await page.locator("body").innerText();
+      assert.equal(fillText.includes("submissionId"), false);
+      assert.equal(fillText.includes(pendingStudent._submissionId), false);
+      await page.getByText("這位同學報名了哪個活動").scrollIntoViewIfNeeded();
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "follow-up-fill-no-submissionid-390-viewport.png") });
+      }
+      await capture(page, "follow-up-fill-no-submissionid-390");
       await page.getByRole("button", { name: "這位同學報名了哪個活動？ 9/30茶會" }).click();
       await page.getByRole("button", { name: "是否入社 否" }).click();
       await page.getByRole("button", { name: "保證金是否繳費 否" }).click();

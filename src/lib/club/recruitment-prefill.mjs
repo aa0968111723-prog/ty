@@ -19,8 +19,10 @@ export const OFFICIAL_RECRUITERS = Object.freeze([
 
 /**
  * Live published-form entry IDs. Keys that are not on the live form
- * (遊戲完成時間 / 遊戲關主 / submissionId) travel in 備註 until dedicated
- * questions exist.
+ * (遊戲完成時間 / 遊戲關主) travel in 備註. submissionId stays internal:
+ * staff POST writes `_gameSubmissionId`, and dashboard dedupe matches
+ * name+phone (and game time already in 備註). Never put the id in a
+ * visible prefill field — partners open this URL.
  */
 export const LIVE_PREFILL_ENTRIES = Object.freeze({
   recruiter: "entry.1318284482",
@@ -118,14 +120,6 @@ export function datetimeLocalTaipei(value) {
 }
 
 /** @param {Record<string, unknown>} [candidate] */
-function candidateSubmissionId(candidate = {}) {
-  const latest = candidate.latestAttempt && typeof candidate.latestAttempt === "object"
-    ? /** @type {Record<string, unknown>} */ (candidate.latestAttempt)
-    : {};
-  return text(candidate.submissionId || latest.submissionId).toLowerCase();
-}
-
-/** @param {Record<string, unknown>} [candidate] */
 function candidateCompletedAt(candidate = {}) {
   const latest = candidate.latestAttempt && typeof candidate.latestAttempt === "object"
     ? /** @type {Record<string, unknown>} */ (candidate.latestAttempt)
@@ -138,17 +132,24 @@ export function departmentGradeOf(candidate = {}) {
   return [text(candidate.department), text(candidate.grade)].filter(Boolean).join("");
 }
 
+const METADATA_HEADER =
+  /^遊戲完成：[^\n]*\n遊戲關主：[^\n]*(?:\nsubmissionId：[^\n]*)?(?:\n|$)/u;
+const VISIBLE_SUBMISSION_ID = /submissionId[：:]\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+
+/** Strip labeled submissionId from partner-visible 備註 / captions.
+ * @param {unknown} value
+ */
+export function stripVisibleSubmissionId(value) {
+  return text(value).replace(VISIBLE_SUBMISSION_ID, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 /** @param {Record<string, unknown>} [candidate] @param {unknown} [extraNotes] */
 export function buildGameMetadataNote(candidate = {}, extraNotes = "") {
   const lines = [
     `遊戲完成：${formatCompletedAt(candidateCompletedAt(candidate))}`,
     `遊戲關主：${text(candidate?.gameGatekeeper)}`,
-    `submissionId：${candidateSubmissionId(candidate)}`,
   ];
-  const extra = text(extraNotes).replace(
-    /^遊戲完成：[^\n]*\n遊戲關主：[^\n]*\nsubmissionId：[^\n]*(?:\n|$)/u,
-    "",
-  ).trim();
+  const extra = stripVisibleSubmissionId(text(extraNotes).replace(METADATA_HEADER, ""));
   return extra ? `${lines.join("\n")}\n${extra}` : lines.join("\n");
 }
 
@@ -265,7 +266,6 @@ export function generatePrefilledFormUrl(candidate = {}, options = {}) {
   setEntry(params, entries.note, buildGameMetadataNote(candidate, options.extraNotes));
   setEntry(params, entries.completedAt, formatCompletedAt(candidateCompletedAt(candidate)));
   setEntry(params, entries.gameGatekeeper, gameGatekeeper);
-  setEntry(params, entries.submissionId, candidateSubmissionId(candidate));
   setEntry(params, entries.tier, options.tier || candidate.tier);
   setChoices(params, entries.activity, options.activities || candidate.activities || candidate.activity);
   setEntry(params, entries.joined, options.joined || candidate.joined);

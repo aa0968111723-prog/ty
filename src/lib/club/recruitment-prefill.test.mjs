@@ -62,9 +62,13 @@ test("prefill uses the full viewform URL and live entry IDs, never forms.gle", (
   const note = parsed.searchParams.get(LIVE_PREFILL_ENTRIES.note) || "";
   const meta = parseGameMetadataNote(note);
   assert.equal(meta.gameGatekeeper, "安倢");
-  assert.equal(meta.submissionId, candidate.submissionId);
+  assert.equal(meta.submissionId, "");
   assert.match(meta.completedAt, /2026/);
   assert.match(note, /遊戲關主：安倢/);
+  assert.doesNotMatch(note, /submissionId/i);
+  assert.equal(note.includes(candidate.submissionId), false);
+  assert.doesNotMatch(url, /submissionId/i);
+  assert.equal(decodeURIComponent(url).includes(candidate.submissionId), false);
 });
 
 test("custom recruiter uses Other; original game gatekeeper stays in notes", () => {
@@ -78,10 +82,38 @@ test("custom recruiter uses Other; original game gatekeeper stays in notes", () 
   assert.equal(parseGameMetadataNote(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.note)).gameGatekeeper, "安倢");
 });
 
-test("metadata note stays editable and extra notes append after the three game fields", () => {
+test("metadata note stays editable and extra notes append after game fields", () => {
   const note = buildGameMetadataNote(candidate, "喜歡茶會");
   assert.match(note, /喜歡茶會$/);
-  assert.equal(parseGameMetadataNote(note).submissionId, candidate.submissionId);
+  assert.equal(parseGameMetadataNote(note).submissionId, "");
+  assert.doesNotMatch(note, /submissionId/i);
+  assert.equal(note.includes(candidate.submissionId), false);
+});
+
+test("viewform prefill URL and 備註 never include submissionId or the raw id", () => {
+  const url = generatePrefilledFormUrl(candidate, {
+    recruiter: "柏能",
+    extraNotes: `興趣茶會\nsubmissionId：${candidate.submissionId}`,
+    entries: { submissionId: "entry.999999999" },
+  });
+  const decoded = decodeURIComponent(url);
+  const note = new URL(url).searchParams.get(LIVE_PREFILL_ENTRIES.note) || "";
+  assert.doesNotMatch(url, /submissionId/i);
+  assert.doesNotMatch(decoded, /submissionId/i);
+  assert.equal(decoded.includes(candidate.submissionId), false);
+  assert.doesNotMatch(note, /submissionId/i);
+  assert.equal(note.includes(candidate.submissionId), false);
+  assert.match(note, /遊戲完成/);
+  assert.match(note, /遊戲關主：安倢/);
+  assert.match(note, /興趣茶會/);
+  assert.equal(new URL(url).searchParams.get("entry.999999999"), null);
+  assert.equal(parseGameMetadataNote(note).submissionId, "");
+});
+
+test("parser still reads legacy 備註 that already stored submissionId", () => {
+  const legacy = `遊戲完成：2026/09/14 14:32\n遊戲關主：安倢\nsubmissionId：${candidate.submissionId}`;
+  assert.equal(parseGameMetadataNote(legacy).submissionId, candidate.submissionId);
+  assert.equal(parseGameMetadataNote(legacy).gameGatekeeper, "安倢");
 });
 
 test("unknown extra entry keys are ignored so invented IDs cannot ship", () => {
