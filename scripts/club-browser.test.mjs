@@ -43,22 +43,25 @@ async function assertPendingActionButtons(page) {
   assert.equal(actionMetrics.map((row) => row.text).join(), "接引人快速填表,打開正式表單");
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
 }
-async function assertWarDepositLabel(page) {
-  const label = page.locator("[data-war-metric=deposit] .war-card-label");
-  await label.waitFor();
-  const metrics = await label.evaluate((el) => {
-    const box = el.getBoundingClientRect();
-    const style = getComputedStyle(el);
-    return {
-      text: el.textContent?.trim() || "",
-      height: box.height,
-      width: box.width,
-      nowrap: style.whiteSpace === "nowrap",
-    };
-  });
-  assert.equal(metrics.text, "保證金");
-  assert.ok(metrics.height <= 20, `deposit label wrapped at ${metrics.height}px`);
-  assert.equal(metrics.nowrap, true);
+async function assertWarCardLabels(page) {
+  const labels = page.locator(".war-card .war-card-label");
+  await labels.first().waitFor();
+  const metrics = await labels.evaluateAll((els) =>
+    els.map((el) => {
+      const box = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return {
+        text: el.textContent?.trim() || "",
+        height: box.height,
+        nowrap: style.whiteSpace === "nowrap",
+      };
+    }),
+  );
+  assert.deepEqual(metrics.map((row) => row.text), ["接觸", "活動", "入社", "保證金"]);
+  for (const row of metrics) {
+    assert.ok(row.height <= 20, `${row.text} wrapped at ${row.height}px`);
+    assert.equal(row.nowrap, true);
+  }
   assert.ok(await page.getByText("保證金以正式表單勾選為準").count());
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   assert.equal(await page.getByText("分級").count(), 0);
@@ -210,7 +213,7 @@ test(
         await page.getByLabel("查詢日期").fill("2026-09-12");
         await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
         await page.locator("[data-war-room=home]").waitFor();
-        await assertWarDepositLabel(page);
+        await assertWarCardLabels(page);
         assert.equal(await page.getByText("分級").count(), 0);
         assert.equal(await page.getByText("S／已報名").count(), 0);
         assert.equal(await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button").count(), 4);
@@ -324,7 +327,7 @@ test(
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
       await page.locator("[data-war-room=home]").waitFor();
-      await assertWarDepositLabel(page);
+      await assertWarCardLabels(page);
       assert.equal(await page.locator(".admin-widget-tools").count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await capture(page, "admin-desktop");

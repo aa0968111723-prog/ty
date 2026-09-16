@@ -1371,7 +1371,7 @@
   color: var(--text-muted);
   font-size: var(--text-caption);
 }
-.war-card[data-war-metric="deposit"] .war-card-label {
+.war-card-label {
   white-space: nowrap;
   word-break: keep-all;
   overflow-wrap: normal;

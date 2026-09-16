@@ -139,7 +139,7 @@ export function WarRoom({
         <ExpandCard
           id="contacts"
           icon={Users}
-          label="今日接觸"
+          label="接觸"
           value={metric(playedToday)}
           hint={`累積 ${metric(playedTotal)}`}
           tone="focus"
@@ -151,9 +151,9 @@ export function WarRoom({
         <ExpandCard
           id="activity-today"
           icon={CalendarHeart}
-          label="今日活動報名"
+          label="活動"
           value={metric(activityToday)}
-          hint="人只計一次"
+          hint="今日報名"
           expanded={expanded}
           onToggle={toggle}
         >
