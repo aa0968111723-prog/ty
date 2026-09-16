@@ -933,6 +933,107 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("command home funnel and daily trend show labeled counts below the fold", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const todayA = {
+        姓名: "甲", 電話: "0910000101", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z",
+      };
+      const todayB = {
+        姓名: "乙", 電話: "0910000102", 科系: "會計學系", 年級: "大二", 遊戲關主: "柏能",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T02:00:00.000Z",
+      };
+      const yesterday = {
+        姓名: "丙", 電話: "0910000103", 科系: "中國文學學系", 年級: "大一", 遊戲關主: "安倢",
+        _submissionId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-13T03:00:00.000Z",
+      };
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({
+          date: "2026-09-14",
+          gameRows: [todayA, todayB, yesterday],
+          recruitmentRows: [{
+            時間戳記: "2026/9/14 下午 3:00:00",
+            同學的姓名: todayA.姓名,
+            "同學電話/LINE": todayA.電話,
+            報名了那個活動: "9/30茶會",
+            是否入社: "是",
+            保證金是否繳費: "是",
+            "繳了多少呢?": "300",
+            _gameSubmissionId: todayA._submissionId,
+          }, {
+            時間戳記: "2026/9/14 下午 3:30:00",
+            同學的姓名: todayB.姓名,
+            "同學電話/LINE": todayB.電話,
+            報名了那個活動: "10/07演講",
+            是否入社: "否",
+            保證金是否繳費: "否",
+            _gameSubmissionId: todayB._submissionId,
+          }, {
+            時間戳記: "2026/9/13 下午 3:00:00",
+            同學的姓名: yesterday.姓名,
+            "同學電話/LINE": yesterday.電話,
+            報名了那個活動: "社課",
+            是否入社: "是",
+            保證金是否繳費: "否",
+            _gameSubmissionId: yesterday._submissionId,
+          }],
+          masterRows: [],
+        }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const funnelHeading = page.getByRole("heading", { name: "招生漏斗" });
+      const funnelBox = await funnelHeading.boundingBox();
+      assert.ok(funnelBox && funnelBox.y >= 780, `funnel on first screen ${JSON.stringify(funnelBox)}`);
+      await funnelHeading.scrollIntoViewIfNeeded();
+      const funnel = page.locator(".battle-funnel");
+      await funnel.getByText("遊戲接觸").waitFor();
+      await funnel.getByText("活動報名").waitFor();
+      await funnel.getByText("入社", { exact: true }).waitFor();
+      await funnel.getByText("保證金").waitFor();
+      assert.equal(await funnel.locator("li", { hasText: "遊戲接觸" }).locator("b").innerText(), "3");
+      assert.equal(await funnel.locator("li", { hasText: "活動報名" }).locator("b").innerText(), "3");
+      assert.equal(await funnel.locator("li", { hasText: "入社" }).locator("b").innerText(), "2");
+      assert.equal(await funnel.locator("li", { hasText: "保證金" }).locator("b").innerText(), "1");
+      const funnelLabels = await page.evaluate(() =>
+        [...document.querySelectorAll(".battle-funnel-bar")].map((el) => el.getAttribute("aria-label")),
+      );
+      assert.deepEqual(funnelLabels, ["遊戲接觸 3 人", "活動報名 3 人", "入社 2 人", "保證金 1 人"]);
+      await capture(page, "command-funnel-390");
+      const trendHeading = page.getByRole("heading", { name: "近七日趨勢" });
+      await trendHeading.scrollIntoViewIfNeeded();
+      const trend = page.locator('[aria-label="近七日趨勢"]');
+      const todayCol = trend.locator(".battle-trend-day", { hasText: "09/14" });
+      await todayCol.getByText("接觸 2").waitFor();
+      await todayCol.getByText("報名 2").waitFor();
+      await todayCol.getByText("入社 1").waitFor();
+      assert.equal(await todayCol.locator(".sr-only").count(), 0);
+      const unlabeled = await page.evaluate(() =>
+        [...document.querySelectorAll(".battle-ring, .battle-funnel-bar, .battle-bar, .battle-trend, .battle-trend-cols")]
+          .filter((el) => !el.getAttribute("aria-label"))
+          .map((el) => el.className),
+      );
+      assert.deepEqual(unlabeled, []);
+      await capture(page, "command-trend-390");
+      assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("command home shows the next related person after picking a recruiter", async () => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const page = await context.newPage();

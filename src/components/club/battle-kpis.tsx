@@ -501,9 +501,11 @@ export function BattleCommand({
                 <span style={{ height: `${(row.joined / trendMax) * 100}%` }} aria-hidden="true" />
               </div>
               <small>
-                {row.date.slice(5).replace("-", "/")}
-                <span className="sr-only">
-                  接觸 {row.contacts}、報名 {row.activity}、入社 {row.joined}
+                <span>{row.date.slice(5).replace("-", "/")}</span>
+                <span className="battle-trend-metrics">
+                  <span>接觸 {row.contacts}</span>
+                  <span>報名 {row.activity}</span>
+                  <span>入社 {row.joined}</span>
                 </span>
               </small>
             </div>

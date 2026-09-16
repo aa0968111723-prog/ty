@@ -1794,12 +1794,22 @@
 }
 .battle-trend-day {
   text-align: center;
+  min-width: 0;
 }
 .battle-trend-day small {
-  display: block;
+  display: grid;
+  gap: 2px;
   margin-top: var(--space-1);
-  font-size: 11px;
+  font-size: var(--text-caption);
   color: var(--text-muted);
+  line-height: 1.25;
+}
+.battle-trend-metrics {
+  display: grid;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 .battle-legend {
   display: flex;
