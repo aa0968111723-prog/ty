@@ -115,6 +115,65 @@ function statusLabel(row: RecruitmentProfile) {
   return "已填正式資料";
 }
 
+function RecruiterPicker({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value: string;
+  onChange: (name: string) => void;
+  compact?: boolean;
+}) {
+  const buttons = (
+    <div className="quickfill-partners">
+      {OFFICIAL_RECRUITERS.map((name) => (
+        <button
+          key={name}
+          type="button"
+          aria-pressed={value === name}
+          onClick={() => onChange(value === name ? "" : name)}
+        >
+          {name}
+        </button>
+      ))}
+    </div>
+  );
+  if (compact) {
+    return (
+      <div className="battle-next-picker">
+        <p className="admin-caption">這位有緣人的接引人</p>
+        {buttons}
+      </div>
+    );
+  }
+  return (
+    <section className="admin-panel" aria-label="這位有緣人的接引人">
+      <h2>這位有緣人的接引人</h2>
+      <p className="admin-caption">選擇目前負責後續聯繫的夥伴。遊戲關主不會被改成接引人。</p>
+      {buttons}
+    </section>
+  );
+}
+
+function NextUpCard({
+  row,
+  featured,
+}: {
+  row: RecruitmentProfile & { waitMinutes?: number | null; followUpPath?: string };
+  featured?: boolean;
+}) {
+  const followUp = row.followUpPath || `/follow-up?personKey=${encodeURIComponent(row.personKey)}`;
+  return (
+    <article className={`battle-next-card${featured ? " is-next" : ""}`}>
+      {featured ? <small>下一位</small> : null}
+      <strong>{row.name}</strong>
+      <p>{row.department || "科系未填"}{row.grade ? ` · ${row.grade}` : ""}</p>
+      <p className="admin-badge">{statusLabel(row)}</p>
+      <a className="admin-primary" href={followUp}>填寫正式資料</a>
+    </article>
+  );
+}
+
 function PersonCard({
   row,
   onOpen,
@@ -214,16 +273,25 @@ export function RecruitmentDashboard({
     ? data.activities.map((row) => row.name)
     : [...new Set(data.profiles.flatMap((row) => row.activityList || []).filter(Boolean))];
 
+  const relatedPending = useMemo(() => {
+    return filterPendingQueue(data.pending, {
+      self: selfRecruiter,
+      showAll: false,
+      handled,
+      includeHandled: false,
+    });
+  }, [data.pending, selfRecruiter, handled]);
+
   const pending = useMemo(() => {
     return filterPendingQueue(data.pending, {
       self: selfRecruiter,
-      showAll: showAllPending || (mode === "command" && !selfRecruiter),
+      showAll: showAllPending,
       handled,
       includeHandled: status === "handled",
       gameGatekeeper,
       query,
     });
-  }, [data.pending, gameGatekeeper, selfRecruiter, query, handled, status, showAllPending, mode]);
+  }, [data.pending, gameGatekeeper, selfRecruiter, query, handled, status, showAllPending]);
 
   const people = useMemo(() => {
     const today = data.date;
@@ -272,8 +340,31 @@ export function RecruitmentDashboard({
   }
 
   if (mode === "command") {
+    const nextUp = relatedPending.slice(0, 3);
     return (
       <div className="recruitment-board">
+        <section className="admin-panel battle-next" aria-label="現在該處理">
+          <div className="admin-section-heading">
+            <h2>現在該處理</h2>
+            <button type="button" onClick={() => onOpenQueue?.()}>待處理名單</button>
+          </div>
+          <RecruiterPicker value={selfRecruiter} onChange={rememberRecruiter} compact />
+          {!selfRecruiter ? (
+            <p className="admin-empty" role="status">
+              先選「這位有緣人的接引人」，這裡會出現你現在該找的同學。
+            </p>
+          ) : !nextUp.length ? (
+            <p className="admin-empty" role="status">
+              目前沒有與「{selfRecruiter}」相關、尚未填正式資料的同學。遊戲關主不會自動變成正式接引人。
+            </p>
+          ) : (
+            <div className="battle-next-list">
+              {nextUp.map((row, index) => (
+                <NextUpCard key={row.personKey} row={row} featured={index === 0} />
+              ))}
+            </div>
+          )}
+        </section>
         <BattleCommand
           data={{
             summary: data.summary,
@@ -285,31 +376,6 @@ export function RecruitmentDashboard({
           onOpenQueue={() => onOpenQueue?.()}
           onOpenRoster={() => onOpenRoster?.()}
         />
-        <section className="admin-panel">
-          <div className="admin-section-heading">
-            <h2>現在應優先處理</h2>
-            <button type="button" className="admin-primary" onClick={() => onOpenQueue?.()}>全部待處理</button>
-          </div>
-          {!pending.length ? (
-            <p className="admin-empty">
-              {selfRecruiter
-                ? `目前沒有與「${selfRecruiter}」相關、尚未填正式資料的同學`
-                : "目前沒有待填正式資料的同學"}
-            </p>
-          ) : (
-            <div className="admin-person-list">
-              {pending.slice(0, 3).map((row) => (
-                <PersonCard
-                  key={row.personKey}
-                  row={row}
-                  onOpen={() => setProfile(row)}
-                  onHandled={() => toggleHandled(row.personKey)}
-                  handled={handled.has(row.personKey)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
         <RecruitmentProfileSheet profile={profile} onClose={() => setProfile(null)} />
       </div>
     );
@@ -318,22 +384,7 @@ export function RecruitmentDashboard({
   if (mode === "queue") {
     return (
       <div className="recruitment-board">
-        <section className="admin-panel" aria-label="這位有緣人的接引人">
-          <h2>這位有緣人的接引人</h2>
-          <p className="admin-caption">選擇目前負責後續聯繫的夥伴。遊戲關主不會被改成接引人。</p>
-          <div className="quickfill-partners">
-            {OFFICIAL_RECRUITERS.map((name) => (
-              <button
-                key={name}
-                type="button"
-                aria-pressed={selfRecruiter === name}
-                onClick={() => rememberRecruiter(selfRecruiter === name ? "" : name)}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-        </section>
+        <RecruiterPicker value={selfRecruiter} onChange={rememberRecruiter} />
         <section className="admin-panel">
           <div className="admin-section-heading">
             <h2>待填正式招生資料</h2>

@@ -1252,6 +1252,57 @@
   gap: var(--space-5);
   min-width: 0;
 }
+.battle-next > .admin-section-heading {
+  margin-top: 0;
+}
+.battle-next-picker {
+  margin-bottom: var(--space-4);
+}
+.battle-next-picker .quickfill-partners {
+  margin-top: var(--space-2);
+}
+.battle-next-list {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.battle-next-card {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+}
+.battle-next-card.is-next {
+  border-color: var(--brand);
+  background: var(--surface-primary);
+}
+.battle-next-card small {
+  color: var(--brand);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.battle-next-card strong {
+  font-size: var(--text-h2);
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.battle-next-card .admin-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  text-decoration: none;
+  margin-top: var(--space-2);
+}
+@media (min-width: 760px) {
+  .battle-next-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 .battle-kpi-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -162,14 +162,20 @@ test(
         assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
         assert.equal(await page.getByRole("heading", { name: /^S$/ }).count(), 0);
         assert.equal(await page.locator("text=submissionId").count(), 0);
-        await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "戰情", exact: true }).click();
         await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+        await page.getByRole("heading", { name: "現在該處理" }).waitFor();
+        await page.getByText("先選「這位有緣人的接引人」，這裡會出現你現在該找的同學。").waitFor();
+        assert.equal(await page.getByRole("link", { name: "填寫正式資料" }).count(), 0);
+        await page.getByRole("button", { name: "柏能", exact: true }).click();
+        await page.getByRole("link", { name: "填寫正式資料" }).first().waitFor();
+        await page.getByText("測試同學").first().waitFor();
         await capture(page, `recruitment-${width}`);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await assertScroll("admin");
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待填正式招生資料" }).waitFor();
-        await page.getByRole("button", { name: "柏能", exact: true }).click();
+        const self = page.getByRole("button", { name: "柏能", exact: true });
+        if ((await self.getAttribute("aria-pressed")) !== "true") await self.click();
         await page.getByRole("link", { name: "填寫正式資料" }).first().waitFor();
         await capture(page, `admin-${width}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
@@ -328,6 +334,58 @@ test(
       assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
       assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 1);
       assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("command home shows the next related person after picking a recruiter", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const mine = {
+        姓名: "關主的同學", 電話: "0910000001", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z",
+      };
+      const other = {
+        姓名: "別人的同學", 電話: "0910000002", 科系: "資訊工程學系", 年級: "大二", 遊戲關主: "安倢",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T02:00:00.000Z",
+      };
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({ date: "2026-09-14", gameRows: [mine, other], recruitmentRows: [], masterRows: [] }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.getByRole("heading", { name: "現在該處理" }).waitFor();
+      await page.getByRole("status").getByText("先選「這位有緣人的接引人」，這裡會出現你現在該找的同學。").waitFor();
+      assert.equal(await page.getByRole("link", { name: "填寫正式資料" }).count(), 0);
+      assert.equal(await page.locator(".admin-person-list").count(), 0);
+      await page.getByRole("button", { name: "柏能", exact: true }).click();
+      const nextCard = page.locator(".battle-next-card").filter({ hasText: "關主的同學" });
+      await nextCard.waitFor();
+      assert.equal(await nextCard.locator("text=下一位").count(), 1);
+      assert.ok((await nextCard.innerText()).includes("歷史學系"));
+      assert.ok((await nextCard.innerText()).includes("尚未填正式資料"));
+      assert.equal(await page.getByRole("link", { name: "填寫正式資料" }).count(), 1);
+      assert.equal(await page.getByText("別人的同學").count(), 0);
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
+      await page.getByRole("button", { name: "小哲", exact: true }).click();
+      await page.getByRole("status").getByText(/目前沒有與「小哲」相關/).waitFor();
+      await page.getByRole("button", { name: "柏能", exact: true }).click();
+      await page.getByRole("link", { name: "填寫正式資料" }).click();
+      await page.getByRole("heading", { name: /這位有緣人的接引人/ }).waitFor();
+      assert.match(page.url(), /\/follow-up\?personKey=/);
+      assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       assert.deepEqual(errors, []);
       await context.close();
