@@ -1071,10 +1071,10 @@
   color: var(--text-muted);
   font-size: var(--text-small);
 }
-.recruitment-filters {
+.admin-filters.recruitment-filters:not(.is-open) {
   display: none;
 }
-.recruitment-filters.is-open {
+.admin-filters.recruitment-filters.is-open {
   display: grid;
 }
 .recruitment-filters .battle-date-chips {
