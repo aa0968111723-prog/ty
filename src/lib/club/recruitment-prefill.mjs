@@ -250,6 +250,7 @@ export function formatRecruitDateMd(isoDate) {
  *   studentId?: string,
  *   interest?: string,
  *   interestTopics?: unknown,
+ *   tier?: string, // ignored — never prefill 分級 / S/A/B
  * }} [options]
  */
 export function generatePrefilledFormUrl(candidate = {}, options = {}) {

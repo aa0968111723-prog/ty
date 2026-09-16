@@ -469,7 +469,7 @@ test(
       await page.getByLabel("管理員密碼").fill("ui-test-only");
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("alert").waitFor();
-      session.authenticated = true;
+      sessionAuthenticated = true;
       await page.route("**/api/admin/login", route => route.fulfill({ json: { ok: true } }));
       await page.route("**/api/admin/dashboard**", route => {
         const date = new URL(route.request().url()).searchParams.get("date");

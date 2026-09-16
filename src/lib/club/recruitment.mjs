@@ -749,9 +749,6 @@ export function buildRecruitmentDashboard(input = {}) {
     if (!known.length) return null;
     return rows.filter(predicate).length;
   }
-  const sCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "S");
-  const aCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "A");
-  const bCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "B");
   const activityCount = presentUnique(
     formal,
     (row) => Boolean(text(row.activity)),
@@ -767,6 +764,7 @@ export function buildRecruitmentDashboard(input = {}) {
   const depositTotal = !completed.length || !depositKnown.length
     ? null
     : uniqueByIdentity(completed).reduce((sum, row) => sum + amount(row.depositAmount), 0);
+  const deposit = summarizePaidDeposit(completed);
 
   const today = dateInTaipei(now);
   const todayPeople = clusterGamePeople(attempts.filter((row) => onDate(row.completedAt, today)));
@@ -1021,7 +1019,7 @@ export function toPartnerRecruitmentDashboard(dashboard = {}) {
     date: dashboard.date,
     summary: {
       playedToday: summary.playedToday,
-      playedTotal: summary.playedTotal,
+      playedTotal: summary.playedTotal ?? summary.playedAll,
       pending: summary.pending,
       pendingToday: summary.pendingToday,
       recruited: summary.recruited,

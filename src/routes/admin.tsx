@@ -51,7 +51,6 @@ function AdminDashboard() {
   const [layout, setLayout] = useState<LayoutPreference>(DEFAULT_LAYOUT);
   const [layoutReady, setLayoutReady] = useState(false);
   const [dragging, setDragging] = useState<WidgetId | null>(null);
-  const [sessionExpired, setSessionExpired] = useState(false);
   const generation = useRef(0);
 
   useEffect(() => {
@@ -120,20 +119,6 @@ function AdminDashboard() {
         if (board) setRecruitment(board);
         setError(recruitmentError);
       }
-      const nextErrors: string[] = [];
-      if (selectedResult.status === "fulfilled") {
-        setData(selectedResult.value);
-        if (date === current) setTodayData(selectedResult.value);
-      } else {
-        nextErrors.push(publicError(selectedResult.reason, "同步失敗"));
-      }
-      if (date !== current) {
-        if (todayResult.status === "fulfilled") setTodayData(todayResult.value);
-        else nextErrors.push(publicError(todayResult.reason, "同步失敗"));
-      }
-      if (boardResult.status === "fulfilled") setRecruitment(boardResult.value);
-      else nextErrors.push(publicError(boardResult.reason, "招生資料同步失敗"));
-      setError(nextErrors[0] || "");
     } catch (cause) {
       if (id !== generation.current) return;
       if (cause instanceof Error && cause.message === "AUTH") {
@@ -239,10 +224,6 @@ function AdminDashboard() {
   function widget(id: WidgetId, editor = false) {
     return <DashboardWidget key={id} id={id} editor={editor} data={data} todayData={todayData} date={date} layout={layout} dragging={dragging} setDragging={setDragging} togglePinned={togglePinned} toggleVisible={toggleVisible} moveWidget={moveWidget} selectLeader={selectLeader} />;
   }
-
-  const syncState = headingSyncState({ tab, error, data, recruitment });
-  const recruitmentView = tab === "recruitment" || tab === "pending" || tab === "roster";
-  const hasLastGood = recruitmentView ? Boolean(recruitment) : Boolean(data);
 
   if (gate === null)
     return (
