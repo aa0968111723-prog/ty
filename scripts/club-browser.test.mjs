@@ -368,12 +368,6 @@ test(
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待處理有緣人" }).waitFor();
         await page.getByRole("button", { name: "柏能", exact: true }).click();
-        const pendingForm = page.locator(".recruitment-board [data-official-form=open-form]");
-        const pendingBackoffice = page.locator(".recruitment-board [data-official-form=open-backoffice]");
-        assert.equal(await pendingForm.getAttribute("href"), OFFICIAL_VIEWFORM_URL);
-        assert.equal(await pendingBackoffice.getAttribute("href"), OFFICIAL_FORM_EDIT_URL);
-        assert.equal(await pendingForm.getAttribute("target"), "_blank");
-        assert.equal(await pendingBackoffice.getAttribute("target"), "_blank");
         const fill = page.getByRole("link", { name: "填寫正式資料" }).first();
         await fill.waitFor();
         const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
@@ -1367,6 +1361,8 @@ test(
       await sheet.waitFor();
       assert.equal(await sheet.getByText("需要確認").count() >= 1, true);
       assert.equal(await sheet.getByText("submissionId").count(), 0);
+      assert.equal(await sheet.locator("[data-official-form=open-form]").getAttribute("href"), OFFICIAL_VIEWFORM_URL);
+      assert.equal(await sheet.locator("[data-official-form=open-backoffice]").getAttribute("href"), OFFICIAL_FORM_EDIT_URL);
       await sheet.getByRole("button", { name: "關閉" }).click();
       await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
       await page.getByRole("heading", { name: "名單" }).first().waitFor();

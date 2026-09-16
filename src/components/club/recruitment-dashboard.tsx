@@ -1,7 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Filter } from "lucide-react";
 import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
-import { OfficialFormShortcuts } from "./official-form-shortcuts";
 import { LIVE_ACTIVITY_CHOICES } from "@/lib/club/recruitment-prefill.mjs";
 import { IDENTITY_CONFIRM_LABEL, needsIdentityConfirm } from "@/lib/club/recruitment-identity.mjs";
 
@@ -215,7 +214,6 @@ export function PendingQueue({
           預設只看尚未填寫正式資料
           {recruiter ? ` · 優先與接引人「${recruiter}」相關（遊戲關主另計）` : ""}
         </p>
-        <OfficialFormShortcuts />
         <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
           <input
             aria-label="搜尋姓名或電話"

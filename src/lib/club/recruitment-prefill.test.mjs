@@ -157,13 +157,15 @@ test("pending and more surfaces mount official form + backoffice shortcuts", asy
   const pending = readFileSync(new URL("../../components/club/recruitment-dashboard.tsx", import.meta.url), "utf8");
   const more = readFileSync(new URL("../../components/club/admin-shell.tsx", import.meta.url), "utf8");
   const forms = readFileSync(new URL("../../routes/admin.tsx", import.meta.url), "utf8");
+  const sheet = readFileSync(new URL("../../components/club/recruitment-profile-sheet.tsx", import.meta.url), "utf8");
   const shortcuts = readFileSync(new URL("../../components/club/official-form-shortcuts.tsx", import.meta.url), "utf8");
   assert.match(shortcuts, /OFFICIAL_VIEWFORM_URL/);
   assert.match(shortcuts, /OFFICIAL_FORM_EDIT_URL/);
   assert.match(shortcuts, /data-official-form="open-form"/);
   assert.match(shortcuts, /data-official-form="open-backoffice"/);
   assert.doesNotMatch(shortcuts, /1322037614|#s:|submissionId/);
-  assert.match(pending, /<OfficialFormShortcuts/);
+  assert.match(pending, /開啟表單/);
   assert.match(more, /<OfficialFormShortcuts/);
   assert.match(forms, /<OfficialFormShortcuts/);
+  assert.match(sheet, /<OfficialFormShortcuts/);
 });
