@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { chromium } from "playwright";
 import { buildDashboard } from "../src/lib/club/admin.mjs";
-import { buildRecruitmentDashboard } from "../src/lib/club/recruitment.mjs";
+import { buildRecruitmentDashboard, toPartnerRecruitmentDashboard } from "../src/lib/club/recruitment.mjs";
 import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
 import { OFFICIAL_FORM_EDIT_URL, OFFICIAL_VIEWFORM_URL } from "../src/lib/club/recruitment-prefill.mjs";
 
@@ -574,6 +574,56 @@ test(
       assert.ok(await page.getByText("今日接觸人數").count());
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await capture(page, "admin-sync-failure-390");
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("failed empty sheets show 資料不足, not event zeros", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route((url) => {
+        try { return new URL(url).origin !== origin; } catch { return false; }
+      }, async (route) => {
+        await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+      });
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+        return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+        const failed = { ok: false, stale: false, error: "無法讀取資料，請稍後重試" };
+        return route.fulfill({
+          json: toPartnerRecruitmentDashboard(buildRecruitmentDashboard({
+            date,
+            now: new Date(`${date}T12:00:00+08:00`),
+            gameRows: [],
+            recruitmentRows: [],
+            masterRows: [],
+            sync: {
+              gameResults: failed,
+              recruitmentResponses: failed,
+              recruitmentMaster: failed,
+              form: failed,
+              updatedAt: `${date}T04:00:00.000Z`,
+            },
+          })),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.locator(".war-kpis").waitFor();
+      assert.equal((await page.locator("[data-kpi=today-contacts] .war-num").innerText()).trim(), "—");
+      assert.equal((await page.locator("[data-kpi=pending] .war-num").innerText()).trim(), "—");
+      const body = await page.locator("body").innerText();
+      assert.equal(body.includes("資料不足"), true);
+      assert.equal(body.includes("活動人數暫缺，不是沒有人報名"), true);
+      assert.equal(body.includes("近七日走勢暫缺"), true);
+      assert.equal(await page.locator(".war-event-bars button[data-event]").count(), 0);
+      assert.equal((await page.locator(".war-kpis .war-num").allTextContents()).some((n) => n.trim() === "0"), false);
+      await capture(page, "admin-sync-failure-empty-390");
       assert.deepEqual(errors, []);
       await context.close();
     });

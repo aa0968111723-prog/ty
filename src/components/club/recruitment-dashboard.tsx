@@ -7,11 +7,11 @@ import { IDENTITY_CONFIRM_LABEL, needsIdentityConfirm } from "@/lib/club/recruit
 export type SyncFlag = { ok: boolean; stale?: boolean; error?: string };
 export type RecruitmentTrendPoint = {
   date: string;
-  contacts: number;
-  signups: number;
-  joined: number;
+  contacts: number | null;
+  signups: number | null;
+  joined: number | null;
 };
-export type RecruitmentEventCount = { name: string; count: number; people?: KpiPersonChip[] };
+export type RecruitmentEventCount = { name: string; count: number | null; people?: KpiPersonChip[] };
 export type KpiPersonChip = { name: string; personKey: string };
 export type RecruitmentData = {
   date: string;

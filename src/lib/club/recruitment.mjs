@@ -781,19 +781,25 @@ export function buildRecruitmentDashboard(input = {}) {
     (row) => Boolean(text(row.activity)),
     (row) => rosterDay(row, today) && (listedEvents(row.activity).length > 0 || hasActivity(row.activity)),
   );
-  const events = REAL_EVENT_CHOICES.map((name) => {
-    const signed = uniqueByIdentity(formal.filter((row) => listedEvents(row.activity).includes(name)));
-    return {
-      name,
-      count: signed.length,
-      people: signed.map((row) => ({
-        name: text(row.name) || "未填姓名",
-        personKey: row.normalizedPhone
-          ? `phone:${row.normalizedPhone}`
-          : `name:${row.normalizedName || row.name || "未填"}`,
-      })),
-    };
-  }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-Hant"));
+  const formUnavailable =
+    sourceUnavailable(input.sync?.recruitmentResponses)
+    && sourceUnavailable(input.sync?.recruitmentMaster)
+    && formal.length === 0;
+  const events = formUnavailable
+    ? []
+    : REAL_EVENT_CHOICES.map((name) => {
+      const signed = uniqueByIdentity(formal.filter((row) => listedEvents(row.activity).includes(name)));
+      return {
+        name,
+        count: signed.length,
+        people: signed.map((row) => ({
+          name: text(row.name) || "未填姓名",
+          personKey: row.normalizedPhone
+            ? `phone:${row.normalizedPhone}`
+            : `name:${row.normalizedName || row.name || "未填"}`,
+        })),
+      };
+    }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-Hant"));
 
   function rate(part, whole) {
     if (!Number.isFinite(whole) || whole <= 0) return null;
@@ -817,17 +823,25 @@ export function buildRecruitmentDashboard(input = {}) {
 
   const trendDays = [];
   const trendEnd = new Date(`${today}T12:00:00+08:00`);
-  for (let i = 6; i >= 0; i -= 1) {
-    const day = dateInTaipei(new Date(trendEnd.getTime() - i * 86400000));
-    trendDays.push({
-      date: day,
-      contacts: clusterGamePeople(attempts.filter((row) => onDate(row.completedAt, day))).length,
-      signups: uniqueCount(
-        formal,
-        (row) => rosterDay(row, day) && (listedEvents(row.activity).length > 0 || hasActivity(row.activity)),
-      ),
-      joined: uniqueCount(formal, (row) => rosterDay(row, day) && isYes(row.joined)),
-    });
+  if (!(gameUnavailable && formUnavailable)) {
+    for (let i = 6; i >= 0; i -= 1) {
+      const day = dateInTaipei(new Date(trendEnd.getTime() - i * 86400000));
+      trendDays.push({
+        date: day,
+        contacts: gameUnavailable
+          ? null
+          : clusterGamePeople(attempts.filter((row) => onDate(row.completedAt, day))).length,
+        signups: formUnavailable
+          ? null
+          : uniqueCount(
+            formal,
+            (row) => rosterDay(row, day) && (listedEvents(row.activity).length > 0 || hasActivity(row.activity)),
+          ),
+        joined: formUnavailable
+          ? null
+          : uniqueCount(formal, (row) => rosterDay(row, day) && isYes(row.joined)),
+      });
+    }
   }
 
   const gatekeeperNames = [...new Set([
@@ -987,10 +1001,16 @@ function partnerNameChip(row = {}) {
   };
 }
 
+function partnerCount(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function partnerEvents(events = []) {
   return (Array.isArray(events) ? events : []).map((event) => ({
     name: text(event.name),
-    count: Number(event.count) || 0,
+    count: partnerCount(event.count),
     people: Array.isArray(event.people) ? event.people.map(partnerNameChip) : [],
   }));
 }
@@ -1009,9 +1029,9 @@ function partnerKpiPeople(lists = {}) {
 function partnerTrend(trend = []) {
   return (Array.isArray(trend) ? trend : []).map((row) => ({
     date: text(row.date),
-    contacts: Number(row.contacts) || 0,
-    signups: Number(row.signups) || 0,
-    joined: Number(row.joined) || 0,
+    contacts: partnerCount(row.contacts),
+    signups: partnerCount(row.signups),
+    joined: partnerCount(row.joined),
   }));
 }
 

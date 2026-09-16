@@ -164,7 +164,10 @@ export function WarRoom({
   const events = data?.events || summary?.events || [];
   const trend = data?.trend || [];
   const funnel = useMemo(() => data?.funnel || [], [data]);
-  const maxTrend = Math.max(1, ...trend.flatMap((row) => [row.contacts, row.signups, row.joined]));
+  const maxTrend = Math.max(
+    1,
+    ...trend.flatMap((row) => [row.contacts, row.signups, row.joined].filter((n) => typeof n === "number")),
+  );
   const ready = Boolean(data);
   const pending = kpiCount(summary?.pending, ready, busy);
   const lists = data?.kpiPeople;
@@ -354,7 +357,7 @@ export function WarRoom({
           <Ticket size={18} aria-hidden="true" /> 各活動報名人數
         </h2>
         {!events.length ? (
-          <p className="admin-empty">{error ? "活動人數暫缺，不是沒有人報名" : "尚無活動選項"}</p>
+          <p className="admin-empty">{error || overall !== "success" ? "活動人數暫缺，不是沒有人報名" : "尚無活動選項"}</p>
         ) : (
           <div className="war-event-bars">
             {events.map((row) => (
@@ -374,11 +377,13 @@ export function WarRoom({
                 <span className="admin-bar-track">
                   <i
                     style={{
-                      width: `${(row.count / Math.max(1, ...events.map((item) => item.count))) * 100}%`,
+                      width: `${typeof row.count === "number" ? (row.count / Math.max(1, ...events.map((item) => item.count || 0))) * 100 : 0}%`,
                     }}
                   />
                 </span>
-                <strong aria-label={`${row.name} ${row.count} 人`}>{row.count}</strong>
+                <strong aria-label={`${row.name} ${row.count == null ? "資料不足" : `${row.count} 人`}`}>
+                  {row.count == null ? "—" : row.count}
+                </strong>
               </button>
             ))}
           </div>
@@ -404,32 +409,32 @@ export function WarRoom({
           <li className="is-joined">社 入社</li>
         </ul>
         {!trend.length ? (
-          <p className="admin-empty">{error ? "近七日走勢暫缺" : "尚無走勢"}</p>
+          <p className="admin-empty">{error || overall !== "success" ? "近七日走勢暫缺" : "尚無走勢"}</p>
         ) : (
         <ol className="war-trend-chart">
           {trend.map((row) => (
             <li
               key={row.date}
               className="war-trend-day"
-              aria-label={`${row.date} 接觸 ${row.contacts}、活動報名 ${row.signups}、入社 ${row.joined}`}
+              aria-label={`${row.date} 接觸 ${row.contacts == null ? "資料不足" : row.contacts}、活動報名 ${row.signups == null ? "資料不足" : row.signups}、入社 ${row.joined == null ? "資料不足" : row.joined}`}
             >
               <div className="war-trend-cols" aria-hidden="true">
-                <span style={{ height: `${(row.contacts / maxTrend) * 100}%` }} />
-                <span className="is-signup" style={{ height: `${(row.signups / maxTrend) * 100}%` }} />
-                <span className="is-joined" style={{ height: `${(row.joined / maxTrend) * 100}%` }} />
+                <span style={{ height: `${typeof row.contacts === "number" ? (row.contacts / maxTrend) * 100 : 0}%` }} />
+                <span className="is-signup" style={{ height: `${typeof row.signups === "number" ? (row.signups / maxTrend) * 100 : 0}%` }} />
+                <span className="is-joined" style={{ height: `${typeof row.joined === "number" ? (row.joined / maxTrend) * 100 : 0}%` }} />
               </div>
               <p className="war-trend-readout">
                 <span>
                   <span className="war-trend-key">接</span>
-                  {row.contacts}
+                  {metric(row.contacts)}
                 </span>
                 <span className="is-signup">
                   <span className="war-trend-key">報</span>
-                  {row.signups}
+                  {metric(row.signups)}
                 </span>
                 <span className="is-joined">
                   <span className="war-trend-key">社</span>
-                  {row.joined}
+                  {metric(row.joined)}
                 </span>
               </p>
               <small>{`${Number(row.date.slice(5, 7))}/${Number(row.date.slice(8))}`}</small>

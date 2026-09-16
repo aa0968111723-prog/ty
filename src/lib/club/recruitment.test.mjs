@@ -849,11 +849,15 @@ test("同步失敗: failed empty sheets are 資料不足, not zeros", () => {
   assert.equal(data.funnel.find((layer) => layer.id === "activity")?.missing, true);
   assert.equal(data.funnel.find((layer) => layer.id === "joined")?.missing, true);
   assert.equal(data.funnel.find((layer) => layer.id === "deposit")?.missing, true);
+  assert.equal(data.events.length, 0);
+  assert.equal(data.trend.length, 0);
   const partner = toPartnerRecruitmentDashboard(data);
   assert.equal(partner.summary.playedToday, null);
   assert.equal(partner.summary.playedAll, null);
   assert.equal(partner.summary.playedTotal, null);
   assert.equal(partner.sync.gameResults.ok, false);
+  assert.equal(partner.events.length, 0);
+  assert.equal(partner.trend.length, 0);
 });
 
 test("同步失敗: stale last-known-good still shows people, not a fake zero", () => {
