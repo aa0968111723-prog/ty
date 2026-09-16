@@ -17,8 +17,8 @@ export const OFFICIAL_RECRUITERS = Object.freeze([
 
 /**
  * Live published-form entry IDs. Keys that are not on the live form
- * (遊戲完成時間 / 遊戲關主 / submissionId) travel in 備註 until dedicated
- * questions exist.
+ * (遊戲完成時間 / 遊戲關主) travel in 備註 until dedicated questions exist.
+ * Partner-visible 備註 never includes submissionId.
  */
 export const LIVE_PREFILL_ENTRIES = Object.freeze({
   recruiter: "entry.1318284482",
@@ -136,17 +136,15 @@ export function departmentGradeOf(candidate = {}) {
   return [text(candidate.department), text(candidate.grade)].filter(Boolean).join("");
 }
 
+const GAME_METADATA_PREFIX = /^遊戲完成：[^\n]*\n遊戲關主：[^\n]*(?:\nsubmissionId：[^\n]*)?(?:\n|$)/u;
+
 /** @param {Record<string, unknown>} [candidate] @param {unknown} [extraNotes] */
 export function buildGameMetadataNote(candidate = {}, extraNotes = "") {
   const lines = [
     `遊戲完成：${formatCompletedAt(candidateCompletedAt(candidate))}`,
     `遊戲關主：${text(candidate?.gameGatekeeper)}`,
-    `submissionId：${candidateSubmissionId(candidate)}`,
   ];
-  const extra = text(extraNotes).replace(
-    /^遊戲完成：[^\n]*\n遊戲關主：[^\n]*\nsubmissionId：[^\n]*(?:\n|$)/u,
-    "",
-  ).trim();
+  const extra = text(extraNotes).replace(GAME_METADATA_PREFIX, "").trim();
   return extra ? `${lines.join("\n")}\n${extra}` : lines.join("\n");
 }
 

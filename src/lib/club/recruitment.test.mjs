@@ -155,6 +155,7 @@ test("prefill URL uses /viewform even when a forms.gle short link is configured"
   const note = decodeURIComponent(url);
   assert.match(note, /遊戲關主：安倢/);
   assert.doesNotMatch(note.split("遊戲關主：")[1], /^柏能/);
+  assert.doesNotMatch(note, /submissionId/i);
 });
 
 test("form plan never deletes preserved recruitment questions and keeps last-known-good on failure", () => {

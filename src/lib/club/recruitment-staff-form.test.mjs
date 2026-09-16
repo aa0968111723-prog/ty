@@ -42,6 +42,7 @@ test("staff payload keeps game gatekeeper separate from official recruiter", () 
   assert.equal(record.recruiter, "柏能");
   assert.equal(record.gameGatekeeper, "安倢");
   assert.match(record.note, /遊戲關主：安倢/);
+  assert.doesNotMatch(record.note, /submissionId/i);
   assert.doesNotMatch(record.note.split("遊戲關主：")[1], /^柏能/);
   assert.equal(record.activity, "9/30茶會, 社課");
   assert.equal(record.tier, "S(已報名)");

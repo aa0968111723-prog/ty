@@ -53,9 +53,11 @@ test("prefill uses the full viewform URL and live entry IDs, never forms.gle", (
   const note = parsed.searchParams.get(LIVE_PREFILL_ENTRIES.note) || "";
   const meta = parseGameMetadataNote(note);
   assert.equal(meta.gameGatekeeper, "安倢");
-  assert.equal(meta.submissionId, candidate.submissionId);
+  assert.equal(meta.submissionId, "");
   assert.match(meta.completedAt, /2026/);
   assert.match(note, /遊戲關主：安倢/);
+  assert.doesNotMatch(note, /submissionId/i);
+  assert.doesNotMatch(url, /submissionId/i);
 });
 
 test("custom recruiter uses Other; original game gatekeeper stays in notes", () => {
@@ -69,10 +71,16 @@ test("custom recruiter uses Other; original game gatekeeper stays in notes", () 
   assert.equal(parseGameMetadataNote(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.note)).gameGatekeeper, "安倢");
 });
 
-test("metadata note stays editable and extra notes append after the three game fields", () => {
+test("metadata note stays editable and extra notes append after 遊戲完成 / 遊戲關主", () => {
   const note = buildGameMetadataNote(candidate, "喜歡茶會");
   assert.match(note, /喜歡茶會$/);
-  assert.equal(parseGameMetadataNote(note).submissionId, candidate.submissionId);
+  assert.doesNotMatch(note, /submissionId/i);
+  assert.equal(parseGameMetadataNote(note).submissionId, "");
+  const legacy = "遊戲完成：2026/09/14 14:32\n遊戲關主：安倢\nsubmissionId：11111111-1111-4111-8111-111111111111\n喜歡茶會";
+  assert.equal(parseGameMetadataNote(legacy).submissionId, candidate.submissionId);
+  const rewritten = buildGameMetadataNote(candidate, legacy);
+  assert.match(rewritten, /喜歡茶會$/);
+  assert.doesNotMatch(rewritten, /submissionId/i);
 });
 
 test("unknown extra entry keys are ignored so invented IDs cannot ship", () => {

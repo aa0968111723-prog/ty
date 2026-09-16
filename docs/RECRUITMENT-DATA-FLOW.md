@@ -38,11 +38,11 @@ Entry ID 於 2026-09-13 自發布頁 HTML `FB_PUBLIC_LOAD_DATA_` 讀出，**不�
 | 姓名 | 同學的姓名 | `entry.887514514` |
 | 電話 | 同學電話/LINE | `entry.1668669667` |
 | 系級 | 系級 | `entry.628075911` |
-| 遊戲完成時間、遊戲關主、submissionId | 備註（現行表單沒有獨立題） | `entry.88032894` 開頭三行 |
+| 遊戲完成時間、遊戲關主 | 備註（現行表單沒有獨立題） | `entry.88032894` 開頭兩行 |
 
-夥伴在表單裡繼續填分級、活動、入社、保證金、備註其餘內容。預填欄位都可改。
+夥伴在表單裡繼續填活動、入社、保證金、備註其餘內容。預填欄位都可改。夥伴可見備註**不含** `submissionId`。
 
-現行表單**沒有**獨立的「遊戲完成時間／遊戲關主／submissionId」題（沒有對應 entry ID）。這三項寫進備註前三行，Apps Script 提交時解析後寫入 `_gameCompletedAt`、`_gameGatekeeper`、`_gameSubmissionId`。若之後用表單擁有者帳號加了獨立題，把新的 `entry.xxx` 放進 `GOOGLE_FORM_PREFILL_ENTRIES` 即可，不要猜 ID。
+現行表單**沒有**獨立的「遊戲完成時間／遊戲關主／submissionId」題（沒有對應 entry ID）。前兩項寫進備註前兩行。`submissionId` 只走招生狀況表技術欄 `_gameSubmissionId`（後台送出）或姓名／電話對應；舊備註若已寫入該 id，解析器仍可讀。若之後用表單擁有者帳號加了獨立題，把新的 `entry.xxx` 放進 `GOOGLE_FORM_PREFILL_ENTRIES` 即可，不要猜 ID。
 
 ## 後台內建招生表
 

@@ -333,8 +333,7 @@ function buildPrefilledFormUrl(candidate, recruiter) {
 
 function recruitMetadataNote_(candidate) {
   return "遊戲完成：" + recruitText_(candidate.completedAt)
-    + "\n遊戲關主：" + recruitText_(candidate.gameGatekeeper)
-    + "\nsubmissionId：" + recruitText_(candidate.submissionId);
+    + "\n遊戲關主：" + recruitText_(candidate.gameGatekeeper);
 }
 
 function recruitParseMetadata_(value) {
