@@ -390,8 +390,17 @@ test(
         await page.getByRole("button", { name: "完成", exact: true }).click();
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "表單資料", exact: true }).click();
+        await page.getByRole("heading", { name: "表單資料" }).first().waitFor();
+        await Promise.all([
+          page.waitForResponse((response) =>
+            response.url().includes("/api/admin/dashboard") && response.url().includes("date=2026-09-12"),
+          ),
+          page.getByLabel("查詢日期").fill("2026-09-12"),
+        ]);
         await page.getByLabel("篩選來源").selectOption("Google Form");
+        await page.locator(".admin-person-list article").waitFor();
         assert.equal(await page.locator(".admin-person-list article").count(), 1);
+        assert.equal(await page.getByText("submissionId").count(), 0);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "比賽成績", exact: true }).click();
         assert.equal(
@@ -423,8 +432,10 @@ test(
       assert.equal(await page.locator("[data-howto=rules]").count(), 1);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await capture(page, "register-desktop");
-      const session = { authenticated: false, passwordEnabled: true, googleEnabled: true };
-      await page.route("**/api/admin/session", route => route.fulfill({ json: session }));
+      let sessionAuthenticated = false;
+      await page.route("**/api/admin/session", route => route.fulfill({
+        json: { authenticated: sessionAuthenticated, passwordEnabled: true, googleEnabled: true },
+      }));
       await page.route("**/api/admin/login", route => route.fulfill({ status: 401, json: { error: "密碼錯誤" } }));
       await page.goto(`${origin}/admin`);
       await page.getByRole("heading", { name: "管理員登入" }).waitFor();
@@ -436,7 +447,7 @@ test(
       await page.getByRole("alert").waitFor();
       session.authenticated = true;
       await page.route("**/api/admin/login", route => route.fulfill({ json: { ok: true } }));
-      await page.route("**/api/admin/dashboard?*", route => {
+      await page.route("**/api/admin/dashboard**", route => {
         const date = new URL(route.request().url()).searchParams.get("date");
         return route.fulfill({ json: buildDashboard({
           date, results: [], forms: [
@@ -445,7 +456,7 @@ test(
           ],
         }) });
       });
-      await page.route("**/api/admin/recruitment?*", route => {
+      await page.route("**/api/admin/recruitment**", route => {
         const date = new URL(route.request().url()).searchParams.get("date");
         return route.fulfill({ json: buildRecruitmentDashboard({
           date,
@@ -464,6 +475,7 @@ test(
           masterRows: paidDepositMasterRows(),
         }) });
       });
+      sessionAuthenticated = true;
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
       await page.locator(".war-kpis").waitFor();
@@ -474,6 +486,35 @@ test(
       assert.equal(await page.getByLabel("篩選來源").inputValue(), "Google Form");
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "名單" }).click();
       await page.getByRole("heading", { name: "名單" }).waitFor();
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("recruitment sync failure still shows 今日招生戰情", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route((url) => {
+        try { return new URL(url).origin !== origin; } catch { return false; }
+      }, async (route) => {
+        await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+      });
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+        return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) =>
+        route.fulfill({ status: 503, json: { error: "同步失敗" } }),
+      );
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.locator(".war-kpis").waitFor();
+      await page.getByRole("alert").waitFor();
+      assert.match(await page.getByRole("alert").innerText(), /同步失敗/);
+      assert.ok(await page.getByText("今日接觸人數").count());
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await capture(page, "admin-sync-failure-390");
       assert.deepEqual(errors, []);
       await context.close();
     });

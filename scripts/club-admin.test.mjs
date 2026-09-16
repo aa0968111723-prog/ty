@@ -229,7 +229,7 @@ test("admin authentication and private read API contracts with mocked Google onl
         if (String(range).includes("總表")) {
           throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
         }
-        const action = /results|14後玩遊戲/.test(String(range)) ? "results" : "formResponses";
+        const action = range === "'results'" || range === `'${DEFAULT_TAB_TITLES.gameResults}'` ? "results" : "formResponses";
         const rows = action === "results" ? [result] : [
           { 姓名: "小明", 時間戳記: "2026/9/12 10:00:00" },
         ];

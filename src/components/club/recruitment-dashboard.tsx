@@ -134,10 +134,21 @@ function clock(value?: string) {
   });
 }
 
-function followUpHref(row: { personKey: string; submissionId?: string }) {
-  const params = new URLSearchParams({ personKey: row.personKey });
-  if (row.submissionId) params.set("submissionId", row.submissionId);
-  return `/follow-up?${params.toString()}`;
+function followUpHref(row: { personKey: string }) {
+  return `/follow-up?${new URLSearchParams({ personKey: row.personKey }).toString()}`;
+}
+
+function relatedToPartner(
+  row: { gameGatekeeper?: string; recruiterList?: string[]; recruiters?: string },
+  recruiter: string,
+) {
+  if (!recruiter) return true;
+  if (row.gameGatekeeper === recruiter) return true;
+  if ((row.recruiterList || []).includes(recruiter)) return true;
+  return String(row.recruiters || "")
+    .split(/[、,，]/)
+    .map((name) => name.trim())
+    .includes(recruiter);
 }
 
 export function PendingQueue({
@@ -165,7 +176,7 @@ export function PendingQueue({
     return data.pending.filter((row) => {
       if (!showHandled && handled.has(row.personKey)) return false;
       if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
-      if (mineOnly && recruiter && row.gameGatekeeper !== recruiter) return false;
+      if (mineOnly && recruiter && !relatedToPartner(row, recruiter)) return false;
       return rowMatchesQuery(row, query);
     });
   }, [data.pending, gameGatekeeper, mineOnly, recruiter, query, handled, showHandled]);
@@ -193,7 +204,7 @@ export function PendingQueue({
         </div>
         <p className="admin-caption">
           預設只看尚未填寫正式資料
-          {recruiter ? ` · 優先與「${recruiter}」相關` : ""}
+          {recruiter ? ` · 優先與接引人「${recruiter}」相關（遊戲關主另計）` : ""}
         </p>
         <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
           <input

@@ -160,7 +160,7 @@ export function WarRoom({
       <section className="war-kpis" aria-label="今日招生數字">
         <KpiCard
           id="today-contacts"
-          label="今日接觸"
+          label="今日接觸人數"
           value={summary?.playedToday ?? (busy ? "…" : 0)}
           hint="今天完成遊戲 · 去重"
           icon={<Gamepad2 size={22} />}
@@ -170,7 +170,7 @@ export function WarRoom({
         />
         <KpiCard
           id="all-contacts"
-          label="累積接觸"
+          label="累積接觸人數"
           value={summary?.playedAll ?? (busy ? "…" : 0)}
           hint="歷史正式遊戲"
           icon={<Users size={22} />}
@@ -178,7 +178,7 @@ export function WarRoom({
         />
         <KpiCard
           id="today-events"
-          label="今日活動報名"
+          label="今日活動報名人數"
           value={summary?.activityToday ?? "—"}
           hint="今天報名至少一場"
           icon={<CalendarCheck size={22} />}
@@ -187,7 +187,7 @@ export function WarRoom({
         />
         <KpiCard
           id="joined"
-          label="入社"
+          label="入社人數"
           value={summary?.joined ?? "—"}
           hint="正式表單「是」"
           icon={<UserPlus size={22} />}
@@ -203,7 +203,7 @@ export function WarRoom({
         />
         <KpiCard
           id="pending"
-          label="待填正式資料"
+          label="待填正式招生資料"
           value={pending}
           hint="玩過遊戲尚未填表"
           icon={<ClipboardList size={22} />}
@@ -245,7 +245,7 @@ export function WarRoom({
 
       <section className="admin-panel war-events" aria-label="各活動報名人數">
         <h2>
-          <Ticket size={18} aria-hidden="true" /> 各活動報名
+          <Ticket size={18} aria-hidden="true" /> 各活動報名人數
         </h2>
         {!events.length ? (
           <p className="admin-empty">尚無活動選項</p>
