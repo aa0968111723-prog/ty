@@ -5,21 +5,21 @@
 | 項 | 值 |
 | --- | --- |
 | 日期 | 2026-09-16 |
-| 觀察 | 本文件寫入時；live 指紋見第 8 節（本回合 `2026-09-16T21:27:49Z`） |
+| 觀察 | 本文件寫入時；live 指紋見第 8 節（本回合 GitTrigger `2026-09-16T22:42:15Z`、JS `2026-09-16T22:42:19Z`） |
 | 分支 | `cursor/admin-war-room-cf4c` |
-| 產品 SHA | `fb6034d721c46fa78e2528bcc0bd059c620665b2`（首頁「現在先填這位」卡 + compact 接引人 select 測試） |
-| 對照 `origin/main` | `d839e46e976916bd415d7d8200f466619b3623be`，ahead 51、behind 0（未 rebase） |
+| 產品 SHA | `89c24c0125865bc89244f63caeebd31c1de9d2fb`（eslint 0/0；live JS `admin-BV6x7ajA.js`） |
+| 對照 `origin/main` | `d839e46e976916bd415d7d8200f466619b3623be`，ahead 53、behind 0（未 rebase） |
 | 此 head 的 GitHub PR | **無**。一次檢查：`gh pr list --head cursor/admin-war-room-cf4c` → `[]` |
 | 開放 PR（錯誤頭，不算完成） | #31 `cursor/recruitment-battleboard-12d7`、#32 `cursor/admin-command-center-3804`。不要 merge。 |
 | Compare | GitHub repo `ty` 的 `main...cursor/admin-war-room-cf4c` |
 
-未標 Goal complete。未發明無關 UI。未 ManagePullRequest。未加 Actions PR workflow。未 `gh pr create`。未重試 MCP `create_pull_request`（已知 403）。跳過 Copilot PR。未 poll。未 clasp 部署。未 `deploy(gitRef)` / zip。
+未標 Goal complete。未發明無關 UI。未 ManagePullRequest。未加 Actions PR workflow。未 `gh pr create`。未 POST `/pulls`。未重試 MCP `create_pull_request`（已知 403）。跳過 Copilot PR。未 poll。未 clasp 部署。未 `deploy(gitRef)` / zip。本回合未重跑 16 項 DOM tour。
 
 ---
 
 ## 1. 修改過的檔案
 
-`git diff --stat origin/main...fb6034d`：**39 files, +4154 / −1728**。
+`git diff --stat origin/main...89c24c0`：**40 files, +4165 / −1811**。
 
 | 區 | 檔案 |
 | --- | --- |
@@ -43,6 +43,8 @@
 | `cf2831c` | 戰情首頁「現在先填這位」卡：下一筆待填姓名 + CTA「填寫正式資料」。遊戲關主不當接引人 |
 | `545c79a` | next-person / ranking typecheck |
 | `fb6034d` | 首頁 compact 接引人用 `<select>`，next-person 測試選關主後人不變 |
+| `4064dfb` | 回報寫到 `fb6034d`（含「現在先填這位」） |
+| `89c24c0` | 戰情相關檔案 eslint **0 errors / 0 warnings** |
 
 ---
 
@@ -113,7 +115,7 @@ KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內
 ## 6. 夥伴流程
 
 1. 選「這位有緣人的接引人」（`partner-picker.tsx`）。**不會**覆蓋遊戲關主。卡片寫「遊戲關主 … · 正式招生接引人 …」。
-2. 首頁「現在先填這位」（`next-pending.mjs`）：只看正式 `recruiterList` / `recruiters`，**忽略** `gameGatekeeper`。本回合 live：陳柏能、尚未指定接引人、遊戲關主 振泰；把接引人改成振泰後人仍是陳柏能、reason 仍 `unassigned`。
+2. 首頁「現在先填這位」（`next-pending.mjs`）：只看正式 `recruiterList` / `recruiters`，**忽略** `gameGatekeeper`。Live 16 當時：陳柏能、尚未指定接引人、遊戲關主 振泰；把接引人改成振泰後人仍是陳柏能、reason 仍 `unassigned`。
 3. 待處理：填寫正式資料、開啟表單、標記已處理、查看詳細資料。
 4. `/follow-up` 預填姓名 / 電話 / 系級 / 接引日期；備註只有「遊戲完成」+「遊戲關主」（`buildGameMetadataNote`）。
 5. 夥伴題是「這位同學報名了哪個活動？」，不是分級。
@@ -122,18 +124,20 @@ KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內
 
 ---
 
-## 7. 測試 / gates（產品 SHA `fb6034d`，本回合日誌）
+## 7. 測試 / gates（產品 SHA `89c24c0`）
 
-日誌在產物，不進 git。本回合對 **目前 live JS** 重跑 16 項 + 現在先填這位。
+日誌在產物，不進 git。本回合**未**改產品原始碼、**未**重跑 typecheck / lint / test / build、**未**重跑 16 項 DOM tour。下列為該 SHA 已通過紀錄。
 
 | Gate | 結果 |
 | --- | --- |
-| `npm run typecheck` | pass（`tsc --noEmit`） |
-| `npm test` | 355 pass / 0 fail / 2 skip（club-browser 無 URL 時 skip）+ typed 55 pass / 0 fail |
-| `npm run lint` | 0 errors / 13 warnings |
-| `npm run build` | pass；client `admin-DvLnz1ep.js`（與 live 同檔名） |
+| `npm run typecheck` | pass（`tsc --noEmit`，EXIT 0） |
+| `npm test` | 374 pass / 0 fail / 1 skip + typed 55 pass / 0 fail |
+| `npm run lint` | **0 errors / 0 warnings**（EXIT 0） |
+| `npm run build` | pass；client `admin-BV6x7ajA.js`（65 241 B，sha256 `7018a9cd414e`） |
 | `CLUB_BROWSER_URL=live` `scripts/club-browser.test.mjs` | **19 pass / 0 fail**（含 `war-home next person CTA is above the fold and ignores 遊戲關主`） |
-| Live 16 @ `fb6034d` / `admin-DvLnz1ep.js` | **16/16 pass**；另 N／14b／14d／2d／16b 皆 pass |
+| This-turn live 16 @ `89c24c0` / `admin-BV6x7ajA.js` | **16/16 pass**（`2026-09-16T22:30:09Z`；另 N／R／js／14b／14d／2d／16b 皆 pass，合計 23 pass / 0 fail） |
+
+Skip 是 `official game completion writes the game sheet immediately # SKIP`（沙盒不寫 live sheet），不是產品洞。
 
 ---
 
@@ -143,21 +147,21 @@ KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內
 | --- | --- |
 | 服務 | `leader-dna-sheet-sync` RUNNING |
 | GitTrigger | **`cursor/admin-war-room-cf4c`**（repoID 1363866270）。未被偷走。 |
-| RUNNING | `6aab075a05af289f92f97894` @ **`fb6034d721c46fa78e2528bcc0bd059c620665b2`** `refs/heads/cursor/admin-war-room-cf4c`（created `2026-09-16T21:17:14.629Z`，finished `21:18:11.046Z`） |
+| RUNNING | `6aab0e7905af289f92f979b0` @ **`89c24c0125865bc89244f63caeebd31c1de9d2fb`** `refs/heads/cursor/admin-war-room-cf4c`（created `2026-09-16T21:47:37.286Z`，finished `21:48:47.763Z`） |
 | Live | `/admin` `/follow-up` `/leaderboard?scope=today` `/` 皆 200 |
-| Live JS | `/assets/admin-DvLnz1ep.js`（65 241 B，sha256 `cec245d87d45`；與本 SHA production client 同檔名） |
+| Live JS | `/assets/admin-BV6x7ajA.js`（65 241 B，sha256 `7018a9cd414e`；與本 SHA production client 同檔名） |
 | Fingerprint | `war-kpis=1` `battle-kpis=0` `分級=0` `googleapis=0` `forms.create=0` `1322037614=0` `待填正式招生資料=1` `現在先填這位=4` `data-next-pending=1` |
 
-未 `deploy(gitRef)` / zip。GitTrigger 仍是本分支、RUNNING 已是產品頭，因此未 `deployFromSpecification`。
+未 `deploy(gitRef)` / zip。GitTrigger 仍是本分支、RUNNING 已是產品頭，因此未 `deployFromSpecification`。本文件若只改回報，push 後 GitTrigger 可自動 build 該 docs commit；不要 poll。
 
-Clasp：`google-apps-script/recruitment-form-sync/` **沒有** `.clasp.json`。樹內 `Code.gs` 已不把 `submissionId` 寫進備註或選擇學生（legacy `#s:` / `submissionId：` 只解碼）。Apps Script **未** clasp 部署。不阻擋 app 內預填與戰情。
+Clasp：`google-apps-script/recruitment-form-sync/` **沒有** `.clasp.json`。樹內 `Code.gs` 已不把 `submissionId` 寫進備註或選擇學生（legacy `#s:` / `submissionId：` 只解碼）。Apps Script **未** clasp 部署。不阻擋 app 內預填與戰情。不假裝 clasp 已部署。
 
 ---
 
-## 9. 還缺什麼（Goal 保持 open）
+## 9. 還缺什麼（Goal 保持 open）— remaining：PR + clasp
 
 1. **人類必須開 PR**。請有 repo write 的人用上面的 compare 開 PR，標題「招生戰情後台：手機一眼看懂、夥伴快速填表」，draft 可。不要用 `gh pr create` / Actions。不要再試 MCP `create_pull_request`（PAT 403）。
 2. **#31 / #32 不要當這個 goal 的 PR**，也不要 merge。
 3. **Apps Script / clasp 僅擁有者** — 樹內有 GAS，**沒有** `.clasp.json`。Clasp **未**部署。不假裝已同步表單候選。
 
-Live 戰情本回合已是產品 SHA `fb6034d`（GitTrigger cf4c + RUNNING 該 commit + `admin-DvLnz1ep.js` + `war-kpis` + **現在先填這位**、無分級、失敗空表不畫假 0 長條）。Goal 仍 open，直到這個 head 有一張真實 GitHub PR **且** live 仍吻合。
+Live 戰情本回合仍是產品 SHA `89c24c0`（GitTrigger cf4c + RUNNING 該 commit + `admin-BV6x7ajA.js` + `war-kpis` + **現在先填這位**、`分級=0`）。This-turn live 16 在同一 SHA / 同一 JS 已 **16/16**。Goal 仍 open，直到這個 head 有一張真實 GitHub PR **且** live 仍吻合。
