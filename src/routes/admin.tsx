@@ -50,6 +50,7 @@ function AdminDashboard() {
   const [layout, setLayout] = useState<LayoutPreference>(DEFAULT_LAYOUT);
   const [layoutReady, setLayoutReady] = useState(false);
   const [dragging, setDragging] = useState<WidgetId | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const generation = useRef(0);
 
   useEffect(() => {
@@ -109,6 +110,7 @@ function AdminDashboard() {
       try {
         board = await loadRecruitment(date);
       } catch (cause) {
+        if (cause instanceof Error && cause.message === "AUTH") throw cause;
         recruitmentError = cause instanceof Error ? cause.message : "招生資料同步失敗";
       }
       if (id === generation.current) {
@@ -139,7 +141,8 @@ function AdminDashboard() {
         setData(null);
         setTodayData(null);
         setRecruitment(null);
-      } else setError(publicError(cause, "同步失敗，請重新整理"));
+        setError("");
+      } else setError(cause instanceof Error ? cause.message : "同步失敗，請重新整理");
     } finally {
       if (id === generation.current) setBusy(false);
     }
@@ -248,7 +251,7 @@ function AdminDashboard() {
     );
   if (!authenticated)
     return (
-      <main className="admin-page admin-auth">
+      <main className="admin-page admin-auth" data-session-expired={sessionExpired ? "true" : undefined}>
         <AdminLogin
           gate={gate}
           expired={sessionExpired}

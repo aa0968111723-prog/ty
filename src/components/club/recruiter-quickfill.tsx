@@ -125,6 +125,7 @@ function ChoiceRow({
 export function RecruiterQuickfill() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [gate, setGate] = useState<AdminGate | null>(null);
+  const [expired, setExpired] = useState(false);
   const [data, setData] = useState<RecruitmentData | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -176,6 +177,8 @@ export function RecruiterQuickfill() {
         { cache: "no-store", signal: AbortSignal.timeout(15000) },
       );
       if (response.status === 401) {
+        setExpired(true);
+        setGate((current) => ({ ...(current || { authenticated: false }), authenticated: false }));
         setAuthenticated(false);
         return;
       }
@@ -316,6 +319,8 @@ export function RecruiterQuickfill() {
         }),
       });
       if (response.status === 401) {
+        setExpired(true);
+        setGate((current) => ({ ...(current || { authenticated: false }), authenticated: false }));
         setAuthenticated(false);
         return;
       }
@@ -338,7 +343,14 @@ export function RecruiterQuickfill() {
   }
   if (!authenticated) {
     return (
-      <AdminLogin gate={gate} onSuccess={() => setAuthenticated(true)} />
+      <AdminLogin
+        gate={gate}
+        expired={expired}
+        onSuccess={() => {
+          setExpired(false);
+          setAuthenticated(true);
+        }}
+      />
     );
   }
 

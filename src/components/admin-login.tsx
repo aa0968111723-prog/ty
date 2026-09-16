@@ -87,7 +87,7 @@ export function AdminLogin({
   onClose,
   onSuccess,
   gate,
-  expired,
+  expired = false,
 }: {
   onClose?: () => void;
   onSuccess?: () => void;
@@ -258,9 +258,9 @@ export function AdminLogin({
       ) : (
         <p>現場工作人員專用</p>
       )}
-      {expired && view !== "setup" && view !== "pin" ? (
-        <p role="status" data-login-state="expired" className="admin-login-expired">
-          登入已失效，請重新登入。
+      {expired ? (
+        <p role="alert" className="admin-error" data-session-expired="true">
+          登入失效，請重新登入
         </p>
       ) : null}
 
@@ -359,7 +359,7 @@ export function AdminLogin({
 
   if (!onClose) {
     return (
-      <section className="admin-login admin-panel">
+      <section className="admin-login admin-panel" data-login-expired={expired ? "true" : undefined}>
         {fields}
         <a href="/">返回挑戰賽</a>
       </section>

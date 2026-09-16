@@ -856,6 +856,73 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("war-room 401 after session expiry shows 登入失效", async () => {
+      async function expireAfterWarRoom(viewport, shot) {
+        const context = await browser.newContext(viewport);
+        const page = await context.newPage();
+        const errors = [];
+        page.on("pageerror", (error) => errors.push(error.message));
+        await page.route((url) => {
+          try { return new URL(url).origin !== origin; } catch { return false; }
+        }, async (route) => {
+          await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+        });
+        const taipeiToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+        let expire = false;
+        await page.route("**/api/admin/session", (route) => route.fulfill({
+          json: { authenticated: true, passwordEnabled: true, googleEnabled: true },
+        }));
+        await page.route("**/api/admin/dashboard**", (route) => {
+          const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+          return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+        });
+        await page.route("**/api/admin/recruitment**", (route) => {
+          if (expire) {
+            return route.fulfill({ status: 401, json: { error: "請先登入管理後台" } });
+          }
+          const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+          return route.fulfill({
+            json: buildRecruitmentDashboard({
+              date,
+              now: new Date(`${taipeiToday}T12:00:00+08:00`),
+              gameRows: [],
+              recruitmentRows: [],
+              masterRows: [],
+            }),
+          });
+        });
+        await page.goto(`${origin}/admin`);
+        await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+        await page.locator("[data-kpi=today-contacts] .war-num").waitFor();
+        assert.equal((await page.locator("[data-kpi=today-contacts] .war-num").innerText()).trim(), "0");
+        expire = true;
+        await page.getByRole("button", { name: "更新資料" }).click();
+        await page.getByRole("alert").filter({ hasText: "登入失效" }).waitFor();
+        assert.equal(await page.getByRole("heading", { name: "管理員登入" }).count(), 1);
+        assert.equal(await page.getByRole("heading", { name: "今日招生戰情" }).count(), 0);
+        assert.equal(await page.locator("[data-kpi]").count(), 0);
+        assert.equal(await page.locator(".war-num").count(), 0);
+        assert.equal(await page.locator(".admin-login").isVisible(), true);
+        assert.equal(await page.getByLabel("管理員密碼").count(), 1);
+        assert.equal(await page.getByText("submissionId").count(), 0);
+        assert.equal(await page.getByText("分級").count(), 0);
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+        if (process.env.CLUB_QA_DIR) {
+          await page.screenshot({ path: join(process.env.CLUB_QA_DIR, `${shot}-viewport.png`) });
+        }
+        await capture(page, shot);
+        assert.deepEqual(errors, []);
+        await context.close();
+      }
+      await expireAfterWarRoom(
+        { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+        "admin-login-expired-390",
+      );
+      await expireAfterWarRoom(
+        { viewport: { width: 1280, height: 800 } },
+        "admin-login-expired-desktop",
+      );
+    });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

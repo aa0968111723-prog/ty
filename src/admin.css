@@ -699,6 +699,11 @@
   color: var(--text-secondary);
   margin-top: var(--space-2);
 }
+.admin-login .admin-error {
+  color: var(--danger);
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+}
 .admin-login form {
   display: flex;
   flex-direction: column;

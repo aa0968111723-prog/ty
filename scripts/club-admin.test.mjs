@@ -220,7 +220,12 @@ test("admin authentication and private read API contracts with mocked Google onl
     assert.equal(recruitment.pending[0].choiceLabel, undefined);
     assert.equal(recruitment.pending[0].score, undefined);
   }
-  assert.equal((await handleAdminRecruitment(request("recruitment"))).status, 401);
+  const expiredRecruitment = await handleAdminRecruitment(request("recruitment"));
+  assert.equal(expiredRecruitment.status, 401);
+  assert.equal((await expiredRecruitment.json()).error, "請先登入管理後台");
+  const expiredDashboard = await handleAdminDashboard(request("dashboard?date=2026-09-12"));
+  assert.equal(expiredDashboard.status, 401);
+  assert.equal((await expiredDashboard.json()).error, "請先登入管理後台");
   assert.equal((await handleAdminFormResponses(request("form-responses", { cookie }))).status, 502);
   t.mock.method(google, "sheets", () => ({
     spreadsheets: { values: {
