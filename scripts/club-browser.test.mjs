@@ -364,15 +364,23 @@ test(
         await page.getByRole("button", { name: "柏能", exact: true }).click();
         const fill = page.getByRole("link", { name: "填寫正式資料" }).first();
         await fill.waitFor();
-        const fillBox = await fill.boundingBox();
-        const viewport = page.viewportSize();
-        assert.ok(fillBox && viewport);
-        assert.ok(
-          fillBox.y >= 0 && fillBox.y + Math.min(fillBox.height, 44) <= viewport.height,
-          `填寫正式資料 must stay on-screen after choosing recruiter ${JSON.stringify(fillBox)} h=${viewport.height}`,
-        );
-        assert.ok(fillBox.height >= 44);
-        assert.ok(fillBox.width >= 160, `填寫正式資料 must stay a wide tap target ${JSON.stringify(fillBox)}`);
+        const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
+        const actions = [
+          fill,
+          page.getByRole("link", { name: /開啟表單/ }).first(),
+          page.getByRole("button", { name: "標記已處理", exact: true }),
+          page.getByRole("button", { name: "查看詳細資料", exact: true }),
+        ];
+        for (const action of actions) {
+          const box = await action.boundingBox();
+          const label = (await action.innerText()).replace(/\s+/g, " ");
+          assert.ok(box && navBox, label);
+          assert.ok(box.height >= 44, `${label} height ${box.height}`);
+          assert.ok(
+            box.y >= 0 && box.y + box.height <= navBox.y + 1,
+            `${label} must sit above the bottom nav: action=${JSON.stringify(box)} nav=${JSON.stringify(navBox)}`,
+          );
+        }
         assert.ok(await page.getByText("這位有緣人的接引人").count());
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await capture(page, `admin-${width}`);

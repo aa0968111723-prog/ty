@@ -40,7 +40,6 @@ export function PartnerPicker({
             更換
           </button>
         </div>
-        <p className="admin-caption">遊戲關主另計，不會自動當成接引人</p>
       </section>
     );
   }

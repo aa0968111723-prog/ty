@@ -5,8 +5,8 @@
   overflow-x: hidden;
   background: var(--page-bg-warm);
   color: var(--text-primary);
-  padding: 0 0 var(--admin-tabbar-clear);
-  scroll-padding-bottom: var(--admin-tabbar-clear);
+  padding: 0 0 calc(96px + env(safe-area-inset-bottom));
+  scroll-padding-bottom: calc(88px + env(safe-area-inset-bottom));
 }
 .admin-page button,
 .admin-login button,
@@ -1114,6 +1114,34 @@
 }
 .recruitment-pending .recruitment-actions .admin-primary {
   grid-column: 1 / -1;
+}
+@media (max-width: 759px) {
+  .admin-page:has(.recruitment-pending) .admin-heading p {
+    display: none;
+  }
+  .admin-page:has(.recruitment-pending) .admin-heading h1 {
+    margin-top: 0;
+  }
+  .admin-page:has(.recruitment-pending) .admin-content {
+    padding-top: var(--space-4);
+  }
+  .admin-page:has(.recruitment-pending) .partner-picker.is-compact {
+    padding: var(--space-3);
+  }
+  .recruitment-pending .recruitment-actions {
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: var(--space-2);
+  }
+  .recruitment-pending .recruitment-actions .admin-primary {
+    grid-column: auto;
+  }
+  .recruitment-pending {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+  .recruitment-pending p,
+  .recruitment-pending small {
+    margin-top: var(--space-1);
+  }
 }
 .recruitment-actions a,
 .recruitment-sheet .admin-primary {
