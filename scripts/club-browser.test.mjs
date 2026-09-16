@@ -310,6 +310,50 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("command queue and roster show a loading skeleton before data arrives", async (t) => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      let release = () => {};
+      const held = new Promise((resolve) => { release = resolve; });
+      t.after(() => release());
+      await page.route("**/api/admin/recruitment**", async (route) => {
+        await held;
+        return route.fulfill({
+          json: buildRecruitmentDashboard({ date: "2026-09-14", gameRows: [], recruitmentRows: [], masterRows: [] }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.locator("[data-loading=recruitment][data-mode=command]").waitFor();
+      await page.getByRole("heading", { name: "現在該處理" }).waitFor();
+      await page.getByRole("status").getByText("同步中…").waitFor();
+      assert.ok(await page.locator(".admin-skeleton-card").count() >= 1);
+      assert.ok(await page.locator(".admin-skeleton-kpi").count() >= 4);
+      await capture(page, "loading-command-390");
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
+      await page.locator("[data-loading=recruitment][data-mode=queue]").waitFor();
+      await page.getByRole("heading", { name: "待填正式招生資料" }).waitFor();
+      await page.getByRole("status").getByText("同步中…").waitFor();
+      await capture(page, "loading-queue-390");
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
+      await page.locator("[data-loading=recruitment][data-mode=roster]").waitFor();
+      await page.getByRole("heading", { name: "招生名單" }).waitFor();
+      await capture(page, "loading-roster-390");
+      release();
+      await page.locator("[data-loading=recruitment]").waitFor({ state: "detached" });
+      assert.equal(await page.getByText("招生資料暫時無法載入").count(), 0);
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("expired admin session shows a Chinese re-login notice", async () => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const page = await context.newPage();

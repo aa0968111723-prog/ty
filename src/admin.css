@@ -1010,6 +1010,59 @@
   gap: var(--space-5);
   min-width: 0;
 }
+.admin-skeleton-line,
+.admin-skeleton-card,
+.admin-skeleton-kpi {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--surface-secondary) 0%,
+    var(--surface-selected) 40%,
+    var(--surface-secondary) 80%
+  );
+  background-size: 200% 100%;
+  animation: admin-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.admin-skeleton-line {
+  height: 48px;
+  margin-bottom: var(--space-3);
+}
+.admin-skeleton-line.is-search {
+  width: 100%;
+}
+.admin-skeleton-line.is-select {
+  width: min(100%, 280px);
+}
+.admin-skeleton-card {
+  min-height: 112px;
+  margin-top: var(--space-3);
+}
+.admin-skeleton-card.is-next {
+  min-height: 88px;
+  margin-top: var(--space-2);
+}
+.admin-skeleton-kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.admin-skeleton-kpi {
+  min-height: 72px;
+}
+@keyframes admin-skeleton-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-skeleton-line,
+  .admin-skeleton-card,
+  .admin-skeleton-kpi {
+    animation: none;
+    background: var(--surface-secondary);
+  }
+}
 .recruitment-board .admin-summary {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: var(--space-4);

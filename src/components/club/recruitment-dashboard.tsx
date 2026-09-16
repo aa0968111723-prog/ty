@@ -609,6 +609,49 @@ export function RecruitmentDashboard({
   );
 }
 
+export function RecruitmentBoardSkeleton({
+  mode,
+}: {
+  mode: "command" | "queue" | "roster";
+}) {
+  const title = mode === "queue" ? "待填正式招生資料" : mode === "roster" ? "招生名單" : "現在該處理";
+  return (
+    <div
+      className="recruitment-board"
+      data-loading="recruitment"
+      data-mode={mode}
+      aria-busy="true"
+    >
+      <section className="admin-panel" aria-label={`${title}載入中`}>
+        <div className="admin-section-heading">
+          <h2>{title}</h2>
+        </div>
+        <p className="admin-caption" role="status">同步中…</p>
+        {mode === "command" ? (
+          <>
+            <div className="admin-skeleton-card is-next" aria-hidden="true" />
+            <div className="admin-skeleton-kpis" aria-hidden="true">
+              <div className="admin-skeleton-kpi" />
+              <div className="admin-skeleton-kpi" />
+              <div className="admin-skeleton-kpi" />
+              <div className="admin-skeleton-kpi" />
+              <div className="admin-skeleton-kpi" />
+              <div className="admin-skeleton-kpi" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="admin-skeleton-line is-search" aria-hidden="true" />
+            {mode === "queue" ? <div className="admin-skeleton-line is-select" aria-hidden="true" /> : null}
+            <div className="admin-skeleton-card" aria-hidden="true" />
+            <div className="admin-skeleton-card" aria-hidden="true" />
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
 export function RecruitmentSync({ data }: { data: RecruitmentData }) {
   const items = [
     ["遊戲資料", data.sync.gameResults],

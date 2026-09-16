@@ -8,7 +8,7 @@ import { AdminSecurity } from "@/components/club/admin-security";
 import "@/admin.css";
 import { DashboardWidget } from "@/components/club/dashboard-widget";
 import { DEFAULT_LAYOUT, STORAGE_KEY, readLayout, initialView, taipeiDate, time, type Dashboard, type Tab, type LayoutPreference, type WidgetId } from "@/components/club/admin-presentation";
-import { RecruitmentDashboard, RecruitmentSync, type RecruitmentData } from "@/components/club/recruitment-dashboard";
+import { RecruitmentBoardSkeleton, RecruitmentDashboard, RecruitmentSync, type RecruitmentData } from "@/components/club/recruitment-dashboard";
 import { AdminPublicRanking } from "@/components/club/admin-ranking";
 import { SyncPill } from "@/components/club/battle-kpis";
 
@@ -330,9 +330,6 @@ function AdminDashboard() {
           {error} · 畫面會保留上次成功資料
         </p>
       )}
-      {busy && !recruitment && !data && (
-        <p className="admin-empty" role="status">同步中…</p>
-      )}
 
       {(tab === "recruitment" || tab === "queue" || tab === "roster" || tab === "contacts") && (
         recruitment ? (
@@ -352,15 +349,15 @@ function AdminDashboard() {
             onOpenQueue={() => setView("queue", "queue")}
             onOpenRoster={() => setView("roster", "contacts")}
           />
+        ) : !error ? (
+          <RecruitmentBoardSkeleton mode={boardMode} />
         ) : (
           <section className="admin-panel" role="alert">
-            <h2>{busy ? "讀取招生資料…" : "招生資料暫時無法載入"}</h2>
+            <h2>招生資料暫時無法載入</h2>
             <p className="admin-caption">同步失敗時畫面不會空白。可再同步一次，或先從「更多」看公開排行榜。</p>
-            {!busy ? (
-              <button type="button" className="admin-primary" onClick={() => void refresh(true)}>
-                重新同步
-              </button>
-            ) : null}
+            <button type="button" className="admin-primary" onClick={() => void refresh(true)}>
+              重新同步
+            </button>
           </section>
         )
       )}
