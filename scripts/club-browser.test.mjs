@@ -1000,10 +1000,10 @@ test(
       assert.ok(funnelBox && funnelBox.y >= 780, `funnel on first screen ${JSON.stringify(funnelBox)}`);
       await funnelHeading.scrollIntoViewIfNeeded();
       const funnel = page.locator(".battle-funnel");
-      await funnel.getByText("遊戲接觸").waitFor();
-      await funnel.getByText("活動報名").waitFor();
+      await funnel.getByText("遊戲接觸", { exact: true }).waitFor();
+      await funnel.getByText("活動報名", { exact: true }).waitFor();
       await funnel.getByText("入社", { exact: true }).waitFor();
-      await funnel.getByText("保證金").waitFor();
+      await funnel.getByText("保證金", { exact: true }).waitFor();
       assert.equal(await funnel.locator("li", { hasText: "遊戲接觸" }).locator("b").innerText(), "3");
       assert.equal(await funnel.locator("li", { hasText: "活動報名" }).locator("b").innerText(), "3");
       assert.equal(await funnel.locator("li", { hasText: "入社" }).locator("b").innerText(), "2");
