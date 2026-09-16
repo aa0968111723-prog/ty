@@ -168,6 +168,7 @@ test(
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待填正式資料" }).waitFor();
+        await capture(page, `pending-${width}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
         await page.getByRole("heading", { name: "名單", level: 1 }).waitFor();
         await page.getByRole("button", { name: "更多", exact: true }).click();
@@ -257,6 +258,12 @@ test(
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await capture(page, "admin-desktop");
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "更多" }).click();
+      await page.getByRole("dialog").getByRole("heading", { name: "更多" }).waitFor();
+      await capture(page, "admin-more-desktop");
+      await page.getByRole("dialog").getByRole("button", { name: "今日排行榜" }).click();
+      await page.getByRole("heading", { name: /排行榜/ }).waitFor();
+      await capture(page, "admin-today-board-desktop");
+      await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "更多" }).click();
       await page.getByRole("dialog").getByRole("button", { name: "表單資料" }).click();
       assert.equal(await page.getByLabel("篩選來源").inputValue(), "Google Form");
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "名單" }).click();
@@ -343,7 +350,7 @@ test(
       assert.equal(submitted[0].recruiter, "柏能");
       assert.equal(submitted[0].submissionId, pendingStudent._submissionId);
       assert.equal(submitted[0].gameGatekeeper, "安倢");
-      assert.equal(submitted[0].tier, "");
+      assert.equal(submitted[0].tier, undefined);
       assert.ok(submitted[0].activities.includes("9/30茶會"));
       assert.equal(await page.getByRole("button", { name: "跟進這位同學" }).count(), 0);
       assert.equal(await page.locator("[data-quickfill=open-form]").count(), 0);
