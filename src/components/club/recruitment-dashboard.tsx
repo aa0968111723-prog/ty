@@ -1,7 +1,5 @@
-import { Fragment, useLayoutEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Filter } from "lucide-react";
-import { isPersonHandled, markPersonHandled, readHandledPersonKeys } from "@/lib/club/pending-handled.mjs";
-import { profileTouchesTaipeiDate, rosterFilterDate } from "@/lib/club/roster-date.mjs";
 import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
 import { LIVE_ACTIVITY_CHOICES } from "@/lib/club/recruitment-prefill.mjs";
 import { IDENTITY_CONFIRM_LABEL, needsIdentityConfirm } from "@/lib/club/recruitment-identity.mjs";
