@@ -292,13 +292,16 @@ function PersonCard({
       </div>
       <ConfirmMark show={row.needsConfirmation} reason={row.confirmationReason} />
       <a className="admin-primary" href={followUp}>填寫正式資料</a>
-      <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
-      <p>{row.phone || "電話未填"}</p>
-      <p>遊戲完成 {row.gameCompletedAt || row.completedAt ? time(String(row.gameCompletedAt || row.completedAt)) : "時間未填"}</p>
-      <p>遊戲關主 {row.gameGatekeeper || "未填"}</p>
-      <p>正式接引人 {row.recruiters || "尚未指定"}</p>
-      <p>活動 {activities}</p>
-      <p>入社 {row.joined || "尚未填"} · 保證金 {row.depositPaid || "尚未填"}</p>
+      <div className="recruitment-meta">
+        <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
+        <p>{row.phone || "電話未填"}</p>
+        <p>遊戲完成 {row.gameCompletedAt || row.completedAt ? time(String(row.gameCompletedAt || row.completedAt)) : "時間未填"}</p>
+        <p>遊戲關主 {row.gameGatekeeper || "未填"}</p>
+        <p>正式接引人 {row.recruiters || "尚未指定"}</p>
+        <p>活動 {activities}</p>
+        <p>入社 {row.joined || "尚未填"}</p>
+        <p>保證金 {row.depositPaid || "尚未填"}</p>
+      </div>
       <div className="recruitment-actions">
         {row.prefillUrl ? (
           <a href={row.prefillUrl} target="_blank" rel="noreferrer">
