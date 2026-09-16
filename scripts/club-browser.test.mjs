@@ -178,6 +178,7 @@ test(
         await page.getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "今日排行榜" }).click();
         assert.equal(await page.locator(".admin-podium li").count(), 1);
+        if (width === 390) await capture(page, "admin-today-board-390");
         await page.getByLabel("查詢日期").fill("2026-09-11");
         await page.getByText("尚無正式挑戰紀錄").waitFor();
         await page.goto(`${origin}/admin?view=pinned`);
@@ -261,7 +262,7 @@ test(
       await page.getByRole("dialog").getByRole("heading", { name: "更多" }).waitFor();
       await capture(page, "admin-more-desktop");
       await page.getByRole("dialog").getByRole("button", { name: "今日排行榜" }).click();
-      await page.getByRole("heading", { name: /排行榜/ }).waitFor();
+      await page.getByRole("heading", { name: "今日排行榜", level: 1 }).waitFor();
       await capture(page, "admin-today-board-desktop");
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "更多" }).click();
       await page.getByRole("dialog").getByRole("button", { name: "表單資料" }).click();
