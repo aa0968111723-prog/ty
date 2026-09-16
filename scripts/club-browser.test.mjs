@@ -62,6 +62,23 @@ async function assertWarCardLabels(page) {
     assert.ok(row.height <= 20, `${row.text} wrapped at ${row.height}px`);
     assert.equal(row.nowrap, true);
   }
+  const hints = await page.locator(".war-card .war-card-hint").evaluateAll((els) =>
+    els.map((el) => {
+      const box = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return {
+        text: el.textContent?.trim() || "",
+        height: box.height,
+        nowrap: style.whiteSpace === "nowrap",
+      };
+    }),
+  );
+  assert.equal(hints[1]?.text, "報名");
+  assert.equal(hints[2]?.text, "招生表");
+  for (const row of hints) {
+    assert.ok(row.height <= 20, `${row.text} hint wrapped at ${row.height}px`);
+    assert.equal(row.nowrap, true);
+  }
   assert.ok(await page.getByText("保證金以正式表單勾選為準").count());
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   assert.equal(await page.getByText("分級").count(), 0);

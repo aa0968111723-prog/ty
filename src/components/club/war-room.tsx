@@ -69,7 +69,7 @@ function ExpandCard({
         <span className="war-card-copy">
           <small className="war-card-label">{label}</small>
           <strong>{value}</strong>
-          <em>{hint}</em>
+          <em className="war-card-hint">{hint}</em>
         </span>
         <ChevronDown size={18} className={open ? "is-open" : ""} />
       </button>
@@ -153,7 +153,7 @@ export function WarRoom({
           icon={CalendarHeart}
           label="活動"
           value={metric(activityToday)}
-          hint="今日報名"
+          hint="報名"
           expanded={expanded}
           onToggle={toggle}
         >
@@ -164,7 +164,7 @@ export function WarRoom({
           icon={Landmark}
           label="入社"
           value={summary?.joined == null ? "資料不足" : metric(summary.joined)}
-          hint="正式招生表"
+          hint="招生表"
           expanded={expanded}
           onToggle={toggle}
         >

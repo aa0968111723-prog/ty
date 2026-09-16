@@ -1371,7 +1371,8 @@
   color: var(--text-muted);
   font-size: var(--text-caption);
 }
-.war-card-label {
+.war-card-label,
+.war-card-hint {
   white-space: nowrap;
   word-break: keep-all;
   overflow-wrap: normal;
