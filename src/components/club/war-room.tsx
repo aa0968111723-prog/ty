@@ -426,7 +426,7 @@ export function WarRoom({
                   {row.joined}
                 </span>
               </p>
-              <small>{row.date.slice(5)}</small>
+              <small>{`${Number(row.date.slice(5, 7))}/${Number(row.date.slice(8))}`}</small>
             </li>
           ))}
         </ol>
