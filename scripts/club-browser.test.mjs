@@ -158,7 +158,7 @@ test(
         await page.goto(`${origin}/admin`);
         await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
         await page.getByLabel("查詢日期").fill("2026-09-12");
-        await page.getByText("今日接觸").waitFor();
+        await page.getByRole("button", { name: /今日接觸/ }).first().waitFor();
         assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
         assert.equal(await page.getByRole("heading", { name: /^S$/ }).count(), 0);
         assert.equal(await page.locator("text=submissionId").count(), 0);
@@ -166,10 +166,10 @@ test(
         await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
         await capture(page, `recruitment-${width}`);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+        await assertScroll("admin");
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待填正式招生資料" }).waitFor();
         await page.getByRole("link", { name: "填寫正式資料" }).first().waitFor();
-        await assertScroll("admin");
         await capture(page, `admin-${width}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "我的釘選" }).click();
@@ -204,7 +204,7 @@ test(
         assert.ok(await page.locator(".admin-person-list article").count() >= 1);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "今日排行榜" }).click();
-        await page.getByRole("heading", { name: "今日排行榜" }).waitFor();
+        await page.locator("h1", { hasText: "今日排行榜" }).waitFor();
         await page.goto(`${origin}/admin?view=pinned`);
         await page.getByRole("heading", { name: "我的釘選" }).waitFor();
         await page.locator(".admin-pinned-grid [data-widget]").first().waitFor();
@@ -238,6 +238,7 @@ test(
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("alert").waitFor();
       await page.route("**/api/admin/login", route => route.fulfill({ json: { ok: true } }));
+      await page.route("**/api/admin/session", route => route.fulfill({ json: { authenticated: true, passwordEnabled: true, googleEnabled: true } }));
       await page.route("**/api/admin/dashboard?*", route => {
         const date = new URL(route.request().url()).searchParams.get("date");
         return route.fulfill({ json: buildDashboard({
@@ -260,6 +261,32 @@ test(
       assert.equal(await page.getByLabel("篩選來源").inputValue(), "Google Form");
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "名單" }).click();
       await page.getByRole("heading", { name: "招生名單" }).waitFor();
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("recruitment API failure keeps the command center visible", async () => {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) =>
+        route.fulfill({ json: { authenticated: true, passwordEnabled: true } }),
+      );
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: new URL(route.request().url()).searchParams.get("date"), results: [], forms: [] }) }),
+      );
+      await page.route("**/api/admin/recruitment?*", (route) =>
+        route.fulfill({ status: 502, json: { error: "同步失敗" } }),
+      );
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.getByRole("heading", { name: "招生資料暫時無法載入" }).waitFor();
+      await page.getByRole("button", { name: "重新同步" }).waitFor();
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       assert.deepEqual(errors, []);
       await context.close();
     });
@@ -345,10 +372,12 @@ test(
       assert.equal(submitted[0].tier, undefined);
       assert.ok(submitted[0].activities.includes("9/30茶會"));
       assert.equal(await page.getByRole("button", { name: "填寫正式資料" }).count(), 0);
-      assert.equal(await page.locator("[data-quickfill=open-form]").count(), 0);
+      const formLink = page.locator("[data-quickfill=open-form]");
+      assert.equal(await formLink.count(), 1);
+      assert.match(String(await formLink.getAttribute("href")), /\/viewform\?/);
       const backoffice = page.locator("[data-quickfill=open-backoffice]");
       assert.equal(await backoffice.count(), 1);
-      assert.equal(await backoffice.getAttribute("href"), "/admin?view=today");
+      assert.equal(await backoffice.getAttribute("href"), "/admin?view=form");
       await capture(page, "follow-up-390");
       assert.deepEqual(errors, []);
       await context.close();

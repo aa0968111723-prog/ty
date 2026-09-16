@@ -347,7 +347,15 @@ function AdminDashboard() {
             onOpenRoster={() => setView("roster", "contacts")}
           />
         ) : (
-          <p className="admin-empty">{busy ? "讀取招生資料…" : "招生資料暫時無法載入，請點更新重試"}</p>
+          <section className="admin-panel" role="alert">
+            <h2>{busy ? "讀取招生資料…" : "招生資料暫時無法載入"}</h2>
+            <p className="admin-caption">同步失敗時畫面不會空白。可再同步一次，或先從「更多」看公開排行榜。</p>
+            {!busy ? (
+              <button type="button" className="admin-primary" onClick={() => void refresh(true)}>
+                重新同步
+              </button>
+            ) : null}
+          </section>
         )
       )}
 

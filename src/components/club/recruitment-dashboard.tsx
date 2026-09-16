@@ -114,6 +114,16 @@ function statusLabel(row: RecruitmentProfile) {
   return "已填正式資料";
 }
 
+function relatedRank(
+  row: { recruiterList?: string[]; recruiters?: string; gameGatekeeper?: string },
+  self: string,
+) {
+  if (!self) return 1;
+  if ((row.recruiterList || []).includes(self) || row.recruiters === self) return 0;
+  if (row.gameGatekeeper === self) return 0;
+  return 1;
+}
+
 function PersonCard({
   row,
   onOpen,
@@ -213,14 +223,20 @@ export function RecruitmentDashboard({
     : [...new Set(data.profiles.flatMap((row) => row.activityList || []).filter(Boolean))];
 
   const pending = useMemo(() => {
-    return data.pending.filter((row) => {
-      if (handled.has(row.personKey) && status !== "handled") return false;
-      if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
-      if (selfRecruiter && row.recruiters && !(row.recruiterList || []).includes(selfRecruiter) && row.recruiters !== selfRecruiter) {
-        return false;
-      }
-      return rowMatchesQuery(row, query);
-    });
+    return data.pending
+      .filter((row) => {
+        if (handled.has(row.personKey) && status !== "handled") return false;
+        if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
+        if (selfRecruiter && row.recruiters && !(row.recruiterList || []).includes(selfRecruiter) && row.recruiters !== selfRecruiter) {
+          return false;
+        }
+        return rowMatchesQuery(row, query);
+      })
+      .sort((a, b) => {
+        const rank = relatedRank(a, selfRecruiter) - relatedRank(b, selfRecruiter);
+        if (rank) return rank;
+        return (b.waitMinutes || 0) - (a.waitMinutes || 0);
+      });
   }, [data.pending, gameGatekeeper, selfRecruiter, query, handled, status]);
 
   const people = useMemo(() => {
@@ -287,11 +303,11 @@ export function RecruitmentDashboard({
             <h2>現在應優先處理</h2>
             <button type="button" className="admin-primary" onClick={() => onOpenQueue?.()}>全部待處理</button>
           </div>
-          {!data.pending.length ? (
+          {!pending.length ? (
             <p className="admin-empty">目前沒有待填正式資料的同學</p>
           ) : (
             <div className="admin-person-list">
-              {data.pending.slice(0, 3).map((row) => (
+              {pending.slice(0, 3).map((row) => (
                 <PersonCard
                   key={row.personKey}
                   row={row}
@@ -342,7 +358,15 @@ export function RecruitmentDashboard({
               {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}
             </select>
           </div>
-          <p className="admin-caption">{pending.length} 位尚未填正式資料 · 預設隱藏已標記處理</p>
+          <div className="admin-section-heading">
+            <p className="admin-caption">
+              {pending.length} 位尚未填正式資料
+              {selfRecruiter ? ` · 優先顯示關主或接引人是「${selfRecruiter}」` : " · 先選接引人，自己的有緣人會排前面"}
+            </p>
+            <button type="button" onClick={() => setStatus(status === "handled" ? "pending" : "handled")}>
+              {status === "handled" ? "只看未處理" : "含已標記處理"}
+            </button>
+          </div>
           {!pending.length ? (
             <p className="admin-empty">這時段沒有待處理同學</p>
           ) : (

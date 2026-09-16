@@ -138,6 +138,7 @@ export function RecruiterQuickfill() {
   const [staff, setStaff] = useState<StaffFields>(emptyStaff);
   const [hiddenKeys, setHiddenKeys] = useState(() => new Set<string>());
   const [hiddenIds, setHiddenIds] = useState(() => new Set<string>());
+  const [lastFormUrl, setLastFormUrl] = useState("");
   const [{ personKey: preferredPersonKey, submissionId: preferredSubmissionId }] = useState(readPreferredCandidate);
 
   useEffect(() => {
@@ -317,6 +318,7 @@ export function RecruiterQuickfill() {
       }
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "無法送出招生資料");
+      setLastFormUrl(prefillUrl);
       hideCandidate(preview.personKey, preview.submissionId || "");
       setSuccess(body.duplicate ? "這位同學已有招生紀錄，已從待跟進名單移除" : "已送出招生資料");
       void load(true);
@@ -350,14 +352,25 @@ export function RecruiterQuickfill() {
       {success ? (
         <div role="status" className="admin-success quickfill-success">
           <span>{success}</span>
+          {lastFormUrl ? (
+            <a
+              className="quickfill-google"
+              href={lastFormUrl}
+              target="_blank"
+              rel="noreferrer"
+              data-quickfill="open-form"
+            >
+              開啟正式招生表單 <ExternalLink size={16} />
+            </a>
+          ) : null}
           <a
             className="quickfill-google"
-            href="/admin?view=today"
+            href="/admin?view=form"
             target="_blank"
             rel="noreferrer"
             data-quickfill="open-backoffice"
           >
-            查看招生狀況表後台 <ExternalLink size={16} />
+            查看招生表單後台 <ExternalLink size={16} />
           </a>
         </div>
       ) : null}

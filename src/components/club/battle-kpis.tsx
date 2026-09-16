@@ -275,7 +275,7 @@ export function BattleCommand({
           <button type="button" onClick={onOpenRoster}>看名單</button>
         </div>
         <div className="battle-activity-grid">
-          {data.activities?.map((row) => (
+          {data.activities?.length ? data.activities.map((row) => (
             <article key={row.name}>
               <header>
                 <strong>{row.name}</strong>
@@ -290,7 +290,7 @@ export function BattleCommand({
               </div>
               <small>今日 {row.today}</small>
             </article>
-          ))}
+          )) : <p className="admin-empty">尚無活動報名資料</p>}
         </div>
       </section>
 
@@ -300,12 +300,20 @@ export function BattleCommand({
         <div className="battle-trend" role="img" aria-label="近七日接觸、活動報名與入社人數">
           {data.dailyTrend?.map((row) => (
             <div key={row.date} className="battle-trend-day">
-              <div className="battle-trend-cols">
-                <span style={{ height: `${(row.contacts / trendMax) * 100}%` }} title={`接觸 ${row.contacts}`} />
-                <span style={{ height: `${(row.activity / trendMax) * 100}%` }} title={`報名 ${row.activity}`} />
-                <span style={{ height: `${(row.joined / trendMax) * 100}%` }} title={`入社 ${row.joined}`} />
+              <div
+                className="battle-trend-cols"
+                aria-label={`${row.date} 接觸 ${row.contacts}、報名 ${row.activity}、入社 ${row.joined}`}
+              >
+                <span style={{ height: `${(row.contacts / trendMax) * 100}%` }} aria-hidden="true" />
+                <span style={{ height: `${(row.activity / trendMax) * 100}%` }} aria-hidden="true" />
+                <span style={{ height: `${(row.joined / trendMax) * 100}%` }} aria-hidden="true" />
               </div>
-              <small>{row.date.slice(5).replace("-", "/")}</small>
+              <small>
+                {row.date.slice(5).replace("-", "/")}
+                <span className="sr-only">
+                  接觸 {row.contacts}、報名 {row.activity}、入社 {row.joined}
+                </span>
+              </small>
             </div>
           ))}
         </div>
@@ -321,7 +329,7 @@ export function BattleCommand({
 
 export function SyncPill({ data, error }: { data: CommandData | null; error?: string }) {
   if (!data) {
-    return <span>尚未同步</span>;
+    return <span>{error ? "○ 同步失敗" : "尚未同步"}</span>;
   }
   const ok = data.sync.gameResults.ok
     && data.sync.recruitmentResponses.ok
