@@ -6,6 +6,7 @@ import {
   buildRecruitmentDashboard,
   decodeStudentChoice,
   encodeStudentChoice,
+  parseEventChoices,
   parseGameAttempts,
   parseMasterRows,
   parseRecruitmentResponses,
@@ -262,9 +263,9 @@ test("missing S/A/B and deposit fields are 資料不足 instead of zero", () => 
   });
   assert.equal(data.summary.s, null);
   assert.equal(data.summary.depositPaid, null);
-  assert.equal(data.funnel.find((layer) => layer.id === "s")?.missing, true);
+  assert.equal(data.funnel.find((layer) => layer.id === "deposit")?.missing, true);
   assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 1);
-  assert.equal(data.funnel.find((layer) => layer.id === "recruited")?.count, 1);
+  assert.equal(data.funnel.find((layer) => layer.id === "s"), undefined);
 });
 
 test("招生狀況表 plus 總表 formula-shaped row keeps game gatekeeper separate from recruiter", () => {
@@ -341,4 +342,109 @@ test("總表-only roster rows appear even without a game attempt", () => {
   assert.equal(data.pending.length, 0);
   assert.equal(data.profiles[0].gameGatekeeper, "");
   assert.ok(data.profiles[0].timeline.every((item) => item.kind !== "game"));
+});
+
+test("battle stats use Taipei days, normalized names, unique people, and live form events", () => {
+  const midnightTaipei = game({
+    姓名: " 王 小明 ",
+    電話: "0912-345-678",
+    遊戲時間: "2026-09-13T16:05:00.000Z",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0001",
+  });
+  const samePersonReplay = game({
+    姓名: "王小明",
+    電話: "0912345678",
+    遊戲時間: "2026-09-14T02:00:00.000Z",
+    分數: 900,
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0002",
+  });
+  const yesterday = game({
+    姓名: "昨日生",
+    電話: "0912000002",
+    遊戲時間: "2026-09-13T15:00:00.000Z",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0003",
+  });
+  const practice = game({
+    姓名: "練習生",
+    電話: "0912000003",
+    _kind: "practice",
+    _skipSave: true,
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0004",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T12:00:00+08:00"),
+    gameRows: [midnightTaipei, samePersonReplay, yesterday, practice],
+    recruitmentRows: [
+      {
+        時間戳記: "2026/9/14 下午 1:00:00",
+        同學的姓名: "王小明",
+        "同學電話/LINE": "0912345678",
+        報名了那個活動: "9/30茶會, 社課",
+        是否入社: "是",
+        保證金是否繳費: "是",
+        "接引人(可複選)": "安倢",
+        _gameSubmissionId: samePersonReplay._submissionId,
+      },
+      {
+        時間戳記: "2026/9/14 下午 1:10:00",
+        同學的姓名: "王小明",
+        "同學電話/LINE": "0912345678",
+        報名了那個活動: "9/30茶會",
+        是否入社: "是",
+        保證金是否繳費: "是",
+        "接引人(可複選)": "安倢",
+        _gameSubmissionId: samePersonReplay._submissionId,
+        _duplicate: true,
+      },
+      {
+        時間戳記: "2026/9/13 下午 4:00:00",
+        同學的姓名: "昨日生",
+        "同學電話/LINE": "0912000002",
+        報名了那個活動: "無(考慮中",
+        是否入社: "否",
+        保證金是否繳費: "否",
+        "接引人(可複選)": "柏能",
+      },
+      {
+        時間戳記: "2026/9/14 上午 10:00:00",
+        同學的姓名: "茶會乙",
+        "同學電話/LINE": "0912000008",
+        報名了那個活動: "9/30茶會",
+        是否入社: "否",
+        保證金是否繳費: "否",
+        "接引人(可複選)": "小哲",
+      },
+    ],
+    masterRows: [],
+  });
+  assert.equal(data.summary.contactsToday, 1);
+  assert.equal(data.summary.contactsCumulative, 2);
+  assert.equal(data.summary.eventSignupsToday, 2);
+  assert.equal(data.events.find((row) => row.label === "9/30茶會")?.count, 2);
+  assert.equal(data.events.find((row) => row.label === "社課")?.count, 1);
+  assert.equal(data.events.find((row) => row.label === "體驗禪")?.count, 0);
+  assert.equal(data.summary.joined, 1);
+  assert.equal(data.summary.depositPaid, 1);
+  assert.equal(data.summary.pendingOfficialForm, 0);
+  assert.deepEqual(data.funnel.map((layer) => layer.id), ["played", "activity", "joined", "deposit"]);
+  assert.equal(data.daily.find((row) => row.date === "2026-09-14")?.contacts, 1);
+  assert.equal(data.daily.find((row) => row.date === "2026-09-13")?.contacts, 1);
+  assert.deepEqual(parseEventChoices("9/30茶會, 無(考慮中, 社課"), ["9/30茶會", "社課"]);
+  assert.deepEqual(parseEventChoices("無(沒興趣"), []);
+});
+
+test("same name different phones stay two people and are flagged, never silently merged", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [
+      game({ 姓名: "林同學", 電話: "0911111111", _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbb0001" }),
+      game({ 姓名: "林同學", 電話: "0922222222", _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbb0002" }),
+    ],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.summary.contactsToday, 2);
+  assert.equal(data.pending.length, 2);
+  assert.ok(data.profiles.every((row) => row.duplicateWarning));
 });

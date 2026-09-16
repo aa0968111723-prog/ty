@@ -10,8 +10,8 @@ import {
   splitDepartmentGrade,
   text,
 } from "./recruitment-identity.mjs";
-import { fieldFromAliases, formatTaipeiTimestamp, internalizedGameRow } from "./sheets.mjs";
-import { generatePrefilledFormUrl } from "./recruitment-prefill.mjs";
+import { fieldFromAliases, internalizedGameRow } from "./game-row.mjs";
+import { generatePrefilledFormUrl, LIVE_ACTIVITY_CHOICES } from "./recruitment-prefill.mjs";
 
 const UNCLASSIFIED = "未分類";
 const UNKNOWN_GATEKEEPER = "未知關主";
@@ -373,10 +373,7 @@ function tierLetter(value) {
 }
 
 function hasActivity(value) {
-  const raw = text(value);
-  if (!raw) return false;
-  if (/無|考慮中|未報/.test(raw) && !/[0-9]/.test(raw)) return false;
-  return true;
+  return parseEventChoices(value).length > 0;
 }
 
 function isYes(value) {
@@ -392,6 +389,99 @@ function onDate(iso, date) {
   if (!date) return true;
   if (!iso) return false;
   return dateInTaipei(new Date(iso)) === date;
+}
+
+export const EVENT_SIGNUP_CHOICES = LIVE_ACTIVITY_CHOICES.filter((choice) => !choice.startsWith("無"));
+
+/** Split official-form activity answers; a person counts once per known event. */
+export function parseEventChoices(value) {
+  const parts = text(value).split(/[,，、]/).map((part) => part.trim()).filter(Boolean);
+  /** @type {string[]} */
+  const events = [];
+  for (const part of parts) {
+    if (EVENT_SIGNUP_CHOICES.includes(part) && !events.includes(part)) events.push(part);
+  }
+  return events;
+}
+
+function uniqueRosterPeople(rows) {
+  return clusterGamePeople((rows || []).map((row, index) => ({
+    name: row.name,
+    phone: row.phone,
+    department: row.department,
+    grade: row.grade,
+    submissionId: row.submissionId || `row:${index}`,
+  })));
+}
+
+function uniquePresent(rows, hasField, predicate) {
+  if (!rows.length) return null;
+  const known = rows.filter(hasField);
+  if (!known.length) return null;
+  return uniqueRosterPeople(rows.filter(predicate)).length;
+}
+
+function sheetDay(value, date) {
+  if (!date || !value) return false;
+  const iso = timestamp(value);
+  if (iso) return onDate(iso, date);
+  const parsed = String(value).match(/(\d{1,2})[/-](\d{1,2})/);
+  if (!parsed) return false;
+  const [, month, day] = parsed;
+  return date.slice(5) === `${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+function rowOnDate(row, date) {
+  return sheetDay(row.submittedAt, date) || sheetDay(row.recruitedAt, date) || sheetDay(row.gameCompletedAt, date);
+}
+
+function taipeiDayWindow(endDate, count) {
+  const noon = new Date(`${endDate}T12:00:00+08:00`);
+  if (!Number.isFinite(noon.getTime())) return [endDate];
+  /** @type {string[]} */
+  const days = [];
+  for (let i = count - 1; i >= 0; i -= 1) {
+    days.push(dateInTaipei(new Date(noon.getTime() - i * 86400000)));
+  }
+  return days;
+}
+
+function markDuplicateWarnings(profiles) {
+  const nameCounts = new Map();
+  const phoneCounts = new Map();
+  for (const profile of profiles) {
+    const name = normalizeName(profile.name);
+    const phone = text(profile.normalizedPhone);
+    if (name) nameCounts.set(name, (nameCounts.get(name) || 0) + 1);
+    if (phone) phoneCounts.set(phone, (phoneCounts.get(phone) || 0) + 1);
+  }
+  return profiles.map((profile) => {
+    const name = normalizeName(profile.name);
+    const phone = text(profile.normalizedPhone);
+    const sameName = Boolean(name && (nameCounts.get(name) || 0) > 1);
+    const samePhone = Boolean(phone && (phoneCounts.get(phone) || 0) > 1);
+    return {
+      ...profile,
+      duplicateWarning: sameName || samePhone ? "需確認同名或同電話，未合併" : "",
+    };
+  });
+}
+
+const taipeiDateTime = new Intl.DateTimeFormat("zh-TW", {
+  timeZone: "Asia/Taipei",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
+export function formatTaipeiTimestamp(value) {
+  const raw = value instanceof Date ? value : new Date(String(value ?? ""));
+  if (!Number.isFinite(raw.getTime())) return String(value ?? "");
+  return taipeiDateTime.format(raw).replace(/\//g, "/");
 }
 
 export function buildRecruitmentDashboard(input = {}) {
@@ -462,6 +552,7 @@ export function buildRecruitmentDashboard(input = {}) {
   });
   appendUnmatchedRoster(profiles, master, { prefix: "master" });
   appendUnmatchedRoster(profiles, recruits, { prefix: "recruit", pending: false });
+  const flaggedProfiles = markDuplicateWarnings(profiles);
 
   const completed = master.length ? master : recruits;
   function presentCount(rows, hasField, predicate) {
@@ -473,9 +564,9 @@ export function buildRecruitmentDashboard(input = {}) {
   const sCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "S");
   const aCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "A");
   const bCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "B");
-  const activityCount = presentCount(completed, (row) => Boolean(text(row.activity)), (row) => hasActivity(row.activity));
-  const joinedCount = presentCount(completed, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
-  const depositCount = presentCount(completed, (row) => Boolean(text(row.depositPaid)), (row) => isYes(row.depositPaid));
+  const activityCount = uniquePresent(completed, (row) => Boolean(text(row.activity)), (row) => hasActivity(row.activity));
+  const joinedCount = uniquePresent(completed, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
+  const depositCount = uniquePresent(completed, (row) => Boolean(text(row.depositPaid)), (row) => isYes(row.depositPaid));
   const depositKnown = completed.filter((row) => text(row.depositAmount) !== "" || isYes(row.depositPaid));
   const depositTotal = !completed.length || !depositKnown.length
     ? null
@@ -484,17 +575,29 @@ export function buildRecruitmentDashboard(input = {}) {
   const played = datedPeople.length;
   const pendingToday = datedPending.length;
   const completedToday = date
-    ? completed.filter((row) => {
-      const at = timestamp(row.submittedAt) || "";
-      const day = row.recruitedAt;
-      if (at && onDate(at, date)) return true;
-      if (!day) return false;
-      const parsed = day.match(/(\d{1,2})[/-](\d{1,2})/);
-      if (!parsed) return false;
-      const [, month, d] = parsed;
-      return date.slice(5) === `${month.padStart(2, "0")}-${d.padStart(2, "0")}`;
-    }).length
-    : completed.length;
+    ? uniqueRosterPeople(completed.filter((row) => rowOnDate(row, date))).length
+    : uniqueRosterPeople(completed).length;
+  const eventRows = completed.filter((row) => hasActivity(row.activity));
+  const eventSignupsToday = date
+    ? uniqueRosterPeople(eventRows.filter((row) => rowOnDate(row, date))).length
+    : uniqueRosterPeople(eventRows).length;
+  const events = EVENT_SIGNUP_CHOICES.map((label) => ({
+    id: label,
+    label,
+    count: uniqueRosterPeople(completed.filter((row) => parseEventChoices(row.activity).includes(label))).length,
+  }));
+  const days = taipeiDayWindow(date, 7);
+  const daily = days.map((day) => {
+    const dayAttempts = attempts.filter((row) => onDate(row.completedAt, day));
+    const dayEventRows = eventRows.filter((row) => rowOnDate(row, day));
+    const dayJoinRows = completed.filter((row) => isYes(row.joined) && rowOnDate(row, day));
+    return {
+      date: day,
+      contacts: clusterGamePeople(dayAttempts).length,
+      signups: uniqueRosterPeople(dayEventRows).length,
+      joins: uniqueRosterPeople(dayJoinRows).length,
+    };
+  });
 
   function rate(part, whole) {
     if (!Number.isFinite(whole) || whole <= 0) return null;
@@ -503,13 +606,11 @@ export function buildRecruitmentDashboard(input = {}) {
   }
 
   const funnelPlayed = people.length;
-  const funnelRecruited = completed.length;
   const funnel = [
-    { id: "played", label: "玩遊戲", count: funnelPlayed, fromPrevious: null, fromStart: funnelPlayed ? 100 : null },
-    { id: "recruited", label: "已完成招生表單", count: funnelRecruited, fromPrevious: rate(funnelRecruited, funnelPlayed), fromStart: rate(funnelRecruited, funnelPlayed) },
-    { id: "s", label: "S／已報名", count: sCount, fromPrevious: rate(sCount, funnelRecruited), fromStart: rate(sCount, funnelPlayed) },
-    { id: "activity", label: "活動報名", count: activityCount, fromPrevious: rate(activityCount, sCount), fromStart: rate(activityCount, funnelPlayed) },
+    { id: "played", label: "遊戲接觸", count: funnelPlayed, fromPrevious: null, fromStart: funnelPlayed ? 100 : null },
+    { id: "activity", label: "活動報名", count: activityCount, fromPrevious: rate(activityCount, funnelPlayed), fromStart: rate(activityCount, funnelPlayed) },
     { id: "joined", label: "入社", count: joinedCount, fromPrevious: rate(joinedCount, activityCount), fromStart: rate(joinedCount, funnelPlayed) },
+    { id: "deposit", label: "保證金", count: depositCount, fromPrevious: rate(depositCount, joinedCount), fromStart: rate(depositCount, funnelPlayed) },
   ].map((layer, index) => {
     if (index === 0) return layer;
     if (layer.count == null) {
@@ -574,9 +675,13 @@ export function buildRecruitmentDashboard(input = {}) {
     date,
     summary: {
       playedToday: played,
+      contactsToday: played,
+      contactsCumulative: people.length,
+      eventSignupsToday,
+      pendingOfficialForm: pending.length,
       pending: pending.length,
       pendingToday,
-      recruited: completed.length,
+      recruited: uniqueRosterPeople(completed).length,
       recruitedToday: completedToday,
       s: sCount,
       a: aCount,
@@ -585,11 +690,13 @@ export function buildRecruitmentDashboard(input = {}) {
       joined: joinedCount,
       depositPaid: depositCount,
       depositTotal,
-      roster: master.length || completed.length,
+      roster: uniqueRosterPeople(master.length ? master : completed).length,
     },
+    events,
+    daily,
     funnel,
     pending,
-    profiles,
+    profiles: flaggedProfiles,
     gameGatekeepers,
     recruiters,
     distributions: {
@@ -645,4 +752,4 @@ export function stableDashboardId(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
 }
 
-export { PLACEHOLDER_CHOICE, UNCLASSIFIED, UNKNOWN_GATEKEEPER, formatTaipeiTimestamp };
+export { PLACEHOLDER_CHOICE, UNCLASSIFIED, UNKNOWN_GATEKEEPER };

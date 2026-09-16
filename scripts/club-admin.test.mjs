@@ -169,7 +169,7 @@ test("admin authentication and private read API contracts with mocked Google onl
     spreadsheets: { values: {
       get: async ({ spreadsheetId, range }) => {
         assert.equal(spreadsheetId, "fixture-sheet");
-        const action = range === "'results'" ? "results" : "formResponses";
+        const action = /results|後玩遊戲/.test(String(range)) ? "results" : "formResponses";
         calls.push(action);
         if (failForms && action === "formResponses") {
           throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
@@ -221,7 +221,7 @@ test("admin authentication and private read API contracts with mocked Google onl
         if (String(range).includes("總表")) {
           throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
         }
-        const action = range === "'results'" ? "results" : "formResponses";
+        const action = /results|後玩遊戲/.test(String(range)) ? "results" : "formResponses";
         const rows = action === "results" ? [result] : [
           { 姓名: "小明", 時間戳記: "2026/9/12 10:00:00" },
         ];

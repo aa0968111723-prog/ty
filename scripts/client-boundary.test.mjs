@@ -27,6 +27,32 @@ describe("client/server bundle boundaries", () => {
     }
   });
 
+  it("keeps googleapis and Sheets adapters off the public/admin client sources", async () => {
+    const { readdir } = await import("node:fs/promises");
+    async function walk(dir) {
+      const entries = await readdir(dir, { withFileTypes: true });
+      const files = [];
+      for (const entry of entries) {
+        const path = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) files.push(...await walk(path));
+        else if (/\.(tsx|ts|mjs|js)$/.test(entry.name)) files.push(path);
+      }
+      return files;
+    }
+    const files = [
+      ...(await walk(new URL("src/components", root).pathname)),
+      ...(await walk(new URL("src/routes", root).pathname)),
+    ].filter((path) => !path.includes("/routes/api/"));
+    for (const file of files) {
+      const source = await readFile(file, "utf8");
+      assert.doesNotMatch(source, /googleapis/, file);
+      assert.doesNotMatch(source, /from ["']@\/lib\/club\/sheets\.mjs["']/, file);
+      assert.doesNotMatch(source, /from ["']@\/lib\/club\/admin\.mjs["']/, file);
+    }
+    const recruitment = await readFile(new URL("src/lib/club/recruitment.mjs", root), "utf8");
+    assert.doesNotMatch(recruitment, /from ["']\.\/sheets\.mjs["']/);
+  });
+
   it("keeps the public leaderboard route free of server-only imports", async () => {
     const route = await readFile(new URL("src/routes/leaderboard.tsx", root), "utf8");
     const sheets = await readFile(new URL("src/lib/club/sheets.mjs", root), "utf8");
