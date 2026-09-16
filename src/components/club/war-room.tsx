@@ -179,9 +179,10 @@ export function WarRoom({
           expanded={expanded}
           onToggle={toggle}
         >
-          <p>已繳保證金的人數。金額僅供現場對帳，不會公開到前台。</p>
+          <p>已繳保證金的人數。保證金以正式表單勾選為準。金額僅供現場對帳，不會公開到前台。</p>
         </ExpandCard>
       </section>
+      <p className="admin-caption">保證金以正式表單勾選為準，與是否入社分開計算。</p>
 
       <section className="war-panel" aria-label="各活動報名">
         <div className="admin-section-heading">

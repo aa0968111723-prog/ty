@@ -59,6 +59,7 @@ async function assertWarDepositLabel(page) {
   assert.equal(metrics.text, "保證金");
   assert.ok(metrics.height <= 20, `deposit label wrapped at ${metrics.height}px`);
   assert.equal(metrics.nowrap, true);
+  assert.ok(await page.getByText("保證金以正式表單勾選為準").count());
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   assert.equal(await page.getByText("分級").count(), 0);
   assert.equal(await page.getByText("S／A／B").count(), 0);
