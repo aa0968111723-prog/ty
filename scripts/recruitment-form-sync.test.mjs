@@ -25,5 +25,10 @@ test("Apps Script source exposes required handlers without service-account JSON"
   assert.match(script, /everyMinutes\(5\)/);
   assert.match(script, /recruitStudentTitle_/);
   assert.match(script, /招生資料/);
-  assert.match(script, /recruitNamedValue_/);
+  assert.match(script, /recruitSilentSubmissionId_/);
+  assert.match(script, /recruitVisiblePersonKey_/);
+  assert.doesNotMatch(script, /\|#s:" \+ /);
+  assert.doesNotMatch(script, /\|#s:"\s*\+/);
+  assert.match(script, /#s:\(\[0-9a-f-\]\*\)/);
+  assert.match(script, /\|#p:" \+ personKey/);
 });

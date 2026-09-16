@@ -256,12 +256,24 @@ function waitMinutes(completedAt, now) {
   return Math.max(0, Math.round((now.getTime() - at) / 60000));
 }
 
+const UUID_IN_TEXT = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+/** Partner-visible Form choice suffix. Never phone-less attempt UUIDs. */
+export function visibleChoicePersonKey(personKey) {
+  const key = text(personKey);
+  if (!key || UUID_IN_TEXT.test(key) || key.startsWith("attempt:")) return "";
+  if (key.startsWith("phone:") || key.startsWith("name:")) return key;
+  return "";
+}
+
 export function encodeStudentChoice(candidate) {
   const latest = candidate.latestAttempt || {};
   const clock = latest.completedAt ? taipeiClock.format(new Date(latest.completedAt)) : "--:--";
   const deptGrade = [candidate.department, candidate.grade].filter(Boolean).join("") || "系級未填";
-  const phone = candidate.rawPhone || candidate.normalizedPhone || "電話未填";
-  return `${candidate.name || "未填姓名"}｜${deptGrade}｜${phone}｜${clock}|#p:${candidate.personKey}|#s:${latest.submissionId || ""}`;
+  const phone = candidate.rawPhone || candidate.phone || candidate.normalizedPhone || "電話未填";
+  const label = `${candidate.name || "未填姓名"}｜${deptGrade}｜${phone}｜${clock}`;
+  const personKey = visibleChoicePersonKey(candidate.personKey);
+  return personKey ? `${label}|#p:${personKey}` : label;
 }
 
 export function decodeStudentChoice(value) {

@@ -238,14 +238,23 @@ function recruitRecruited_(people, responses) {
   });
 }
 
+function recruitVisiblePersonKey_(personKey) {
+  var key = recruitText_(personKey);
+  if (!key || /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(key)) return "";
+  if (key.indexOf("attempt:") === 0) return "";
+  if (key.indexOf("phone:") === 0 || key.indexOf("name:") === 0) return key;
+  return "";
+}
+
 function recruitEncodeChoice_(person) {
   var clock = recruitText_(person.completedAt);
   if (clock.length >= 16) clock = clock.slice(11, 16);
   else if (!clock) clock = "--:--";
   var deptGrade = (person.department || "") + (person.grade || "") || "系級未填";
   var phone = person.phone || person.normalizedPhone || "電話未填";
-  return (person.name || "未填姓名") + "｜" + deptGrade + "｜" + phone + "｜" + clock
-    + "|#p:" + person.personKey + "|#s:" + (person.submissionId || "");
+  var label = (person.name || "未填姓名") + "｜" + deptGrade + "｜" + phone + "｜" + clock;
+  var personKey = recruitVisiblePersonKey_(person.personKey);
+  return personKey ? label + "|#p:" + personKey : label;
 }
 
 function recruitDecodeChoice_(value) {
@@ -531,6 +540,31 @@ function recruitFindPage_(form, title) {
   return null;
 }
 
+function recruitAllGamePeople_() {
+  var cfg = recruitProps_();
+  var spreadsheet = SpreadsheetApp.openById(cfg.spreadsheetId);
+  var gameSheet = recruitSheetByTitleOrId_(spreadsheet, cfg.gameTab, cfg.expectedGameSheetId);
+  return recruitPeople_(recruitGameAttempts_(recruitReadRows_(gameSheet).rows));
+}
+
+/** Visible Form choices no longer carry #s:. Look up `_gameSubmissionId` silently. */
+function recruitSilentSubmissionId_(decoded, meta) {
+  var fromChoice = recruitText_(decoded && decoded.submissionId);
+  if (fromChoice) return fromChoice;
+  var fromNotes = recruitText_(meta && meta.submissionId);
+  if (fromNotes) return fromNotes;
+  var key = recruitText_(decoded && decoded.personKey);
+  if (!key) return "";
+  try {
+    var people = recruitAllGamePeople_();
+    var i;
+    for (i = 0; i < people.length; i++) {
+      if (people[i].personKey === key && people[i].submissionId) return people[i].submissionId;
+    }
+  } catch (err) { /* helper column can stay empty; phone still drops pending */ }
+  return "";
+}
+
 function onRecruitmentFormSubmit(e) {
   var cfg = recruitProps_();
   var named = (e && e.namedValues) || {};
@@ -538,7 +572,7 @@ function onRecruitmentFormSubmit(e) {
   var decoded = recruitDecodeChoice_(student);
   var notes = recruitNamedValue_(named, "備註");
   var meta = recruitParseMetadata_(notes);
-  var submissionId = decoded.submissionId || meta.submissionId;
+  var submissionId = recruitSilentSubmissionId_(decoded, meta);
   var gameGatekeeper = recruitNamedValue_(named, RECRUIT_FORM_TITLES.gameGatekeeper)
     || recruitNamedValue_(named, "遊戲關主")
     || meta.gameGatekeeper;

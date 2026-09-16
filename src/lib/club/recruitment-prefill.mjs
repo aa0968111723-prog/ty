@@ -134,7 +134,8 @@ export function departmentGradeOf(candidate = {}) {
 
 const METADATA_HEADER =
   /^遊戲完成：[^\n]*\n遊戲關主：[^\n]*(?:\nsubmissionId：[^\n]*)?(?:\n|$)/u;
-const VISIBLE_SUBMISSION_ID = /submissionId[：:]\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+const VISIBLE_SUBMISSION_ID =
+  /(?:submissionId[：:]\s*|#s:)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
 /** Strip labeled submissionId from partner-visible 備註 / captions.
  * @param {unknown} value

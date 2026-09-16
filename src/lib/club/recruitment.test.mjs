@@ -67,10 +67,14 @@ test("two plays by one student become one pending candidate under the game gatek
   assert.equal(peng.gameGatekeeper, "柏能");
   assert.equal(data.candidatesByGatekeeper["柏能"].length, 1);
   assert.equal(data.candidatesByGatekeeper["安倢"].length, 1);
-  const decoded = decodeStudentChoice(encodeStudentChoice(peng));
-  assert.equal(decoded.submissionId, second._submissionId);
+  const decoded = decodeStudentChoice(peng.choiceLabel);
   assert.match(peng.choiceLabel, /王小明/);
   assert.equal(decoded.personKey, peng.personKey);
+  assert.equal(decoded.submissionId, "");
+  assert.doesNotMatch(peng.choiceLabel, /#s:/i);
+  assert.doesNotMatch(peng.choiceLabel, /submissionId/i);
+  assert.equal(peng.choiceLabel.includes(second._submissionId), false);
+  assert.equal(peng.choiceLabel.includes(first._submissionId), false);
 });
 
 test("filled recruitment form removes the candidate and keeps another student", () => {
@@ -174,6 +178,11 @@ test("form plan never deletes preserved recruitment questions and keeps last-kno
   });
   assert.equal(plan.firstQuestion, "本次遊戲關主");
   assert.ok(plan.gatekeeperChoices.includes("柏能"));
+  const planned = plan.sections.flatMap((section) => section.choices).join("\n");
+  assert.match(planned, /#p:phone:0910000001/);
+  assert.match(planned, /#p:phone:0910000002/);
+  assert.doesNotMatch(planned, /#s:/i);
+  assert.doesNotMatch(planned, /sid-a|sid-b/);
   assert.equal(validatePlanDoesNotTouchRecruitmentQuestions(plan, snapshot), true);
   const failed = planRecruitmentFormSync({
     snapshot,
@@ -216,6 +225,14 @@ test("same submission processed twice is duplicate and does not create a second 
   });
   assert.equal(sectioned.submissionId, "sid-a");
   assert.equal(sectioned.gameGatekeeper, "柏能");
+  const withoutSid = parseSubmittedStudent({
+    namedValues: {
+      本次遊戲關主: "柏能",
+      選擇學生: "王小明｜歷史學系大一｜0912345678｜14:32|#p:phone:0912345678",
+    },
+  });
+  assert.equal(withoutSid.personKey, "phone:0912345678");
+  assert.equal(withoutSid.submissionId, "");
 });
 
 test("name and phone match removes candidate even without submissionId on the form row", () => {
@@ -601,4 +618,35 @@ test("empty sheets report zero unique people, not missing counts", () => {
   assert.deepEqual(data.kpiPeople.todayContacts, []);
   assert.deepEqual(data.kpiPeople.pending, []);
   assert.deepEqual(data.kpiPeople.allContacts, []);
+});
+
+test("Form 選擇學生 labels never include submissionId or #s:", () => {
+  const sid = "11111111-1111-4111-8111-111111111111";
+  const labeled = encodeStudentChoice({
+    name: "王小明",
+    department: "歷史學系",
+    grade: "大一",
+    phone: "0912345678",
+    personKey: "phone:0912345678",
+    latestAttempt: { submissionId: sid, completedAt: "2026-09-14T06:32:00.000Z" },
+  });
+  assert.match(labeled, /王小明｜歷史學系大一｜0912345678｜/);
+  assert.match(labeled, /#p:phone:0912345678/);
+  assert.doesNotMatch(labeled, /#s:/i);
+  assert.doesNotMatch(labeled, /submissionId/i);
+  assert.equal(labeled.includes(sid), false);
+  const decoded = decodeStudentChoice(labeled);
+  assert.equal(decoded.personKey, "phone:0912345678");
+  assert.equal(decoded.submissionId, "");
+  const attemptKeyed = encodeStudentChoice({
+    name: "無名",
+    personKey: `attempt:${sid}`,
+    latestAttempt: { submissionId: sid, completedAt: "2026-09-14T06:32:00.000Z" },
+  });
+  assert.equal(attemptKeyed.includes(sid), false);
+  assert.doesNotMatch(attemptKeyed, /#s:/i);
+  assert.doesNotMatch(attemptKeyed, /#p:/);
+  const legacy = decodeStudentChoice(`王小明｜歷史學系大一｜0912345678｜14:32|#p:phone:0912345678|#s:${sid}`);
+  assert.equal(legacy.submissionId, sid);
+  assert.equal(legacy.personKey, "phone:0912345678");
 });

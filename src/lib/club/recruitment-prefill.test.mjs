@@ -110,10 +110,15 @@ test("viewform prefill URL and 備註 never include submissionId or the raw id",
   assert.equal(parseGameMetadataNote(note).submissionId, "");
 });
 
-test("parser still reads legacy 備註 that already stored submissionId", () => {
-  const legacy = `遊戲完成：2026/09/14 14:32\n遊戲關主：安倢\nsubmissionId：${candidate.submissionId}`;
-  assert.equal(parseGameMetadataNote(legacy).submissionId, candidate.submissionId);
-  assert.equal(parseGameMetadataNote(legacy).gameGatekeeper, "安倢");
+test("extra notes #s: uuid is stripped from partner-visible 備註", () => {
+  const url = generatePrefilledFormUrl(candidate, {
+    recruiter: "柏能",
+    extraNotes: `興趣茶會|#s:${candidate.submissionId}`,
+  });
+  const note = new URL(url).searchParams.get(LIVE_PREFILL_ENTRIES.note) || "";
+  assert.doesNotMatch(note, /#s:/i);
+  assert.equal(note.includes(candidate.submissionId), false);
+  assert.match(note, /興趣茶會/);
 });
 
 test("unknown extra entry keys are ignored so invented IDs cannot ship", () => {

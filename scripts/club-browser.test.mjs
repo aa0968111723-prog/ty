@@ -1366,9 +1366,11 @@ test(
       assert.match(String(href), /entry\.1318284482=/);
       assert.doesNotMatch(String(href), /submissionId/i);
       assert.doesNotMatch(decodeURIComponent(String(href)), /submissionId/i);
+      assert.doesNotMatch(decodeURIComponent(String(href)), /#s:/i);
       assert.equal(decodeURIComponent(String(href)).includes(pendingStudent._submissionId), false);
       const fillText = await page.locator("body").innerText();
       assert.equal(fillText.includes("submissionId"), false);
+      assert.equal(fillText.includes("#s:"), false);
       assert.equal(fillText.includes(pendingStudent._submissionId), false);
       await page.getByText("這位同學報名了哪個活動").scrollIntoViewIfNeeded();
       if (process.env.CLUB_QA_DIR) {

@@ -42,7 +42,7 @@ Entry ID 於 2026-09-13 自發布頁 HTML `FB_PUBLIC_LOAD_DATA_` 讀出，**不�
 
 夥伴在表單裡繼續填「這位同學報名了哪個活動？」、入社、保證金、備註其餘內容。預填欄位都可改。後台與夥伴流程不填分級、不顯示 S/A/B。
 
-現行表單**沒有**獨立的「遊戲完成時間／遊戲關主／submissionId」題（沒有對應 entry ID）。夥伴看得見的備註只寫「遊戲完成」與「遊戲關主」兩行；`submissionId` 只走內部 `_gameSubmissionId`（攤位 POST）或舊 Sheet 列的相容解析，不預填、不出現在 Google Form 畫面。若之後用表單擁有者帳號加了獨立題，把新的 `entry.xxx` 放進 `GOOGLE_FORM_PREFILL_ENTRIES` 即可，不要猜 ID。
+現行表單**沒有**獨立的「遊戲完成時間／遊戲關主／submissionId」題（沒有對應 entry ID）。夥伴看得見的備註只寫「遊戲完成」與「遊戲關主」兩行。「選擇學生」選項只帶姓名／系級／電話／時間與 `#p:phone:`／`#p:name:`，**不**寫 `|#s:` 或 submissionId。`submissionId` 只走內部 `_gameSubmissionId`（攤位 POST，或表單送出後依 `#p:`／電話靜默對上遊戲列）或舊 Sheet 列的相容解析，不預填、不出現在 Google Form 畫面。若之後用表單擁有者帳號加了獨立題，把新的 `entry.xxx` 放進 `GOOGLE_FORM_PREFILL_ENTRIES` 即可，不要猜 ID。
 
 ## 後台內建招生表
 
