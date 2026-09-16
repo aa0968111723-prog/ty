@@ -58,6 +58,10 @@
   color: var(--text-muted);
   font-size: var(--text-caption);
 }
+.admin-mobile-top a {
+  min-height: 44px;
+  min-width: 44px;
+}
 .admin-heading {
   display: flex;
   justify-content: space-between;

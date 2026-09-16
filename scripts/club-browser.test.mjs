@@ -355,6 +355,9 @@ test(
         await page.goto(`${origin}/admin`);
         await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
         await page.locator(".war-kpis").waitFor();
+        const brand = page.locator(".admin-mobile-top a").first();
+        const brandBox = await brand.boundingBox();
+        assert.ok(brandBox && brandBox.height >= 44, `admin brand tap ${JSON.stringify(brandBox)}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "戰情", exact: true }).click();
         await capture(page, `recruitment-${width}`);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
