@@ -292,6 +292,7 @@ test(
         await page.locator("[data-leaderboard-nav]").click();
         await page.locator("[data-leaderboard-page]").waitFor();
         await page.locator("[data-scope=today]").waitFor();
+        await page.locator("[data-leaderboard-podium]").waitFor();
         assert.equal(await page.locator("[data-scope=today]").count(), 1);
         assert.equal(await page.locator("[data-leaderboard-podium]").count(), 1);
         assert.equal(await page.locator("[data-leaderboard-list]").count(), 1);
