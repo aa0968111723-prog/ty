@@ -330,6 +330,14 @@ function PersonCard({
           </a>
         ) : null}
       </div>
+      <div className="recruitment-actions">
+        {onHandled ? (
+          <button type="button" onClick={onHandled}>
+            {handled ? "取消已處理" : "標記已處理"}
+          </button>
+        ) : null}
+        <button type="button" onClick={onOpen}>查看詳細</button>
+      </div>
       <div className="recruitment-meta">
         <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
         <p>{row.phone || "電話未填"}</p>
@@ -339,14 +347,6 @@ function PersonCard({
         <p>活動 {activities}</p>
         <p>入社 {row.joined || "尚未填"}</p>
         <p>保證金 {row.depositPaid || "尚未填"}</p>
-      </div>
-      <div className="recruitment-actions">
-        {onHandled ? (
-          <button type="button" onClick={onHandled}>
-            {handled ? "取消已處理" : "標記已處理"}
-          </button>
-        ) : null}
-        <button type="button" onClick={onOpen}>查看詳細</button>
       </div>
     </article>
   );
