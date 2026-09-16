@@ -1731,14 +1731,23 @@
   .battle-next .admin-empty {
     padding: var(--space-3);
   }
+  .battle-next-card {
+    padding: var(--space-2) var(--space-3);
+    gap: 4px;
+  }
   .battle-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-2);
   }
   .battle-kpi-toggle {
-    min-height: 56px;
-    padding: var(--space-2) var(--space-3);
+    min-height: 52px;
+    padding: var(--space-2);
     grid-template-columns: 1fr;
-    gap: 2px;
+    gap: 0;
+  }
+  .battle-kpi-toggle small,
+  .battle-kpi-toggle strong {
+    line-height: 1.2;
   }
   .battle-kpi-icon {
     display: none;
@@ -1750,7 +1759,7 @@
     font-size: var(--text-h3);
   }
   .battle-kpi.is-text .battle-kpi-toggle strong {
-    font-size: var(--text-body);
+    font-size: var(--text-small);
   }
 }
 @media (prefers-reduced-motion: reduce) {
