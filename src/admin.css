@@ -1029,8 +1029,34 @@
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
-.recruitment-actions {
-  grid-template-columns: 1fr;
+.recruitment-pending .recruitment-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+.admin-page .recruitment-pending .recruitment-actions a,
+.admin-page .recruitment-pending .recruitment-actions button {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  text-decoration: none;
+}
+.recruitment-pending .recruitment-actions span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 .recruitment-actions a,
 .recruitment-sheet .admin-primary {
@@ -1183,12 +1209,13 @@
   font: inherit;
 }
 .quickfill-preview .admin-primary,
-.recruitment-pending .admin-primary {
+.recruitment-pending .admin-section-heading .admin-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
   min-height: 44px;
+  white-space: nowrap;
   text-decoration: none;
 }
 .quickfill-actions {

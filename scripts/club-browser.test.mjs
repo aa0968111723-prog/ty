@@ -13,6 +13,36 @@ async function capture(page, name) {
   mkdirSync(process.env.CLUB_QA_DIR, { recursive: true });
   await page.screenshot({ path: join(process.env.CLUB_QA_DIR, name + ".png"), fullPage: true });
 }
+
+async function assertPendingActionButtons(page) {
+  const pendingActions = page.locator("[data-pending-action]");
+  assert.equal(await pendingActions.count(), 2);
+  const actionMetrics = await pendingActions.evaluateAll((els) =>
+    els.map((el) => {
+      const box = el.getBoundingClientRect();
+      const parent = el.parentElement?.getBoundingClientRect();
+      const label = el.querySelector("span");
+      const labelBox = label?.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return {
+        height: box.height,
+        width: box.width,
+        parentWidth: parent?.width ?? 0,
+        labelHeight: labelBox?.height ?? 0,
+        nowrap: style.whiteSpace === "nowrap",
+        text: label?.textContent || el.textContent || "",
+      };
+    }),
+  );
+  for (const row of actionMetrics) {
+    assert.ok(row.height >= 44, `${row.text} height ${row.height}`);
+    assert.ok(row.width + 1 >= row.parentWidth, `${row.text} width ${row.width} / ${row.parentWidth}`);
+    assert.ok(row.labelHeight <= 28, `${row.text} wrapped at ${row.labelHeight}px`);
+    assert.equal(row.nowrap, true);
+  }
+  assert.equal(actionMetrics.map((row) => row.text).join(), "接引人快速填表,打開正式表單");
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+}
 test(
   "club mobile DOM, scrolling, admin filters and game interactions (optional QA screenshots)",
   { skip: !base },
@@ -168,6 +198,8 @@ test(
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待填正式資料" }).waitFor();
+        await page.locator("[data-pending-action=form]").scrollIntoViewIfNeeded();
+        await assertPendingActionButtons(page);
         await capture(page, `pending-${width}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
         await page.getByRole("heading", { name: "名單", level: 1 }).waitFor();
@@ -250,7 +282,22 @@ test(
       });
       await page.route("**/api/admin/recruitment?*", route => {
         const date = new URL(route.request().url()).searchParams.get("date");
-        return route.fulfill({ json: buildRecruitmentDashboard({ date, gameRows: [], recruitmentRows: [], masterRows: [] }) });
+        return route.fulfill({ json: buildRecruitmentDashboard({
+          date,
+          gameRows: [{
+            姓名: "介面測試待填",
+            電話: "0910000000",
+            科系: "歷史學系",
+            年級: "大一",
+            遊戲關主: "柏能",
+            遊戲時間: `${date}T01:00:00.000Z`,
+            _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            _kind: "official",
+            _skipSave: false,
+          }],
+          recruitmentRows: [],
+          masterRows: [],
+        }) });
       });
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
@@ -258,6 +305,11 @@ test(
       assert.equal(await page.locator(".admin-widget-tools").count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await capture(page, "admin-desktop");
+      await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "待處理" }).click();
+      await page.getByRole("heading", { name: "待填正式資料" }).waitFor();
+      await page.locator("[data-pending-action=form]").scrollIntoViewIfNeeded();
+      await assertPendingActionButtons(page);
+      await capture(page, "pending-desktop");
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "更多" }).click();
       await page.getByRole("dialog").getByRole("heading", { name: "更多" }).waitFor();
       await capture(page, "admin-more-desktop");

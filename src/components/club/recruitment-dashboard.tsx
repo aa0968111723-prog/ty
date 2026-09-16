@@ -147,14 +147,18 @@ export function PendingQueue({
                 <div className="recruitment-actions">
                   <a
                     className="admin-primary"
+                    data-pending-action="quickfill"
                     href={`/follow-up?personKey=${encodeURIComponent(row.personKey)}${row.submissionId ? `&submissionId=${encodeURIComponent(row.submissionId)}` : ""}`}
                   >
-                    接引人快速填表
+                    <span>接引人快速填表</span>
                   </a>
-                  <a href={row.prefillUrl} target="_blank" rel="noreferrer">
-                    打開正式表單 <ExternalLink size={16} />
+                  <a data-pending-action="form" href={row.prefillUrl} target="_blank" rel="noreferrer">
+                    <span>打開正式表單</span>
+                    <ExternalLink size={16} aria-hidden="true" />
                   </a>
-                  <button type="button" onClick={() => setProfile(row)}>時間線</button>
+                  <button type="button" onClick={() => setProfile(row)}>
+                    <span>時間線</span>
+                  </button>
                 </div>
               </article>
             ))}
