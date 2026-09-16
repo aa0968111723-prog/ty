@@ -34,4 +34,25 @@ describe("client/server bundle boundaries", () => {
     assert.doesNotMatch(route, /from ["']@\/lib\/club\/(api|admin|sheets)\.mjs["']/);
     assert.match(sheets, /@tanstack\/react-start\/server-only/);
   });
+
+  it("keeps googleapis out of admin UI modules", async () => {
+    const { globSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const cwd = fileURLToPath(root);
+    const files = globSync([
+      "src/components/**/*.ts",
+      "src/components/**/*.tsx",
+      "src/components/**/*.js",
+      "src/components/**/*.mjs",
+      "src/routes/*.ts",
+      "src/routes/*.tsx",
+    ], { cwd });
+    assert.ok(files.includes("src/routes/admin.tsx"));
+    assert.ok(files.some((path) => path.endsWith("war-room.tsx")));
+    for (const path of files) {
+      const source = await readFile(new URL(path, root), "utf8");
+      assert.doesNotMatch(source, /from ["']googleapis["']/, `${path} imported googleapis`);
+      assert.doesNotMatch(source, /from ["']@\/lib\/club\/sheets\.mjs["']/, `${path} imported sheets`);
+    }
+  });
 });

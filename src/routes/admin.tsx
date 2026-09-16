@@ -10,6 +10,32 @@ import { DEFAULT_LAYOUT, STORAGE_KEY, readLayout, initialView, taipeiDate, time,
 import { Bars, Podium } from "@/components/club/admin-metrics";
 import { PendingQueue, RosterList, RecruitmentSync, type RecruitmentData } from "@/components/club/recruitment-dashboard";
 import { WarRoom } from "@/components/club/war-room";
+import { publicError } from "@/lib/club/public-error.mjs";
+
+const SYNC_LABEL = { ok: "成功", wait: "等待", fail: "失敗" } as const;
+
+function isAuthFailure(result: PromiseSettledResult<unknown>) {
+  return result.status === "rejected" && result.reason instanceof Error && result.reason.message === "AUTH";
+}
+
+function headingSyncState(options: {
+  tab: Tab;
+  error: string;
+  data: Dashboard | null;
+  recruitment: RecruitmentData | null;
+}): keyof typeof SYNC_LABEL {
+  const recruitmentView = options.tab === "recruitment" || options.tab === "pending" || options.tab === "roster";
+  if (options.error) return "fail";
+  if (recruitmentView) {
+    if (!options.recruitment) return "wait";
+    const ok = options.recruitment.sync.gameResults.ok
+      && options.recruitment.sync.recruitmentResponses.ok
+      && options.recruitment.sync.recruitmentMaster.ok;
+    return ok ? "ok" : "fail";
+  }
+  if (!options.data) return "wait";
+  return options.data.sync.forms.ok && options.data.sync.results.ok ? "ok" : "fail";
+}
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -31,6 +57,7 @@ function AdminDashboard() {
   const [recruitment, setRecruitment] = useState<RecruitmentData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [query, setQuery] = useState("");
   const [leader, setLeader] = useState("");
   const [recruiter, setRecruiter] = useState("");
@@ -71,14 +98,21 @@ function AdminDashboard() {
     setBusy(true);
     try {
       const current = taipeiDate();
+      const readBody = async (response: Response) => {
+        try {
+          return await response.json();
+        } catch {
+          return {};
+        }
+      };
       const load = async (target: string) => {
         const response = await fetch(`/api/admin/dashboard?date=${encodeURIComponent(target)}`, {
           cache: "no-store",
           signal: AbortSignal.timeout(15000),
         });
         if (response.status === 401) throw new Error("AUTH");
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "同步失敗");
+        const body = await readBody(response);
+        if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "同步失敗");
         return body as Dashboard;
       };
       const loadRecruitment = async (target: string) => {
@@ -87,33 +121,50 @@ function AdminDashboard() {
           { cache: "no-store", signal: AbortSignal.timeout(15000) },
         );
         if (response.status === 401) throw new Error("AUTH");
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "同步失敗");
+        const body = await readBody(response);
+        if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "同步失敗");
         return body as RecruitmentData;
       };
-      const selected = await load(date);
-      const today = date === current ? selected : await load(current);
-      const board = await loadRecruitment(date).catch(() => null);
-      if (id === generation.current) {
-        setData(selected);
-        setTodayData(today);
-        if (board) setRecruitment(board);
-        setError("");
+      const selectedPromise = load(date);
+      const todayPromise = date === current ? selectedPromise : load(current);
+      const [selectedResult, todayResult, boardResult] = await Promise.allSettled([
+        selectedPromise,
+        todayPromise,
+        loadRecruitment(date),
+      ]);
+      if (id !== generation.current) return;
+      if (isAuthFailure(selectedResult) || isAuthFailure(todayResult) || isAuthFailure(boardResult)) {
+        throw new Error("AUTH");
       }
+      const nextErrors: string[] = [];
+      if (selectedResult.status === "fulfilled") {
+        setData(selectedResult.value);
+        if (date === current) setTodayData(selectedResult.value);
+      } else {
+        nextErrors.push(publicError(selectedResult.reason, "同步失敗"));
+      }
+      if (date !== current) {
+        if (todayResult.status === "fulfilled") setTodayData(todayResult.value);
+        else nextErrors.push(publicError(todayResult.reason, "同步失敗"));
+      }
+      if (boardResult.status === "fulfilled") setRecruitment(boardResult.value);
+      else nextErrors.push(publicError(boardResult.reason, "招生資料同步失敗"));
+      setError(nextErrors[0] || "");
     } catch (cause) {
       if (id !== generation.current) return;
       if (cause instanceof Error && cause.message === "AUTH") {
+        setSessionExpired(true);
         setGate((current) => ({ ...(current || { authenticated: false }), authenticated: false, setupRequired: false }));
         setData(null);
+        setTodayData(null);
         setRecruitment(null);
-      } else setError(cause instanceof Error ? cause.message : "同步失敗，請重新整理");
+      } else setError(publicError(cause, "同步失敗，請重新整理"));
     } finally {
       if (id === generation.current) setBusy(false);
     }
   }, [date]);
   useEffect(() => {
     if (!authenticated) return;
-    setData(null);
     void refresh();
     const timer = window.setInterval(() => {
       void refresh();
@@ -137,8 +188,11 @@ function AdminDashboard() {
       if (!response.ok) throw new Error();
       generation.current++;
       const nextGate = await fetch("/api/admin/session").then((res) => res.json()).catch(() => ({ authenticated: false }));
+      setSessionExpired(false);
       setGate(nextGate);
       setData(null);
+      setTodayData(null);
+      setRecruitment(null);
     } catch {
       setError("登出失敗，請再試一次");
     }
@@ -201,6 +255,10 @@ function AdminDashboard() {
     return <DashboardWidget key={id} id={id} editor={editor} data={data} todayData={todayData} date={date} layout={layout} dragging={dragging} setDragging={setDragging} togglePinned={togglePinned} toggleVisible={toggleVisible} moveWidget={moveWidget} selectLeader={selectLeader} />;
   }
 
+  const syncState = headingSyncState({ tab, error, data, recruitment });
+  const recruitmentView = tab === "recruitment" || tab === "pending" || tab === "roster";
+  const hasLastGood = recruitmentView ? Boolean(recruitment) : Boolean(data);
+
   if (gate === null)
     return (
       <main className="admin-page admin-auth">
@@ -212,7 +270,9 @@ function AdminDashboard() {
       <main className="admin-page admin-auth">
         <AdminLogin
           gate={gate}
+          expired={sessionExpired}
           onSuccess={() => {
+            setSessionExpired(false);
             const standalone = window.matchMedia("(display-mode: standalone)").matches
               || ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
             const url = new URL(window.location.href);
@@ -307,42 +367,41 @@ function AdminDashboard() {
           />
         </label>
       </div>
-      <div className="admin-sync-line" role="status">
+      <div className="admin-sync-line" role="status" data-sync-state={syncState}>
         <span>
-          {data || recruitment
-            ? (
-                tab === "recruitment" || tab === "pending" || tab === "roster"
-                  ? recruitment?.sync.gameResults.ok
-                    && recruitment.sync.recruitmentResponses.ok
-                    && recruitment.sync.recruitmentMaster.ok
-                    && !error
-                  : data?.sync.forms.ok && data?.sync.results.ok && !error
-              )
-              ? "● 已連線"
-              : "○ 同步異常 · 部分資料可能缺漏"
-            : busy
-              ? "同步中…"
-              : "尚未同步"}
+          {syncState === "ok" ? "●" : "○"} {SYNC_LABEL[syncState]}
         </span>
         <span>最後同步 {recruitment || data ? time((recruitment?.sync.updatedAt || data?.sync.updatedAt) as string) : "—"}</span>
       </div>
       {error && (
-        <p className="admin-error" role="alert">
-          {error} · 保留上次成功資料
-        </p>
+        <div className="admin-error admin-error-banner" role="alert">
+          <span>{error} · {hasLastGood ? "顯示上次成功資料" : "請按更新再試"}</span>
+          <button type="button" data-sync-retry disabled={busy} onClick={() => void refresh(true)}>
+            再試一次
+          </button>
+        </div>
       )}
 
       {tab === "recruitment" && (
         <WarRoom
           data={recruitment}
           syncError={error}
+          lastSyncAt={recruitment?.sync.updatedAt || data?.sync.updatedAt}
+          onRetry={() => void refresh(true)}
           onOpenPending={() => setView("pending", "pending")}
           onOpenRoster={() => setView("roster", "roster")}
         />
       )}
 
       {tab === "pending" && !recruitment && (
-        <p className="admin-empty">{busy ? "讀取待處理名單…" : "同步異常，請再按更新。上次成功的資料會留在戰情。"}</p>
+        <section className="admin-panel" data-empty="pending-sync">
+          <p className="admin-empty">{busy && !error ? "讀取待處理名單…" : "招生資料同步失敗"}</p>
+          {error || !busy ? (
+            <button type="button" className="admin-primary" data-sync-retry disabled={busy} onClick={() => void refresh(true)}>
+              再試一次
+            </button>
+          ) : null}
+        </section>
       )}
       {recruitment && tab === "pending" && (
         <PendingQueue
@@ -355,7 +414,14 @@ function AdminDashboard() {
       )}
 
       {tab === "roster" && !recruitment && (
-        <p className="admin-empty">{busy ? "讀取名單…" : "同步異常，請再按更新。上次成功的資料會留在戰情。"}</p>
+        <section className="admin-panel" data-empty="roster-sync">
+          <p className="admin-empty">{busy && !error ? "讀取名單…" : "招生資料同步失敗"}</p>
+          {error || !busy ? (
+            <button type="button" className="admin-primary" data-sync-retry disabled={busy} onClick={() => void refresh(true)}>
+              再試一次
+            </button>
+          ) : null}
+        </section>
       )}
       {recruitment && tab === "roster" && (
         <RosterList

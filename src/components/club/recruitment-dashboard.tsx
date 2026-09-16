@@ -279,26 +279,32 @@ export function RosterList({
           </select>
         </div>
         <p className="admin-caption">{people.length} 位 · 僅工作人員可見</p>
-        <div className="admin-person-list is-always">
-          {people.map((row) => (
-            <article
-              key={row.personKey}
-              role="button"
-              tabIndex={0}
-              onClick={() => setProfile(row)}
-              onKeyDown={(event) => event.key === "Enter" && setProfile(row)}
-            >
-              <div>
-                <strong>{row.name}</strong>
-                {row.needsReview ? <span className="admin-badge is-review">需確認</span> : null}
-                <span className="admin-badge">{row.pending ? "待填正式資料" : row.activity || "已填表"}</span>
-              </div>
-              <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
-              <p>遊戲關主 {row.gameGatekeeper || "未填"} · 這位有緣人的接引人 {row.recruiters || "尚未填表"}</p>
-              <small>{row.phone || "電話未填"}</small>
-            </article>
-          ))}
-        </div>
+        {!people.length ? (
+          <p className="admin-empty" data-empty="roster">
+            {data.profiles.length === 0 ? "目前還沒有名單" : "沒有符合條件的同學"}
+          </p>
+        ) : (
+          <div className="admin-person-list is-always">
+            {people.map((row) => (
+              <article
+                key={row.personKey}
+                role="button"
+                tabIndex={0}
+                onClick={() => setProfile(row)}
+                onKeyDown={(event) => event.key === "Enter" && setProfile(row)}
+              >
+                <div>
+                  <strong>{row.name}</strong>
+                  {row.needsReview ? <span className="admin-badge is-review">需確認</span> : null}
+                  <span className="admin-badge">{row.pending ? "待填正式資料" : row.activity || "已填表"}</span>
+                </div>
+                <p>{row.department || "科系未填"} · {row.grade || "年級未填"}</p>
+                <p>遊戲關主 {row.gameGatekeeper || "未填"} · 這位有緣人的接引人 {row.recruiters || "尚未填表"}</p>
+                <small>{row.phone || "電話未填"}</small>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
       <RecruitmentProfileSheet profile={profile} onClose={() => setProfile(null)} />
     </div>

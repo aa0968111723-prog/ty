@@ -116,6 +116,59 @@ async function assertWarCardLabels(page) {
   assert.equal(await page.getByText("分級").count(), 0);
   assert.equal(await page.getByText("S／A／B").count(), 0);
 }
+async function assertAdminSafeCopy(page) {
+  const text = await page.locator("body").innerText();
+  assert.equal(text.includes("分級"), false);
+  assert.equal(text.includes("S／A／B"), false);
+  assert.equal(/submissionId/i.test(text), false);
+  assert.equal(text.includes("BEGIN PRIVATE"), false);
+  assert.equal(text.includes("GOOGLE_PRIVATE_KEY"), false);
+  assert.equal(text.includes("googleapis"), false);
+}
+async function mockAdminApis(page, { recruitmentMode }) {
+  await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+  await page.route("**/api/admin/dashboard**", (route) => {
+    const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+    return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+  });
+  await page.route("**/api/admin/recruitment**", (route) => {
+    const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
+    if (recruitmentMode() === "fail") {
+      return route.fulfill({
+        status: 500,
+        json: { error: "GOOGLE_PRIVATE_KEY -----BEGIN PRIVATE KEY----- leaked" },
+      });
+    }
+    if (recruitmentMode() === "empty") {
+      return route.fulfill({
+        json: buildRecruitmentDashboard({
+          date,
+          gameRows: [],
+          recruitmentRows: [],
+          masterRows: [],
+        }),
+      });
+    }
+    return route.fulfill({ status: 401, json: { error: "請先登入管理後台" } });
+  });
+}
+async function assertFailShell(page, navName) {
+  await page.locator("[data-war-room=home][data-war-state=error]").waitFor();
+  await page.locator("[data-sync-state=fail]").first().waitFor();
+  assert.ok(await page.getByText("失敗", { exact: true }).count());
+  assert.ok(await page.getByText(/最後同步/).count());
+  assert.ok(await page.getByRole("button", { name: "再試一次" }).count());
+  const nav = page.getByRole("navigation", { name: navName, exact: true });
+  assert.equal(await nav.getByRole("button").count(), 4);
+  await nav.getByRole("button", { name: "戰情", exact: true }).waitFor();
+  await nav.getByRole("button", { name: "待處理", exact: true }).waitFor();
+  await nav.getByRole("button", { name: "名單", exact: true }).waitFor();
+  await nav.getByRole("button", { name: "更多", exact: true }).waitFor();
+  const labels = await page.locator(".war-card .war-card-label").allTextContents();
+  assert.deepEqual(labels.map((value) => value.trim()), ["接觸", "活動", "入社", "保證金"]);
+  await assertAdminSafeCopy(page);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+}
 test(
   "club mobile DOM, scrolling, admin filters and game interactions (optional QA screenshots)",
   { skip: !base },
@@ -398,6 +451,58 @@ test(
       assert.equal(await page.getByRole("heading", { name: "名單", level: 1 }).count(), 1);
       assert.deepEqual(errors, []);
       await context.close();
+    });
+    await t.test("admin keeps war-room shell on recruitment failure, empty roster, and expired session", async () => {
+      let recruitmentMode = "fail";
+      const runViewport = async (width, height, navName, shots) => {
+        const context = await browser.newContext({
+          viewport: { width, height },
+          ...(width <= 430 ? { isMobile: true, hasTouch: true } : {}),
+        });
+        const page = await context.newPage();
+        const errors = [];
+        page.on("pageerror", (error) => errors.push(error.message));
+        await page.route("**/*", (route) =>
+          new URL(route.request().url()).origin !== origin
+            ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+            : route.continue(),
+        );
+        await mockAdminApis(page, { recruitmentMode: () => recruitmentMode });
+        recruitmentMode = "fail";
+        await page.goto(`${origin}/admin`);
+        await assertFailShell(page, navName);
+        await page.locator(".war-sync [data-sync-retry]").click();
+        await page.locator("[data-war-room=home][data-war-state=error]").waitFor();
+        await capture(page, shots.fail);
+        recruitmentMode = "empty";
+        await page.locator(".war-sync [data-sync-retry]").click();
+        await page.locator("[data-war-room=home]:not([data-war-state])").waitFor();
+        await page.getByRole("navigation", { name: navName, exact: true }).getByRole("button", { name: "名單", exact: true }).click();
+        await page.locator("[data-empty=roster]").waitFor();
+        assert.ok(await page.getByText("目前還沒有名單").count());
+        await assertAdminSafeCopy(page);
+        await capture(page, shots.empty);
+        recruitmentMode = "auth";
+        await page.route("**/api/admin/dashboard**", (route) =>
+          route.fulfill({ status: 401, json: { error: "請先登入管理後台" } }),
+        );
+        await page.getByRole("button", { name: "更新資料" }).click();
+        await page.locator("[data-login-state=expired]").waitFor();
+        assert.match(await page.locator("[data-login-state=expired]").innerText(), /登入已失效，請重新登入/);
+        await assertAdminSafeCopy(page);
+        if (shots.expired) await capture(page, shots.expired);
+        assert.deepEqual(errors, []);
+        await context.close();
+      };
+      await runViewport(390, 844, "手機後台導覽", {
+        fail: "admin-fail-390",
+        empty: "admin-empty-390",
+        expired: "admin-expired-390",
+      });
+      await runViewport(1280, 800, "後台導覽", {
+        fail: "admin-fail-desktop",
+        empty: "admin-empty-desktop",
+      });
     });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({

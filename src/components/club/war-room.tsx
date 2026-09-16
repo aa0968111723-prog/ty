@@ -78,14 +78,25 @@ function ExpandCard({
   );
 }
 
+const SHELL_CARDS = [
+  { id: "contacts", icon: Users, label: "接觸", hint: "累積 —" },
+  { id: "activity-today", icon: CalendarHeart, label: "活動", hint: "報名" },
+  { id: "joined", icon: Landmark, label: "入社", hint: "招生表" },
+  { id: "deposit", icon: Wallet, label: "保證金", hint: "—" },
+] as const;
+
 export function WarRoom({
   data,
   syncError,
+  lastSyncAt,
+  onRetry,
   onOpenPending,
   onOpenRoster,
 }: {
   data: RecruitmentData | null;
   syncError?: string;
+  lastSyncAt?: string;
+  onRetry?: () => void;
   onOpenPending: () => void;
   onOpenRoster: () => void;
 }) {
@@ -94,11 +105,46 @@ export function WarRoom({
     setExpanded((current) => (current === id ? null : id));
   }
   if (!data) {
+    const waiting = !syncError;
     return (
-      <div className="war-room" data-war-room="home">
-        <p className="admin-empty">
-          {syncError ? "同步異常，請再按更新。上次成功的資料會留在這裡。" : "正在載入今日戰情…"}
-        </p>
+      <div className="war-room" data-war-room="home" data-war-state={waiting ? "loading" : "error"}>
+        <section className="war-hero" aria-label="今日接觸">
+          <div>
+            <p>一眼看懂今天</p>
+            <strong>—</strong>
+            <span>今日接觸</span>
+          </div>
+          <Ring value={0} max={1} />
+          <small>{waiting ? "正在載入今日戰情…" : "招生資料同步失敗，戰情殼仍可操作。"}</small>
+        </section>
+        <section className="war-grid" aria-label="招生數字">
+          {SHELL_CARDS.map((card) => (
+            <ExpandCard
+              key={card.id}
+              id={card.id}
+              icon={card.icon}
+              label={card.label}
+              value="—"
+              hint={card.hint}
+              expanded={expanded}
+              onToggle={toggle}
+            >
+              <p>{waiting ? "資料同步完成後會顯示人數。" : "同步失敗，數字暫缺。請再試一次。"}</p>
+            </ExpandCard>
+          ))}
+        </section>
+        <div className="war-sync" role="status" data-sync-state={waiting ? "wait" : "fail"}>
+          <Radio size={18} />
+          <div>
+            <strong>{waiting ? "等待" : "失敗"}</strong>
+            <span>最後同步 {time(lastSyncAt || "")} · Asia/Taipei</span>
+          </div>
+          {onRetry ? (
+            <button type="button" data-sync-retry onClick={onRetry}>
+              再試一次
+            </button>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -295,13 +341,20 @@ export function WarRoom({
         </span>
       </button>
 
-      <div className="war-sync" role="status">
+      <div className="war-sync" role="status" data-sync-state={syncOk ? "ok" : "fail"}>
         <Radio size={18} />
         <div>
-          <strong>{syncOk ? "資料已同步" : "同步異常，顯示上次成功資料"}</strong>
-          <span>最後同步 {time(data.sync.updatedAt)} · Asia/Taipei</span>
+          <strong>{syncOk ? "成功" : "失敗"}</strong>
+          <span>
+            最後同步 {time(lastSyncAt || data.sync.updatedAt)} · Asia/Taipei
+            {syncOk ? "" : " · 顯示上次成功資料"}
+          </span>
         </div>
-        <button type="button" onClick={onOpenRoster}>看名單</button>
+        {syncOk || !onRetry ? (
+          <button type="button" onClick={onOpenRoster}>看名單</button>
+        ) : (
+          <button type="button" data-sync-retry onClick={onRetry}>再試一次</button>
+        )}
       </div>
     </div>
   );
