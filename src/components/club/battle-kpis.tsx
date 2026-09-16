@@ -100,8 +100,9 @@ function ExpandCard({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const activities = id === "activity" || id === "popular";
   return (
-    <article className={`battle-kpi${open ? " is-open" : ""}${id === "pending" ? " is-wide" : ""}${id === "popular" ? " is-text" : ""}`}>
+    <article className={`battle-kpi${open ? " is-open" : ""}${id === "pending" ? " is-wide" : ""}${id === "popular" ? " is-text" : ""}${activities ? " is-activities" : ""}`}>
       <button
         type="button"
         className="battle-kpi-toggle"
@@ -122,6 +123,32 @@ function ExpandCard({
         {details}
       </div>
     </article>
+  );
+}
+
+function ActivityBreakdown({
+  activities,
+  popularName,
+  missing,
+}: {
+  activities?: Array<{ name: string; count: number; today: number }>;
+  popularName?: string;
+  missing?: boolean;
+}) {
+  const rows = activities || [];
+  if (!rows.length) {
+    return <p>還沒有活動報名資料。資料不足時不會顯示成 0。</p>;
+  }
+  return (
+    <ul className="battle-activity-breakdown" aria-label="各活動報名人數">
+      {rows.map((row) => (
+        <li key={row.name} className={row.name === popularName ? "is-popular" : undefined}>
+          <span>{row.name}</span>
+          <b>{missing ? "—" : metric(row.count)}</b>
+          <small>今日 {missing ? "—" : metric(row.today)}</small>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -184,7 +211,16 @@ export function BattleCommand({
           label="活動報名"
           value={metric(summary.activity)}
           hint={`今日 ${metric(summary.activityToday)} · 一人多活動只計一次`}
-          details={<p>正式招生表至少報名一項活動的人數。不含「無／考慮中」。今日 {metric(summary.activityToday)} 人。</p>}
+          details={
+            <>
+              <p>正式招生表至少報名一項活動的人數。不含「無／考慮中」。今日 {metric(summary.activityToday)} 人。</p>
+              <ActivityBreakdown
+                activities={data.activities}
+                popularName={popular?.name}
+                missing={summary.activity == null}
+              />
+            </>
+          }
         />
         <ExpandCard
           id="popular"
@@ -193,14 +229,21 @@ export function BattleCommand({
           value={popular?.name || "—"}
           hint={popular ? `${metric(popular.count)} 人` : "尚無正式報名"}
           details={
-            popular ? (
-              <p>
-                正式招生表「報名了那個活動」人數最多。今日 {metric(popular.today)} 人。
-                不含「無／考慮中」，不用遊戲分數推論。
-              </p>
-            ) : (
-              <p>還沒有活動報名資料。資料不足時不會顯示成 0。</p>
-            )
+            <>
+              {popular ? (
+                <p>
+                  正式招生表「報名了那個活動」人數最多。今日 {metric(popular.today)} 人。
+                  不含「無／考慮中」，不用遊戲分數推論。
+                </p>
+              ) : (
+                <p>還沒有活動報名資料。資料不足時不會顯示成 0。</p>
+              )}
+              <ActivityBreakdown
+                activities={data.activities}
+                popularName={popular?.name}
+                missing={summary.activity == null}
+              />
+            </>
           }
         />
         <ExpandCard

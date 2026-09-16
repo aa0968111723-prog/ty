@@ -597,7 +597,10 @@ test(
       await page.getByText(/練習與試玩不計入/).waitFor();
       await popular.click();
       assert.equal(await popular.getAttribute("aria-expanded"), "true");
-      await page.locator("#popular-detail").getByText(/還沒有活動報名資料|人數最多/).waitFor();
+      await page.locator("#popular-detail").getByText("9/30茶會").waitFor();
+      await page.locator("#popular-detail").getByText("10/07演講").waitFor();
+      await page.locator("#popular-detail").getByText("社課").waitFor();
+      await page.locator("#popular-detail").getByText("體驗禪").waitFor();
       assert.equal(await page.getByRole("button", { name: /資料同步狀態/ }).count(), 0);
       assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
       const unlabeledCharts = await page.evaluate(() =>
@@ -606,6 +609,80 @@ test(
           .map((el) => el.className),
       );
       assert.deepEqual(unlabeledCharts, []);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("command home expands 活動報名 and 最受歡迎 into per-activity counts", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const tea = {
+        姓名: "茶會同學", 電話: "0910000101", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z",
+      };
+      const talk = {
+        姓名: "演講同學", 電話: "0910000102", 科系: "會計學系", 年級: "大二", 遊戲關主: "安倢",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T02:00:00.000Z",
+      };
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({
+          date: "2026-09-14",
+          gameRows: [tea, talk],
+          recruitmentRows: [{
+            時間戳記: "2026/9/14 下午 3:00:00",
+            同學的姓名: tea.姓名,
+            "同學電話/LINE": tea.電話,
+            報名了那個活動: "9/30茶會, 社課",
+            是否入社: "否",
+            保證金是否繳費: "否",
+            _gameSubmissionId: tea._submissionId,
+          }, {
+            時間戳記: "2026/9/14 下午 3:00:00",
+            同學的姓名: talk.姓名,
+            "同學電話/LINE": talk.電話,
+            報名了那個活動: "10/07演講",
+            是否入社: "是",
+            保證金是否繳費: "否",
+            _gameSubmissionId: talk._submissionId,
+          }],
+          masterRows: [],
+        }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const activity = page.getByRole("button", { name: /活動報名/ }).first();
+      const popular = page.getByRole("button", { name: /最受歡迎活動/ });
+      assert.equal(await activity.getAttribute("aria-expanded"), "false");
+      await activity.click();
+      assert.equal(await activity.getAttribute("aria-expanded"), "true");
+      const activityDetail = page.locator("#activity-detail");
+      await activityDetail.getByText("9/30茶會").waitFor();
+      await activityDetail.getByText("10/07演講").waitFor();
+      await activityDetail.getByText("社課").waitFor();
+      await activityDetail.getByText("體驗禪").waitFor();
+      await activityDetail.locator("li", { hasText: "9/30茶會" }).getByText("1", { exact: true }).first().waitFor();
+      await capture(page, "command-activity-expand-390");
+      await popular.click();
+      assert.equal(await popular.getAttribute("aria-expanded"), "true");
+      const popularDetail = page.locator("#popular-detail");
+      await popularDetail.getByText("9/30茶會").waitFor();
+      await popularDetail.getByText("10/07演講").waitFor();
+      await popularDetail.locator("li.is-popular", { hasText: "9/30茶會" }).waitFor();
+      await capture(page, "command-popular-expand-390");
+      assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
+      assert.equal(await page.getByRole("heading", { name: /^S$/ }).count(), 0);
+      assert.equal(await page.locator("text=submissionId").count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       assert.deepEqual(errors, []);
       await context.close();
