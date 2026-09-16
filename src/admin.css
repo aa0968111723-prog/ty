@@ -1371,8 +1371,14 @@
   color: var(--text-muted);
   font-size: var(--text-caption);
 }
-.war-card-label,
-.war-card-hint {
+.war-card-label {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+.war-card[data-war-metric="activity-today"] .war-card-hint,
+.war-card[data-war-metric="joined"] .war-card-hint,
+.war-card[data-war-metric="deposit"] .war-card-hint {
   white-space: nowrap;
   word-break: keep-all;
   overflow-wrap: normal;

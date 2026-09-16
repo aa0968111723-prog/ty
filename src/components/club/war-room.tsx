@@ -175,7 +175,7 @@ export function WarRoom({
           icon={Wallet}
           label="保證金"
           value={summary?.depositPaid == null ? "資料不足" : metric(summary.depositPaid)}
-          hint={summary?.depositTotal == null ? "金額資料不足" : `合計 ${metric(summary.depositTotal)}`}
+          hint={summary?.depositTotal == null ? "無金額" : `$${metric(summary.depositTotal)}`}
           expanded={expanded}
           onToggle={toggle}
         >
