@@ -338,6 +338,42 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("command home KPIs include sync status and stay collapsed until clicked", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({ date: "2026-09-14", gameRows: [], recruitmentRows: [], masterRows: [] }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const sync = page.getByRole("button", { name: /資料同步狀態/ });
+      await sync.waitFor();
+      assert.equal(await sync.getAttribute("aria-expanded"), "false");
+      assert.equal(await page.getByText("遊戲資料 正常", { exact: true }).count(), 0);
+      await page.getByRole("heading", { name: /各活動報名/ }).waitFor();
+      const contacts = page.getByRole("button", { name: /今日接觸/ });
+      assert.equal(await contacts.getAttribute("aria-expanded"), "false");
+      await contacts.click();
+      await page.getByText(/練習與試玩不計入/).waitFor();
+      await sync.click();
+      assert.equal(await sync.getAttribute("aria-expanded"), "true");
+      await page.getByText("遊戲資料 正常").waitFor();
+      await page.getByText("招生狀況表 正常").waitFor();
+      await page.getByText("總表 正常").waitFor();
+      assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("command home shows the next related person after picking a recruiter", async () => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const page = await context.newPage();

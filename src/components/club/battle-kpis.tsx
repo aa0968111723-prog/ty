@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CircleDollarSign,
   ClipboardList,
+  RefreshCw,
   Ticket,
   TrendingUp,
   UserPlus,
@@ -41,6 +42,13 @@ type CommandData = {
 function metric(value: number | null | undefined) {
   if (value == null) return "—";
   return value.toLocaleString("zh-Hant");
+}
+
+function syncState(flag?: { ok?: boolean; stale?: boolean }) {
+  if (!flag) return "尚未讀取";
+  if (flag.ok) return "正常";
+  if (flag.stale) return "顯示上次資料";
+  return "同步失敗";
 }
 
 function Ring({
@@ -204,6 +212,26 @@ export function BattleCommand({
           value={metric(summary.depositPaid)}
           hint="正式表單「保證金」為是"
           details={<p>{summary.depositTotal != null ? `已登錄金額合計 ${metric(summary.depositTotal)}。` : "尚未讀到保證金金額欄。"}</p>}
+        />
+        <ExpandCard
+          id="sync"
+          icon={RefreshCw}
+          label="資料同步狀態"
+          value={
+            data.sync.gameResults.ok && data.sync.recruitmentResponses.ok && data.sync.recruitmentMaster.ok
+              ? "正常"
+              : data.sync.gameResults.stale || data.sync.recruitmentResponses.stale || data.sync.recruitmentMaster.stale
+                ? "等待重試"
+                : "異常"
+          }
+          hint="遊戲／招生表／總表"
+          details={
+            <ul className="battle-sync-sources">
+              <li>遊戲資料 {syncState(data.sync.gameResults)}</li>
+              <li>招生狀況表 {syncState(data.sync.recruitmentResponses)}</li>
+              <li>總表 {syncState(data.sync.recruitmentMaster)}</li>
+            </ul>
+          }
         />
       </section>
 
