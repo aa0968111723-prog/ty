@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { UserRound } from "lucide-react";
 import {
   OFFICIAL_RECRUITERS,
@@ -9,13 +10,40 @@ export function PartnerPicker({
   customRecruiter,
   onChange,
   compact = false,
+  collapseWhenSelected = false,
 }: {
   recruiter: string;
   customRecruiter: string;
   onChange: (recruiter: string, custom: string) => void;
   compact?: boolean;
+  collapseWhenSelected?: boolean;
 }) {
   const official = recruiter === "其他" ? customRecruiter.trim() : recruiter;
+  const [expanded, setExpanded] = useState(() => !collapseWhenSelected || !official);
+  const collapsed = collapseWhenSelected && Boolean(official) && !expanded;
+
+  function pick(name: string, custom = "") {
+    onChange(name, custom);
+    if (name && name !== "其他") rememberStoredRecruiter(name);
+    if (collapseWhenSelected && name && name !== "其他") setExpanded(false);
+  }
+
+  if (collapsed) {
+    return (
+      <section className="admin-panel partner-picker is-compact" aria-label="這位有緣人的接引人">
+        <div className="partner-picked">
+          <p>
+            <span>這位有緣人的接引人</span>
+            <strong>{official}</strong>
+          </p>
+          <button type="button" onClick={() => setExpanded(true)}>
+            更換
+          </button>
+        </div>
+        <p className="admin-caption">遊戲關主另計，不會自動當成接引人</p>
+      </section>
+    );
+  }
   if (compact) {
     return (
       <section className="admin-panel partner-picker is-compact" aria-label="這位有緣人的接引人">
@@ -67,10 +95,7 @@ export function PartnerPicker({
             key={name}
             type="button"
             aria-pressed={recruiter === name}
-            onClick={() => {
-              onChange(name, "");
-              rememberStoredRecruiter(name);
-            }}
+            onClick={() => pick(name)}
           >
             {name}
           </button>

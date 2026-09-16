@@ -361,8 +361,20 @@ test(
         assert.equal(await page.getByText("S/A/B").count(), 0);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待處理有緣人" }).waitFor();
-        await page.getByRole("link", { name: "填寫正式資料" }).waitFor();
-        await assertScroll("admin");
+        await page.getByRole("button", { name: "柏能", exact: true }).click();
+        const fill = page.getByRole("link", { name: "填寫正式資料" }).first();
+        await fill.waitFor();
+        const fillBox = await fill.boundingBox();
+        const viewport = page.viewportSize();
+        assert.ok(fillBox && viewport);
+        assert.ok(
+          fillBox.y >= 0 && fillBox.y + Math.min(fillBox.height, 44) <= viewport.height,
+          `填寫正式資料 must stay on-screen after choosing recruiter ${JSON.stringify(fillBox)} h=${viewport.height}`,
+        );
+        assert.ok(fillBox.height >= 44);
+        assert.ok(fillBox.width >= 160, `填寫正式資料 must stay a wide tap target ${JSON.stringify(fillBox)}`);
+        assert.ok(await page.getByText("這位有緣人的接引人").count());
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await capture(page, `admin-${width}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "我的釘選", exact: true }).click();

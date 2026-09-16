@@ -394,6 +394,7 @@ function AdminDashboard() {
       {tab === "pending" && (
         <>
           <PartnerPicker
+            collapseWhenSelected
             recruiter={partner.recruiter || recruiter}
             customRecruiter={partner.customRecruiter}
             onChange={(next, custom) => {

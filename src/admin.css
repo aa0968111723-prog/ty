@@ -490,7 +490,7 @@
 .admin-person-list article:last-child {
   border: 0;
 }
-.admin-person-list article > div {
+.admin-person-list article > div:not(.recruitment-actions) {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1109,6 +1109,12 @@
   white-space: nowrap;
   word-break: keep-all;
 }
+.recruitment-pending .recruitment-actions {
+  grid-template-columns: 1fr 1fr;
+}
+.recruitment-pending .recruitment-actions .admin-primary {
+  grid-column: 1 / -1;
+}
 .recruitment-actions a,
 .recruitment-sheet .admin-primary {
   display: inline-flex;
@@ -1315,6 +1321,28 @@
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-body);
+}
+.partner-picked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.partner-picked p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  min-width: 0;
+}
+.partner-picked span {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+.partner-picked button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 var(--space-4);
+  flex: none;
 }
 .partner-picker.is-compact {
   padding: var(--space-4);
