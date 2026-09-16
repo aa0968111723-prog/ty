@@ -3,6 +3,7 @@ import { ChevronDown, ExternalLink, Filter } from "lucide-react";
 import { BattleCommand } from "./battle-kpis";
 import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
 import { OFFICIAL_RECRUITERS, RECRUITER_STORAGE_KEY, taipeiDate } from "@/lib/club/recruitment-prefill.mjs";
+import { filterPendingQueue } from "@/lib/club/recruitment-queue.mjs";
 import { time } from "./admin-presentation";
 
 export type SyncFlag = { ok: boolean; stale?: boolean; error?: string };
@@ -114,16 +115,6 @@ function statusLabel(row: RecruitmentProfile) {
   return "已填正式資料";
 }
 
-function relatedRank(
-  row: { recruiterList?: string[]; recruiters?: string; gameGatekeeper?: string },
-  self: string,
-) {
-  if (!self) return 1;
-  if ((row.recruiterList || []).includes(self) || row.recruiters === self) return 0;
-  if (row.gameGatekeeper === self) return 0;
-  return 1;
-}
-
 function PersonCard({
   row,
   onOpen,
@@ -218,26 +209,21 @@ export function RecruitmentDashboard({
   const [range, setRange] = useState<"today" | "yesterday" | "date" | "all">("all");
   const [handled, setHandled] = useState<Set<string>>(readHandled);
   const [selfRecruiter, setSelfRecruiter] = useState(() => recruiter || readRecruiter());
+  const [showAllPending, setShowAllPending] = useState(false);
   const activities = data.activities?.length
     ? data.activities.map((row) => row.name)
     : [...new Set(data.profiles.flatMap((row) => row.activityList || []).filter(Boolean))];
 
   const pending = useMemo(() => {
-    return data.pending
-      .filter((row) => {
-        if (handled.has(row.personKey) && status !== "handled") return false;
-        if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
-        if (selfRecruiter && row.recruiters && !(row.recruiterList || []).includes(selfRecruiter) && row.recruiters !== selfRecruiter) {
-          return false;
-        }
-        return rowMatchesQuery(row, query);
-      })
-      .sort((a, b) => {
-        const rank = relatedRank(a, selfRecruiter) - relatedRank(b, selfRecruiter);
-        if (rank) return rank;
-        return (b.waitMinutes || 0) - (a.waitMinutes || 0);
-      });
-  }, [data.pending, gameGatekeeper, selfRecruiter, query, handled, status]);
+    return filterPendingQueue(data.pending, {
+      self: selfRecruiter,
+      showAll: showAllPending || (mode === "command" && !selfRecruiter),
+      handled,
+      includeHandled: status === "handled",
+      gameGatekeeper,
+      query,
+    });
+  }, [data.pending, gameGatekeeper, selfRecruiter, query, handled, status, showAllPending, mode]);
 
   const people = useMemo(() => {
     const today = data.date;
@@ -271,6 +257,7 @@ export function RecruitmentDashboard({
   function rememberRecruiter(name: string) {
     setSelfRecruiter(name);
     setRecruiter(name);
+    setShowAllPending(false);
     try { localStorage.setItem(RECRUITER_STORAGE_KEY, name); } catch { /* ignore */ }
   }
 
@@ -304,7 +291,11 @@ export function RecruitmentDashboard({
             <button type="button" className="admin-primary" onClick={() => onOpenQueue?.()}>全部待處理</button>
           </div>
           {!pending.length ? (
-            <p className="admin-empty">目前沒有待填正式資料的同學</p>
+            <p className="admin-empty">
+              {selfRecruiter
+                ? `目前沒有與「${selfRecruiter}」相關、尚未填正式資料的同學`
+                : "目前沒有待填正式資料的同學"}
+            </p>
           ) : (
             <div className="admin-person-list">
               {pending.slice(0, 3).map((row) => (
@@ -352,9 +343,18 @@ export function RecruitmentDashboard({
             </button>
           </div>
           <p className="admin-caption">
-            {pending.length} 位尚未填正式資料
-            {selfRecruiter ? ` · 優先顯示關主或接引人是「${selfRecruiter}」` : " · 先選接引人，自己的有緣人會排前面"}
+            {showAllPending || !selfRecruiter
+              ? `${pending.length} 位尚未填正式資料`
+              : `${pending.length} 位與「${selfRecruiter}」相關、尚未填正式資料`}
           </p>
+          <button
+            type="button"
+            aria-pressed={showAllPending}
+            data-queue="show-all"
+            onClick={() => setShowAllPending((value) => !value)}
+          >
+            {showAllPending ? "只看我的有緣人" : "看全部尚未填表"}
+          </button>
           <button type="button" onClick={() => setStatus(status === "handled" ? "pending" : "handled")}>
             {status === "handled" ? "只看未處理" : "含已標記處理"}
           </button>
@@ -366,7 +366,17 @@ export function RecruitmentDashboard({
             </select>
           </div>
           {!pending.length ? (
-            <p className="admin-empty">這時段沒有待處理同學</p>
+            <div className="admin-empty" role="status">
+              {!selfRecruiter && !showAllPending ? (
+                <p>先選「這位有緣人的接引人」。預設只顯示與你相關、尚未填正式資料或尚未完成追蹤的同學。</p>
+              ) : selfRecruiter && !showAllPending ? (
+                <p>
+                  目前沒有與「{selfRecruiter}」相關、尚未填正式資料的同學。遊戲關主不會自動變成正式接引人。若要協助其他有緣人，請點「看全部尚未填表」。
+                </p>
+              ) : (
+                <p>這時段沒有待處理同學</p>
+              )}
+            </div>
           ) : (
             <div className="admin-person-list">
               {pending.map((row) => (

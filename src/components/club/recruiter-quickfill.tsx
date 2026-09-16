@@ -12,6 +12,7 @@ import {
   generatePrefilledFormUrl,
   taipeiDate,
 } from "@/lib/club/recruitment-prefill.mjs";
+import { filterPendingQueue } from "@/lib/club/recruitment-queue.mjs";
 import type { RecruitmentData } from "./recruitment-dashboard";
 
 type Candidate = RecruitmentData["pending"][number] & {
@@ -139,6 +140,7 @@ export function RecruiterQuickfill() {
   const [hiddenKeys, setHiddenKeys] = useState(() => new Set<string>());
   const [hiddenIds, setHiddenIds] = useState(() => new Set<string>());
   const [lastFormUrl, setLastFormUrl] = useState("");
+  const [showAllPending, setShowAllPending] = useState(false);
   const [{ personKey: preferredPersonKey, submissionId: preferredSubmissionId }] = useState(readPreferredCandidate);
 
   useEffect(() => {
@@ -209,14 +211,26 @@ export function RecruiterQuickfill() {
   const officialRecruiter = recruiter === "其他" ? customRecruiter.trim() : recruiter;
   const pending = useMemo(() => {
     const rows = data?.pending || [];
-    const needle = query.trim();
-    return rows.filter((row) => {
-      if (hiddenKeys.has(row.personKey)) return false;
-      if (row.submissionId && hiddenIds.has(row.submissionId.toLowerCase())) return false;
-      if (!needle) return true;
-      return `${row.name} ${row.phone} ${row.department} ${row.grade} ${row.gameGatekeeper}`.includes(needle);
-    });
-  }, [data, query, hiddenKeys, hiddenIds]);
+    const listed = filterPendingQueue(rows, {
+      self: officialRecruiter,
+      showAll: showAllPending,
+      handled: hiddenKeys,
+      query,
+    }).filter((row) => !(row.submissionId && hiddenIds.has(String(row.submissionId).toLowerCase())));
+    const preferred = rows.find((row) => (
+      (preferredPersonKey && row.personKey === preferredPersonKey)
+      || (preferredSubmissionId && row.submissionId?.toLowerCase() === preferredSubmissionId)
+    ));
+    if (
+      preferred
+      && !hiddenKeys.has(preferred.personKey)
+      && !(preferred.submissionId && hiddenIds.has(preferred.submissionId.toLowerCase()))
+      && !listed.some((row) => candidateKey(row) === candidateKey(preferred))
+    ) {
+      return [preferred, ...listed];
+    }
+    return listed;
+  }, [data, query, hiddenKeys, hiddenIds, officialRecruiter, showAllPending, preferredPersonKey, preferredSubmissionId]);
 
   useEffect(() => {
     if (!selectedKey) return;
@@ -228,6 +242,7 @@ export function RecruiterQuickfill() {
 
   function rememberRecruiter(name: string) {
     setRecruiter(name);
+    setShowAllPending(false);
     if (name !== "其他") {
       setCustomRecruiter("");
       try { localStorage.setItem(RECRUITER_STORAGE_KEY, name); } catch { /* ignore */ }
@@ -417,8 +432,16 @@ export function RecruiterQuickfill() {
         <section className="admin-panel" aria-label="待跟進同學">
           <div className="admin-section-heading">
             <h2>待跟進同學</h2>
-            <span className="admin-caption">{pending.length} 位尚未送出招生資料</span>
+            <span className="admin-caption">{pending.length} 位</span>
           </div>
+          <button
+            type="button"
+            aria-pressed={showAllPending}
+            data-queue="show-all"
+            onClick={() => setShowAllPending((value) => !value)}
+          >
+            {showAllPending ? "只看我的有緣人" : "看全部尚未填表"}
+          </button>
           <input
             aria-label="搜尋同學"
             placeholder="搜尋姓名、電話、科系"
@@ -426,7 +449,15 @@ export function RecruiterQuickfill() {
             onChange={(event) => setQuery(event.target.value)}
           />
           {!pending.length ? (
-            <p className="admin-empty">目前沒有待跟進同學</p>
+            <div className="admin-empty" role="status">
+              {showAllPending ? (
+                <p>目前沒有待跟進同學</p>
+              ) : (
+                <p>
+                  目前沒有與「{officialRecruiter}」相關、尚未填正式資料的同學。遊戲關主不會自動變成正式接引人。若要協助其他有緣人，請點「看全部尚未填表」。
+                </p>
+              )}
+            </div>
           ) : (
             <div className="admin-person-list recruitment-pending">
               {pending.map((row) => (
