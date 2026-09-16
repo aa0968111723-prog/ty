@@ -1521,10 +1521,10 @@
   letter-spacing: -0.04em;
   color: var(--text-primary);
 }
-.war-card-detail {
-  padding: 0 var(--space-4) var(--space-4);
-  color: var(--text-secondary);
-  font-size: var(--text-small);
+.war-card.is-open {
+  grid-column: 1 / -1;
+  scroll-margin-top: 12px;
+  scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 .war-caret {
   position: absolute;

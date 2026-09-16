@@ -647,6 +647,9 @@ test(
       await hit.waitFor();
       assert.equal(await hit.getAttribute("aria-expanded"), "false");
       assert.equal(await detail.isVisible(), false);
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "war-kpi-today-closed-390-viewport.png") });
+      }
       await capture(page, "war-kpi-today-closed-390");
       await hit.click();
       assert.equal(await hit.getAttribute("aria-expanded"), "true");
@@ -660,6 +663,9 @@ test(
       assert.equal(await detail.getByText("submissionId").count(), 0);
       assert.equal(await detail.getByText("分級").count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "war-kpi-today-open-390-viewport.png") });
+      }
       await capture(page, "war-kpi-today-open-390");
       await hit.click();
       assert.equal(await hit.getAttribute("aria-expanded"), "false");
@@ -667,13 +673,30 @@ test(
       const pendingHit = page.locator("[data-kpi=pending] .war-card-hit");
       const pendingDetail = page.locator("#pending-detail");
       await pendingHit.click();
+      await pendingDetail.waitFor({ state: "visible" });
+      await page.waitForFunction(() => {
+        const btn = document.querySelector("#pending-detail .admin-primary");
+        const nav = document.querySelector(".admin-bottom-nav");
+        if (!btn || !nav) return false;
+        const box = btn.getBoundingClientRect();
+        const navBox = nav.getBoundingClientRect();
+        return box.height >= 44 && box.bottom <= navBox.top + 1;
+      });
       assert.equal(await pendingHit.getAttribute("aria-expanded"), "true");
       assert.equal(await pendingDetail.isVisible(), true);
       assert.equal(await pendingDetail.getByText("測試同學", { exact: true }).count(), 1);
       const goPending = pendingDetail.getByRole("button", { name: "去待處理", exact: true });
       assert.equal(await goPending.count(), 1);
       const pendingBtn = await goPending.boundingBox();
-      assert.ok(pendingBtn && pendingBtn.height >= 44);
+      const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
+      assert.ok(pendingBtn && navBox && pendingBtn.height >= 44);
+      assert.ok(
+        pendingBtn.y + pendingBtn.height <= navBox.y + 1,
+        `去待處理 must sit above the bottom nav: action=${JSON.stringify(pendingBtn)} nav=${JSON.stringify(navBox)}`,
+      );
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "war-kpi-pending-open-390-viewport.png") });
+      }
       await capture(page, "war-kpi-pending-open-390");
       await pendingHit.click();
       assert.equal(await pendingHit.getAttribute("aria-expanded"), "false");

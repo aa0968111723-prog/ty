@@ -426,7 +426,9 @@ test("today vs history contacts exclude practice and keep name-normalized unique
   assert.equal(data.summary.playedOnDate, 1);
   assert.equal(data.pending.length, 2);
   assert.deepEqual(data.kpiPeople.todayContacts.map((row) => row.name), ["王小明"]);
-  assert.deepEqual(data.kpiPeople.allContacts.map((row) => row.name).sort(), ["王小明", "昨日生"]);
+  assert.equal(data.kpiPeople.allContacts.length, 2);
+  assert.ok(data.kpiPeople.allContacts.some((row) => row.name === "王小明"));
+  assert.ok(data.kpiPeople.allContacts.some((row) => row.name === "昨日生"));
   assert.equal(data.kpiPeople.pending.length, 2);
   assert.equal(data.kpiPeople.todayContacts.some((row) => /09\d/.test(row.name)), false);
 });

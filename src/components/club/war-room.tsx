@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   CalendarCheck,
   ChevronDown,
@@ -68,6 +68,13 @@ function KpiCard({
   tone?: "plain" | "warn" | "ok";
 }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    document.querySelector(`[data-kpi="${id}"]`)?.scrollIntoView({
+      block: "start",
+      behavior: "instant",
+    });
+  }, [open, id]);
   return (
     <article className={`war-card tone-${tone}${open ? " is-open" : ""}`} data-kpi={id}>
       <button
