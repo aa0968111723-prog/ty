@@ -381,6 +381,12 @@ test(
       assert.match(decodeURIComponent(String(href)), /同學|王小明|待跟進甲|entry\.887514514/);
       assert.match(decodeURIComponent(String(href)), /遊戲關主：安倢/);
       assert.match(String(href), /entry\.1318284482=/);
+      const backofficeWhileFilling = page.locator("[data-quickfill=open-backoffice]");
+      assert.equal(await backofficeWhileFilling.count(), 1);
+      assert.match(
+        String(await backofficeWhileFilling.getAttribute("href")),
+        /docs\.google\.com\/forms\/d\/12fk5ubMY0fnCSSTEljFJ1l-gcao1hDMkw7F8I8qTlOw\/edit/,
+      );
       await page.getByRole("button", { name: "這位同學報名了哪個活動？ 9/30茶會" }).click();
       await page.getByRole("button", { name: "是否入社 否" }).click();
       await page.getByRole("button", { name: "保證金是否繳費 否" }).click();

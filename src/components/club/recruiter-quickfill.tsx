@@ -16,6 +16,8 @@ import {
 } from "@/lib/club/recruitment-prefill.mjs";
 import type { RecruitmentData } from "./recruitment-dashboard";
 
+const FORM_EDIT_URL = `https://docs.google.com/forms/d/${OFFICIAL_FORM_ID}/edit`;
+
 type Candidate = RecruitmentData["pending"][number] & {
   completedAt?: string;
   submissionId?: string;
@@ -367,7 +369,7 @@ export function RecruiterQuickfill() {
           </a>
           <a
             className="quickfill-google"
-            href={`https://docs.google.com/forms/d/${OFFICIAL_FORM_ID}/edit`}
+            href={FORM_EDIT_URL}
             target="_blank"
             rel="noreferrer"
             data-quickfill="open-backoffice"
@@ -601,6 +603,15 @@ export function RecruiterQuickfill() {
               data-quickfill="open-form"
             >
               開啟正式招生表單 <ExternalLink size={16} />
+            </a>
+            <a
+              className="quickfill-google"
+              href={FORM_EDIT_URL}
+              target="_blank"
+              rel="noreferrer"
+              data-quickfill="open-backoffice"
+            >
+              查看招生表單後台 <ExternalLink size={16} />
             </a>
             <button type="button" onClick={() => void load(true)}>
               我已送出表單，更新名單
