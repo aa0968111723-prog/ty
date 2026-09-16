@@ -103,8 +103,8 @@ export function AdminShell({
         </div>
       </aside>
       <div className="admin-mobile-top">
-        <a className="club-brand" href="/">
-          <BrandLogo size={40} />
+        <a className="club-brand" href="/" aria-label="淡江禪學社首頁">
+          <BrandLogo size={44} />
           淡江禪學社
         </a>
         <span>招生工作台</span>

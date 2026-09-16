@@ -157,6 +157,9 @@ test(
         });
         await page.goto(`${origin}/admin`);
         await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+        const brandBox = await page.locator(".admin-mobile-top .club-brand").boundingBox();
+        assert.ok(brandBox.height >= 44, `brand touch height ${brandBox.height}`);
+        assert.ok(brandBox.width >= 44, `brand touch width ${brandBox.width}`);
         await page.getByLabel("查詢日期").fill("2026-09-12");
         await page.getByRole("button", { name: /今日接觸/ }).first().waitFor();
         assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
