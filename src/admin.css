@@ -1621,6 +1621,16 @@
   gap: var(--space-3);
   margin: 0;
 }
+.battle-completion-stats.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.battle-count-rules {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .battle-completion-stats dt {
   color: var(--text-muted);
   font-size: var(--text-caption);

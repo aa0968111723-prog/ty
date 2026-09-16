@@ -594,7 +594,7 @@ test(
       assert.equal(await contacts.getAttribute("aria-expanded"), "false");
       assert.equal(await page.locator("#contacts-today-detail").isVisible(), false);
       await contacts.click();
-      await page.getByText(/練習與試玩不計入/).waitFor();
+      await page.locator("#contacts-today-detail").getByText("練習不計").waitFor();
       await popular.click();
       assert.equal(await popular.getAttribute("aria-expanded"), "true");
       await page.locator("#popular-detail").getByText("9/30茶會").waitFor();
@@ -792,6 +792,83 @@ test(
       assert.equal(await depositDetail.getByText("分級", { exact: true }).count(), 0);
       assert.equal(await depositDetail.getByText(/^S$|^A$|^B$/).count(), 0);
       await capture(page, "command-deposit-expand-390");
+      assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
+      assert.equal(await page.getByRole("heading", { name: /^S$/ }).count(), 0);
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("command home expands 今日接觸 and 累積接觸 into count definitions", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const today = {
+        姓名: "王小明", 電話: "0910000101", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z", 遊戲秒數: 60,
+      };
+      const todayAgain = {
+        姓名: "王 小明", 電話: "0910000101", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:20:00.000Z", 遊戲秒數: 60,
+      };
+      const practice = {
+        姓名: "練習生", 電話: "0910000199", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "practice-1", _kind: "practice", _skipSave: true,
+        遊戲時間: "2026-09-14T01:10:00.000Z", 遊戲秒數: 15,
+      };
+      const yesterday = {
+        姓名: "林同學", 電話: "0910000102", 科系: "會計學系", 年級: "大二", 遊戲關主: "安倢",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-13T02:00:00.000Z", 遊戲秒數: 60,
+      };
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({
+          date: "2026-09-14",
+          gameRows: [today, todayAgain, practice, yesterday],
+          recruitmentRows: [],
+          masterRows: [],
+        }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const todayCard = page.getByRole("button", { name: /今日接觸/ });
+      const totalCard = page.getByRole("button", { name: /累積接觸/ });
+      assert.equal(await todayCard.getAttribute("aria-expanded"), "false");
+      assert.equal(await page.locator("#contacts-today-detail").isVisible(), false);
+      await todayCard.click();
+      assert.equal(await todayCard.getAttribute("aria-expanded"), "true");
+      const todayDetail = page.locator("#contacts-today-detail");
+      await todayDetail.getByText("人數", { exact: true }).waitFor();
+      assert.equal(await todayDetail.locator("dt", { hasText: "人數" }).locator("xpath=../dd").innerText(), "1");
+      await todayDetail.getByText("正式 60 秒").waitFor();
+      await todayDetail.getByText("姓名去重").waitFor();
+      await todayDetail.getByText("練習不計").waitFor();
+      assert.equal(await todayDetail.getByText("累積已接觸").count(), 0);
+      assert.equal(await todayDetail.getByText("分級", { exact: true }).count(), 0);
+      assert.equal(await todayDetail.locator("text=submissionId").count(), 0);
+      await capture(page, "command-contacts-today-expand-390");
+      await totalCard.click();
+      assert.equal(await totalCard.getAttribute("aria-expanded"), "true");
+      const totalDetail = page.locator("#contacts-total-detail");
+      await totalDetail.getByText("人數", { exact: true }).waitFor();
+      assert.equal(await totalDetail.locator("dt", { hasText: "人數" }).locator("xpath=../dd").innerText(), "2");
+      await totalDetail.getByText("正式 60 秒").waitFor();
+      await totalDetail.getByText("姓名去重").waitFor();
+      await totalDetail.getByText("練習不計").waitFor();
+      await totalDetail.getByText("今日 1").waitFor();
+      assert.equal(await totalDetail.getByText("分級", { exact: true }).count(), 0);
+      assert.equal(await totalDetail.locator("text=submissionId").count(), 0);
+      await capture(page, "command-contacts-total-expand-390");
       assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
       assert.equal(await page.getByRole("heading", { name: /^S$/ }).count(), 0);
       assert.equal(await page.locator("text=submissionId").count(), 0);

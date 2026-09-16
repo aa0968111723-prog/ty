@@ -106,7 +106,7 @@ function ExpandCard({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const activities = id === "activity" || id === "popular";
-  const completion = id === "joined" || id === "deposit";
+  const completion = id === "joined" || id === "deposit" || id === "contacts-today" || id === "contacts-total";
   return (
     <article className={`battle-kpi${open ? " is-open" : ""}${id === "pending" ? " is-wide" : ""}${id === "popular" ? " is-text" : ""}${activities ? " is-activities" : ""}${completion ? " is-completion" : ""}`}>
       <button
@@ -175,6 +175,31 @@ function CompletionDetail({
   );
 }
 
+function CountDefinition({
+  count,
+  extra,
+}: {
+  count: number | null | undefined;
+  extra?: ReactNode;
+}) {
+  return (
+    <div className="battle-completion">
+      <dl className="battle-completion-stats is-single">
+        <div>
+          <dt>人數</dt>
+          <dd>{metric(count)}</dd>
+        </div>
+      </dl>
+      <ul className="battle-count-rules" aria-label="人數定義">
+        <li>正式 60 秒</li>
+        <li>姓名去重</li>
+        <li>練習不計</li>
+      </ul>
+      {extra}
+    </div>
+  );
+}
+
 function ActivityBreakdown({
   activities,
   popularName,
@@ -236,12 +261,7 @@ export function BattleCommand({
           label="今日接觸"
           value={metric(contactsToday)}
           hint="正式遊戲 · 姓名正規化去重"
-          details={
-            <p>
-              今天完成正式 60 秒挑戰的獨特人數。練習與試玩不計入。
-              {contactsTotal != null ? ` 累積已接觸 ${metric(contactsTotal)} 人。` : ""}
-            </p>
-          }
+          details={<CountDefinition count={contactsToday} />}
         />
         <ExpandCard
           id="contacts-total"
@@ -250,10 +270,10 @@ export function BattleCommand({
           value={metric(contactsTotal)}
           hint="歷史正式遊戲去重"
           details={
-            <div className="battle-progress" role="img" aria-label={`累積接觸 ${metric(contactsTotal)} 人`}>
-              <span style={{ width: `${Math.min(100, ((contactsToday || 0) / Math.max(contactsTotal || 1, 1)) * 100)}%` }} />
-              <small>今日佔累積 {contactsTotal ? Math.round(((contactsToday || 0) / contactsTotal) * 100) : 0}%</small>
-            </div>
+            <CountDefinition
+              count={contactsTotal}
+              extra={<small>今日 {metric(contactsToday)}</small>}
+            />
           }
         />
         <ExpandCard
