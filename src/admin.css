@@ -1399,6 +1399,12 @@
   height: 100%;
   background: var(--brand);
 }
+.battle-funnel small {
+  color: var(--text-muted);
+}
+.battle-funnel small[data-kind="unbounded"] {
+  font-weight: 500;
+}
 .battle-event-bars,
 .battle-event-bars button {
   display: grid;

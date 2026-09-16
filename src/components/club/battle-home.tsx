@@ -9,6 +9,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import type { RecruitmentData } from "./recruitment-dashboard";
+import { funnelStepCaption } from "@/lib/club/funnel-caption.mjs";
 
 function metric(value: number | null | undefined) {
   if (value == null) return "資料不足";
@@ -205,12 +206,8 @@ export function BattleHome({
                 <span className="battle-funnel-track" aria-hidden="true">
                   <i style={{ width: `${width}%` }} />
                 </span>
-                <small>
-                  {layer.fromPrevious == null
-                    ? layer.id === "played"
-                      ? "起點 · 歷史正式遊戲人數"
-                      : "資料不足"
-                    : `上一階 ${layer.fromPrevious}%`}
+                <small data-kind={layer.fromPrevious != null && layer.fromPrevious > 100 ? "unbounded" : undefined}>
+                  {funnelStepCaption(layer)}
                 </small>
               </li>
             );

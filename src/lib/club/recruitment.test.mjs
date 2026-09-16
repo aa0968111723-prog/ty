@@ -11,6 +11,7 @@ import {
   parseMasterRows,
   parseRecruitmentResponses,
 } from "./recruitment.mjs";
+import { funnelStepCaption } from "./funnel-caption.mjs";
 import {
   applyLastKnownGood,
   markSubmissionDuplicate,
@@ -246,6 +247,57 @@ test("practice-like rows are ignored by game attempt parser", () => {
     game({ _submissionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee" }),
   ]);
   assert.equal(rows.length, 1);
+});
+
+test("funnel caption never claims a >100% conversion from the previous stage", () => {
+  const joined = game({
+    姓名: "入社生",
+    電話: "0912000101",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0101",
+  });
+  const depositOnly = game({
+    姓名: "保證金生",
+    電話: "0912000102",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0102",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [joined, depositOnly],
+    recruitmentRows: [
+      {
+        時間戳記: "2026/9/14 上午 10:00:00",
+        同學的姓名: "入社生",
+        "同學電話/LINE": "0912000101",
+        報名了那個活動: "社課",
+        是否入社: "是",
+        保證金是否繳費: "是",
+      },
+      {
+        時間戳記: "2026/9/14 上午 11:00:00",
+        同學的姓名: "保證金生",
+        "同學電話/LINE": "0912000102",
+        報名了那個活動: "社課",
+        是否入社: "否",
+        保證金是否繳費: "是",
+      },
+    ],
+    masterRows: [],
+  });
+  const deposit = data.funnel.find((layer) => layer.id === "deposit");
+  const played = data.funnel.find((layer) => layer.id === "played");
+  const activity = data.funnel.find((layer) => layer.id === "activity");
+  assert.equal(data.summary.joined, 1);
+  assert.equal(data.summary.depositPaid, 2);
+  assert.equal(deposit.count, 2);
+  assert.ok(deposit.fromPrevious > 100);
+  assert.equal(funnelStepCaption(deposit), "人數可多於前一階段");
+  assert.doesNotMatch(funnelStepCaption(deposit), /上一階/);
+  assert.doesNotMatch(funnelStepCaption(deposit), /%/);
+  assert.equal(funnelStepCaption(played), "起點 · 歷史正式遊戲人數");
+  assert.match(funnelStepCaption(activity), /^上一階 /);
+  assert.doesNotMatch(funnelStepCaption(activity), /150|166/);
+  assert.deepEqual(data.funnel.map((layer) => layer.id), ["played", "activity", "joined", "deposit"]);
+  assert.equal("s" in data.summary, false);
 });
 
 test("missing deposit fields are 資料不足 instead of zero", () => {
