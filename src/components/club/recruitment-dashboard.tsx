@@ -8,7 +8,7 @@ import {
   OFFICIAL_VIEWFORM_URL,
   RECRUITER_STORAGE_KEY,
 } from "@/lib/club/recruitment-prefill.mjs";
-import { time } from "./admin-presentation";
+import { taipeiDate, time } from "./admin-presentation";
 
 export type SyncFlag = { ok: boolean; stale?: boolean; error?: string };
 export type DailyPoint = { date: string; contacts: number; signups: number; joins: number };
@@ -119,6 +119,22 @@ function followUpIncomplete(row: RecruitmentProfile) {
   return row.joined !== "是" || row.depositPaid !== "是";
 }
 
+function taipeiDayOf(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function rosterDayOf(row: RecruitmentProfile) {
+  return taipeiDayOf(row.gameCompletedAt) || taipeiDayOf(row.submittedAt) || taipeiDayOf(row.recruitedAt);
+}
+
 export function RecruitmentDashboard({
   data,
   panel = "home",
@@ -156,6 +172,8 @@ export function RecruitmentDashboard({
   const [joined, setJoined] = useState("");
   const [deposit, setDeposit] = useState("");
   const [formFilled, setFormFilled] = useState("");
+  const [rosterRange, setRosterRange] = useState<"today" | "yesterday" | "all" | "custom">("all");
+  const [rosterDate, setRosterDate] = useState(taipeiDate());
   const [handled, setHandled] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -193,7 +211,13 @@ export function RecruitmentDashboard({
   }, [data.profiles, recruiter, gameGatekeeper, query, handled]);
 
   const people = useMemo(() => {
+    const today = taipeiDate();
+    const yesterday = taipeiDate(-1);
     return data.profiles.filter((row) => {
+      const day = rosterDayOf(row);
+      if (rosterRange === "today" && day !== today) return false;
+      if (rosterRange === "yesterday" && day !== yesterday) return false;
+      if (rosterRange === "custom" && rosterDate && day !== rosterDate) return false;
       if (status === "pending" && !followUpIncomplete(row)) return false;
       if (status === "done" && followUpIncomplete(row)) return false;
       if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
@@ -207,7 +231,7 @@ export function RecruitmentDashboard({
       if (formFilled === "no" && !row.pending) return false;
       return rowMatchesQuery(row, query);
     });
-  }, [data.profiles, status, gameGatekeeper, recruiter, activity, joined, deposit, formFilled, query]);
+  }, [data.profiles, status, gameGatekeeper, recruiter, activity, joined, deposit, formFilled, query, rosterRange, rosterDate]);
 
   function markHandled(personKey: string) {
     setHandled((current) => {
@@ -235,7 +259,7 @@ export function RecruitmentDashboard({
       <div className="recruitment-board">
         <section className="admin-panel quickfill-partner" aria-label="這位有緣人的接引人">
           <h2>這位有緣人的接引人</h2>
-          <p className="admin-caption">先選正在接引的夥伴。遊戲關主不會被改成接引人。</p>
+          <p className="admin-caption">先選正在接引的夥伴。遊戲關主只是現場帶玩的人，不會被改成正式接引人。</p>
           <div className="quickfill-partners">
             {OFFICIAL_RECRUITERS.map((name) => (
               <button
@@ -326,8 +350,37 @@ export function RecruitmentDashboard({
             <ChevronDown size={18} className={filtersOpen ? "is-open" : ""} />
           </button>
         </div>
+        <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <div className="battle-date-chips" role="group" aria-label="名單日期">
+          {([
+            ["today", "今天"],
+            ["yesterday", "昨天"],
+            ["all", "全部"],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={rosterRange === id}
+              onClick={() => setRosterRange(id)}
+            >
+              {label}
+            </button>
+          ))}
+          <label>
+            自訂日期
+            <input
+              aria-label="名單自訂日期"
+              type="date"
+              value={rosterDate}
+              onChange={(event) => {
+                if (!event.target.value) return;
+                setRosterDate(event.target.value);
+                setRosterRange("custom");
+              }}
+            />
+          </label>
+        </div>
         <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
-          <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話" value={query} onChange={(event) => setQuery(event.target.value)} />
           <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
             <option value="">所有遊戲關主</option>
             {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}

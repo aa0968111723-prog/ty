@@ -1103,7 +1103,7 @@
   .battle-funnel ol {
     grid-template-columns: 1fr;
   }
-  .recruitment-filters {
+  .recruitment-filters.is-open {
     display: grid;
   }
   .recruitment-gatekeepers {
@@ -1441,20 +1441,61 @@
 .battle-next {
   display: grid;
   gap: var(--space-2);
-  position: sticky;
-  bottom: calc(72px + env(safe-area-inset-bottom));
-  padding-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-card);
 }
 .battle-next .admin-primary {
   width: 100%;
+}
+.battle-date-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  align-items: center;
+}
+.battle-date-chips button {
+  flex: 1 1 auto;
+}
+.battle-date-chips label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 100%;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+.battle-date-chips input[type="date"] {
+  flex: 1;
+  max-width: 180px;
+}
+@media (max-width: 719px) {
+  .battle-home {
+    padding-bottom: 148px;
+  }
+  .battle-next {
+    position: fixed;
+    left: var(--space-5);
+    right: var(--space-5);
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    z-index: 6;
+  }
 }
 @media (min-width: 720px) {
   .battle-kpis {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .battle-next {
-    bottom: var(--space-4);
-    max-width: 320px;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    max-width: 520px;
+  }
+  .battle-next .admin-caption {
+    grid-column: 1 / -1;
+    margin: 0;
   }
   .battle-funnel ol {
     grid-template-columns: repeat(4, minmax(0, 1fr));

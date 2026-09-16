@@ -92,7 +92,7 @@ function AdminDashboard() {
       };
       const selected = await load(date);
       const today = date === current ? selected : await load(current);
-      const board = await loadRecruitment(date).catch(() => null);
+      const board = await loadRecruitment(current).catch(() => null);
       if (id === generation.current) {
         setData(selected);
         setTodayData(today);
@@ -287,25 +287,27 @@ function AdminDashboard() {
           </button>
         </div>
       </header>
-      <div className="admin-date-controls">
-        <button aria-pressed={date === taipeiDate()} onClick={() => setDate(taipeiDate())}>
-          今天
-        </button>
-        <button aria-pressed={date === taipeiDate(-1)} onClick={() => setDate(taipeiDate(-1))}>
-          昨天
-        </button>
-        <label>
-          自訂日期
-          <input
-            aria-label="查詢日期"
-            type="date"
-            value={date}
-            onChange={(event) => {
-              if (event.target.value) setDate(event.target.value);
-            }}
-          />
-        </label>
-      </div>
+      {tab !== "recruitment" && tab !== "pending" && tab !== "roster" ? (
+        <div className="admin-date-controls">
+          <button aria-pressed={date === taipeiDate()} onClick={() => setDate(taipeiDate())}>
+            今天
+          </button>
+          <button aria-pressed={date === taipeiDate(-1)} onClick={() => setDate(taipeiDate(-1))}>
+            昨天
+          </button>
+          <label>
+            自訂日期
+            <input
+              aria-label="查詢日期"
+              type="date"
+              value={date}
+              onChange={(event) => {
+                if (event.target.value) setDate(event.target.value);
+              }}
+            />
+          </label>
+        </div>
+      ) : null}
       <div className="admin-sync-line" role="status">
         <span>
           {data || recruitment

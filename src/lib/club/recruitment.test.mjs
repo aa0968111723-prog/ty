@@ -307,6 +307,11 @@ test("招生狀況表 plus 總表 formula-shaped row keeps game gatekeeper separ
   assert.equal(data.summary.joined, 1);
   assert.equal(data.summary.depositPaid, 1);
   assert.equal(data.summary.depositTotal, 300);
+  assert.equal(
+    (data.profiles[0]?.timeline || []).some((item) => item.kind === "tier" || item.detail === "分級" || /[SAB]（|[SAB]\(/.test(item.title)),
+    false,
+    "partners must never see S/A/B ranking on the student timeline",
+  );
   const profile = data.profiles[0];
   assert.equal(profile.gameGatekeeper, "柏能");
   assert.ok(profile.recruiterList.includes("安倢"));

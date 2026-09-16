@@ -60,4 +60,32 @@ describe("client/server bundle boundaries", () => {
     assert.doesNotMatch(route, /from ["']@\/lib\/club\/(api|admin|sheets)\.mjs["']/);
     assert.match(sheets, /@tanstack\/react-start\/server-only/);
   });
+
+  it("does not ship googleapis in the production client bundle", async () => {
+    const { access, readdir } = await import("node:fs/promises");
+    const staticDir = new URL("../.vercel/output/static/assets", import.meta.url);
+    try {
+      await access(staticDir);
+    } catch {
+      return;
+    }
+    async function walk(dir) {
+      const entries = await readdir(dir, { withFileTypes: true });
+      const files = [];
+      for (const entry of entries) {
+        const path = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) files.push(...await walk(path));
+        else if (/\.(js|mjs|css|html|map)$/.test(entry.name)) files.push(path);
+      }
+      return files;
+    }
+    const files = await walk(staticDir.pathname);
+    assert.ok(files.length > 0, "client asset folder is empty");
+    for (const file of files) {
+      const source = await readFile(file, "utf8");
+      assert.doesNotMatch(source, /googleapis/, file);
+      assert.doesNotMatch(source, /SHEETS_SCOPE/, file);
+      assert.doesNotMatch(source, /auth\/spreadsheets/, file);
+    }
+  });
 });

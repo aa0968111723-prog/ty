@@ -73,8 +73,8 @@ export function RecruitmentProfileSheet({
             <div><dt>備註</dt><dd>{profile?.note || "尚未填"}</dd></div>
           </dl>
           <ol className="recruitment-timeline">
-            {(profile?.timeline || []).length ? (
-              profile?.timeline?.map((item, index) => (
+            {(profile?.timeline || []).filter((item) => item.kind !== "tier" && item.detail !== "分級").length ? (
+              profile?.timeline?.filter((item) => item.kind !== "tier" && item.detail !== "分級").map((item, index) => (
                 <li key={`${item.kind}-${index}`}>
                   <strong>{item.title}</strong>
                   <span>{item.detail}</span>

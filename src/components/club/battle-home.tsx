@@ -169,6 +169,20 @@ export function BattleHome({
         })}
       </section>
 
+      <div className="battle-next">
+        <button type="button" className="admin-primary" onClick={onOpenPending}>
+          處理下一位同學
+        </button>
+        <button type="button" onClick={onOpenRoster}>
+          查看名單
+        </button>
+        <p className="admin-caption">
+          {data.summary.pendingOfficialForm
+            ? `還有 ${data.summary.pendingOfficialForm} 位尚未填正式表單`
+            : "目前沒有待填正式表單的同學"}
+        </p>
+      </div>
+
       <section className={`battle-sync is-${sync.tone}`} aria-live="polite">
         <CircleAlert size={18} aria-hidden="true" />
         <div>
@@ -253,20 +267,6 @@ export function BattleHome({
           <li><span className="is-join" /> 入社</li>
         </ul>
       </section>
-
-      <div className="battle-next">
-        <button type="button" className="admin-primary" onClick={onOpenPending}>
-          處理下一位同學
-        </button>
-        <button type="button" onClick={onOpenRoster}>
-          查看名單
-        </button>
-        <p className="admin-caption">
-          {data.summary.pendingOfficialForm
-            ? `還有 ${data.summary.pendingOfficialForm} 位尚未填正式表單`
-            : "目前沒有待填正式表單的同學"}
-        </p>
-      </div>
     </div>
   );
 }

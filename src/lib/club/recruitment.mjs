@@ -336,7 +336,6 @@ function profileFromSources({
     timeline: [
       gameCompletedAt ? { at: gameCompletedAt, kind: "game", title: "遊戲完成", detail: `${gameGatekeeper || UNCLASSIFIED}${score !== "" ? ` · ${score} 分` : ""}` } : null,
       (recruited?.submittedAt || source?.submittedAt) ? { at: recruited?.submittedAt || source?.submittedAt, kind: "recruitment", title: "招生表提交", detail: recruited?.recruiters || source?.recruiters || "" } : null,
-      source?.tier ? { at: recruited?.submittedAt || source?.submittedAt || "", kind: "tier", title: source.tier, detail: "分級" } : null,
       source?.activity && hasActivity(source.activity) ? { at: "", kind: "activity", title: source.activity, detail: "活動報名" } : null,
       source?.joined && isYes(source.joined) ? { at: "", kind: "joined", title: "入社", detail: "" } : null,
       source?.depositPaid && isYes(source.depositPaid) ? { at: "", kind: "deposit", title: "保證金", detail: String(source.depositAmount || "") } : null,
