@@ -209,9 +209,17 @@ test(
           .getByRole("navigation", { name: "手機後台導覽" })
           .getByRole("button", { name: "名單", exact: true })
           .click();
-        await page.getByRole("button", { name: "篩選" }).click();
+        await page.getByRole("heading", { name: "招生名單" }).waitFor();
+        await page.getByRole("button", { name: "展開篩選" }).waitFor();
+        assert.equal(await page.getByLabel("搜尋姓名或電話").isVisible(), true);
+        assert.equal(await page.getByLabel("日期範圍").isVisible(), false);
         await page.getByLabel("搜尋姓名或電話").fill("測試同學");
         assert.ok(await page.locator(".admin-person-list article").count() >= 1);
+        await page.getByRole("button", { name: "展開篩選" }).click();
+        assert.equal(await page.getByLabel("日期範圍").isVisible(), true);
+        await page.getByRole("button", { name: "收合篩選" }).click();
+        assert.equal(await page.getByLabel("搜尋姓名或電話").isVisible(), true);
+        assert.equal(await page.getByLabel("日期範圍").isVisible(), false);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "今日排行榜" }).click();
         await page.locator("h1", { hasText: "今日排行榜" }).waitFor();
@@ -574,6 +582,62 @@ test(
       await page.getByRole("heading", { name: "招生名單" }).waitFor();
       assert.equal(await page.getByRole("article").filter({ hasText: "林同學" }).count(), 2);
       assert.equal(await page.getByText("需要確認").count() >= 2, true);
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+    await t.test("roster search stays visible while extra filters stay collapsed", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const mine = {
+        姓名: "關主的同學", 電話: "0910000001", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z",
+      };
+      const other = {
+        姓名: "別人的同學", 電話: "0920000002", 科系: "資訊工程學系", 年級: "大二", 遊戲關主: "安倢",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T02:00:00.000Z",
+      };
+      await page.route("**/api/admin/recruitment**", (route) => route.fulfill({
+        json: buildRecruitmentDashboard({ date: "2026-09-14", gameRows: [mine, other], recruitmentRows: [], masterRows: [] }),
+      }));
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
+      await page.getByRole("heading", { name: "招生名單" }).waitFor();
+      await page.getByRole("button", { name: "展開篩選" }).waitFor();
+      assert.equal(await page.getByLabel("搜尋姓名或電話").isVisible(), true);
+      assert.equal(await page.getByLabel("日期範圍").isVisible(), false);
+      assert.equal(await page.getByLabel("篩選遊戲關主").isVisible(), false);
+      assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
+      assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 1);
+      await page.getByLabel("搜尋姓名或電話").fill("0920000002");
+      assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 1);
+      assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 0);
+      await page.getByRole("button", { name: "展開篩選" }).click();
+      assert.equal(await page.getByLabel("日期範圍").isVisible(), true);
+      await page.getByRole("button", { name: "收合篩選" }).click();
+      assert.equal(await page.getByLabel("搜尋姓名或電話").isVisible(), true);
+      assert.equal(await page.getByLabel("日期範圍").isVisible(), false);
+      await page.getByLabel("搜尋姓名或電話").fill("");
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
+      await page.getByRole("heading", { name: "待填正式招生資料" }).waitFor();
+      await page.getByRole("button", { name: "看全部尚未填表" }).click();
+      assert.equal(await page.getByLabel("搜尋姓名或電話").isVisible(), true);
+      assert.equal(await page.getByLabel("篩選遊戲關主").isVisible(), false);
+      await page.getByLabel("搜尋姓名或電話").fill("關主的同學");
+      assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
+      assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 0);
+      await capture(page, "roster-search-390");
       assert.deepEqual(errors, []);
       await context.close();
     });

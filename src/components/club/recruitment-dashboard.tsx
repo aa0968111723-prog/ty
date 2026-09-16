@@ -173,6 +173,52 @@ function RecruiterPicker({
   );
 }
 
+function FiltersToggle({
+  open,
+  onToggle,
+  panelId,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  panelId: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="admin-more-toggle"
+      aria-expanded={open}
+      aria-controls={panelId}
+      onClick={onToggle}
+    >
+      <span>
+        <Filter size={18} /> {open ? "收合篩選" : "展開篩選"}
+      </span>
+      <ChevronDown size={18} className={open ? "is-open" : ""} />
+    </button>
+  );
+}
+
+function NamePhoneSearch({
+  query,
+  setQuery,
+}: {
+  query: string;
+  setQuery: (value: string) => void;
+}) {
+  return (
+    <div className="recruitment-search">
+      <input
+        aria-label="搜尋姓名或電話"
+        placeholder="搜尋姓名、電話"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        autoComplete="off"
+        inputMode="search"
+      />
+    </div>
+  );
+}
+
 function NextUpCard({
   row,
   featured,
@@ -418,11 +464,9 @@ export function RecruitmentDashboard({
         <section className="admin-panel">
           <div className="admin-section-heading">
             <h2>待填正式招生資料</h2>
-            <button type="button" className="admin-more-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}>
-              <span><Filter size={18} /> 篩選</span>
-              <ChevronDown size={18} className={filtersOpen ? "is-open" : ""} />
-            </button>
+            <FiltersToggle open={filtersOpen} panelId="queue-filters" onToggle={() => setFiltersOpen((value) => !value)} />
           </div>
+          <NamePhoneSearch query={query} setQuery={setQuery} />
           <p className="admin-caption">
             {showAllPending || !selfRecruiter
               ? `${pending.length} 位尚未填正式資料`
@@ -439,8 +483,7 @@ export function RecruitmentDashboard({
           <button type="button" onClick={() => setStatus(status === "handled" ? "pending" : "handled")}>
             {status === "handled" ? "只看未處理" : "含已標記處理"}
           </button>
-          <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
-            <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <div id="queue-filters" className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
             <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
               <option value="">所有遊戲關主</option>
               {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}
@@ -482,13 +525,10 @@ export function RecruitmentDashboard({
       <section className="admin-panel">
         <div className="admin-section-heading">
           <h2>招生名單</h2>
-          <button type="button" className="admin-more-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}>
-            <span><Filter size={18} /> 篩選</span>
-            <ChevronDown size={18} className={filtersOpen ? "is-open" : ""} />
-          </button>
+          <FiltersToggle open={filtersOpen} panelId="roster-filters" onToggle={() => setFiltersOpen((value) => !value)} />
         </div>
-        <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
-          <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <NamePhoneSearch query={query} setQuery={setQuery} />
+        <div id="roster-filters" className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
           <select aria-label="日期範圍" value={range} onChange={(event) => setRange(event.target.value as typeof range)}>
             <option value="today">今日</option>
             <option value="yesterday">昨日</option>

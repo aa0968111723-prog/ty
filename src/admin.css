@@ -1086,8 +1086,15 @@
   color: var(--text-muted);
   font-size: var(--text-small);
 }
+.recruitment-search {
+  margin: 0 0 var(--space-3);
+}
+.recruitment-search input {
+  width: 100%;
+}
 .recruitment-filters {
   display: none;
+  margin-bottom: var(--space-3);
 }
 .recruitment-filters.is-open {
   display: grid;
