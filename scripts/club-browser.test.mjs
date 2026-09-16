@@ -95,7 +95,7 @@ async function assertPendingActionButtons(page) {
   }
   const last = actionMetrics.at(-1);
   assert.ok(last, "missing 查看詳細資料");
-  assert.equal(last.fullyOnScreen, true, `查看詳細資料 off screen ${last.top}-${last.bottom}`);
+  assert.equal(last.clearsNav, true, `查看詳細資料 overlaps tab bar ${last.bottom} > ${last.navTop}`);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
 }
 async function assertWarCardLabels(page) {
@@ -272,8 +272,19 @@ test(
             json: {
               ok: true, public: true, scope: "today", date: "2026-09-13",
               generatedAt: "2026-09-13T10:00:00.000Z", count: 1,
-              topThree: [{ rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" }],
-              rows: [{ rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" }],
+              topThree: [
+                { rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" },
+                { rank: 2, displayName: "李○", score: 2500, accuracy: 90, title: "Lv.3 穩定領航者", time: "17:00" },
+                { rank: 3, displayName: "陳○安", score: 1800, accuracy: 80, title: "Lv.2 潛力領袖", time: "16:00" },
+              ],
+              rows: [
+                { rank: 1, displayName: "王○明", score: 3600, accuracy: 100, title: "Lv.4 卓越領袖", time: "18:00" },
+                { rank: 2, displayName: "李○", score: 2500, accuracy: 90, title: "Lv.3 穩定領航者", time: "17:00" },
+                { rank: 3, displayName: "陳○安", score: 1800, accuracy: 80, title: "Lv.2 潛力領袖", time: "16:00" },
+                { rank: 4, displayName: "林○", score: 1600, accuracy: 78, title: "Lv.2 潛力領袖", time: "15:00" },
+                { rank: 5, displayName: "黃○", score: 1400, accuracy: 70, title: "Lv.1 心靈修煉者", time: "14:00" },
+                { rank: 6, displayName: "張○", score: 1200, accuracy: 66, title: "Lv.1 心靈修煉者", time: "13:00" },
+              ],
             },
           }),
         );

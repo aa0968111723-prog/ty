@@ -133,7 +133,10 @@ export function PendingQueue({
     };
 
     revealPendingActions();
-    const frame = window.requestAnimationFrame(revealPendingActions);
+    const frame = window.requestAnimationFrame(() => {
+      revealPendingActions();
+      window.requestAnimationFrame(revealPendingActions);
+    });
     return () => window.cancelAnimationFrame(frame);
   }, [priorityKey]);
 

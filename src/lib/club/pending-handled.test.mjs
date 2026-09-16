@@ -8,11 +8,14 @@ import {
 } from "./pending-handled.mjs";
 
 function memoryStorage(start = {}) {
+  /** @type {Record<string, string>} */
   const data = { ...start };
   return {
+    /** @param {string} key */
     getItem(key) {
       return Object.hasOwn(data, key) ? data[key] : null;
     },
+    /** @param {string} key @param {string} value */
     setItem(key, value) {
       data[key] = String(value);
     },
