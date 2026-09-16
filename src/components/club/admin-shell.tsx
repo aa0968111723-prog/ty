@@ -59,7 +59,7 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
-  const moreActive = moreNav.some(({ id, shortcut }) =>
+  const moreActive = moreOpen || moreNav.some(({ id, shortcut }) =>
     view === id && (id !== "contacts" || forms === (shortcut === "form")),
   );
   const renderItem = (

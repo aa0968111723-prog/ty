@@ -599,13 +599,17 @@
   font-size: var(--text-caption);
   color: var(--text-secondary);
   background: transparent;
+  transition: color var(--motion);
 }
 .admin-bottom-nav .mobile-secondary-item {
   display: none;
 }
-.admin-bottom-nav button[aria-current],
-.admin-sidebar nav button[aria-current],
-.admin-more-dialog nav button[aria-current] {
+.admin-page .admin-bottom-nav button[aria-current="page"],
+.admin-page .admin-bottom-nav button[aria-current="page"]:hover:not(:disabled),
+.admin-page .admin-sidebar nav button[aria-current="page"],
+.admin-page .admin-sidebar nav button[aria-current="page"]:hover:not(:disabled),
+.admin-more-dialog nav button[aria-current="page"],
+.admin-more-dialog nav button[aria-current="page"]:hover:not(:disabled) {
   color: var(--brand);
   background: var(--surface-selected);
 }
