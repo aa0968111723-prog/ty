@@ -1478,16 +1478,6 @@
   flex: 1;
   max-width: 180px;
 }
-@media (max-width: 719px) {
-  .battle-home {
-    padding-bottom: 148px;
-  }
-  .battle-next {
-    position: sticky;
-    bottom: calc(76px + env(safe-area-inset-bottom));
-    z-index: 6;
-  }
-}
 @media (min-width: 720px) {
   .battle-kpis {
     grid-template-columns: repeat(3, minmax(0, 1fr));
