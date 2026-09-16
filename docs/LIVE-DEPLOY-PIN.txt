@@ -1,3 +1,4 @@
 cursor/recruitment-battleboard-12d7
 pin: f56f8e42c62a41e1aa6e80fcaf22c4d4da4a13c1
+head: e47d173bab65786db88e426ec63f132000ab23ff
 note: Zeabur git trigger must stay on this branch; do not point at main.
