@@ -1040,6 +1040,10 @@
   display: grid;
   gap: var(--space-2);
 }
+.recruiter-compact select {
+  width: 100%;
+  min-height: 44px;
+}
 .recruiter-compact h2 {
   margin: 0;
 }
@@ -1076,6 +1080,14 @@
 }
 .admin-filters.recruitment-filters.is-open {
   display: grid;
+  padding-bottom: var(--space-2);
+}
+@media (max-width: 1023px) {
+  .admin-filters.recruitment-filters.is-open {
+    max-height: calc(100dvh - 88px - env(safe-area-inset-bottom) - 14rem);
+    overflow: auto;
+    scroll-margin-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
 }
 .recruitment-filters .battle-date-chips {
   grid-column: 1 / -1;

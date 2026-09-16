@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, ExternalLink, Filter } from "lucide-react";
 import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
 import { BattleHome } from "./battle-home";
@@ -172,6 +172,7 @@ export function RecruitmentDashboard({
   const [rosterRange, setRosterRange] = useState<"today" | "yesterday" | "all" | "custom">("all");
   const [rosterDate, setRosterDate] = useState(taipeiDate());
   const [handled, setHandled] = useState<Set<string>>(new Set());
+  const filtersRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setHandled(readHandled());
@@ -183,6 +184,10 @@ export function RecruitmentDashboard({
       /* ignore */
     }
   }, [recruiter, setRecruiter]);
+  useEffect(() => {
+    if (!filtersOpen) return;
+    filtersRef.current?.scrollIntoView({ block: "end", inline: "nearest" });
+  }, [filtersOpen]);
 
   const events = data.events || [];
   const daily = data.daily || [];
@@ -346,7 +351,7 @@ export function RecruitmentDashboard({
           </button>
         </div>
         <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話" value={query} onChange={(event) => setQuery(event.target.value)} />
-        <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
+        <div ref={filtersRef} className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
           <div className="battle-date-chips" role="group" aria-label="名單日期">
             {([
               ["today", "今天"],

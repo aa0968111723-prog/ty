@@ -192,6 +192,17 @@ test(
         await page.getByRole("button", { name: "全部", exact: true }).waitFor();
         await page.getByLabel("篩選遊戲關主").waitFor({ state: "visible" });
         await page.getByLabel("正式表單是否已填").waitFor({ state: "visible" });
+        assert.ok(
+          await page.evaluate(() => {
+            const nav = document.querySelector(".admin-bottom-nav");
+            const filters = document.querySelector(".recruitment-filters");
+            if (!filters) return false;
+            const navTop = nav ? nav.getBoundingClientRect().top : innerHeight;
+            return filters.getBoundingClientRect().bottom <= navTop + 1
+              && document.documentElement.scrollWidth <= innerWidth + 1;
+          }),
+          "expanded roster filters must sit above the tab bar",
+        );
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "我的釘選", exact: true }).click();
         await assertScroll("admin");
@@ -355,7 +366,13 @@ test(
       await page.goto(`${origin}/follow-up`);
       await page.getByRole("heading", { name: /這位有緣人的接引人/ }).waitFor();
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-      await page.getByRole("button", { name: "柏能", exact: true }).click();
+      assert.equal(await page.locator(".recruiter-compact select").count(), 1);
+      assert.equal(await page.locator(".quickfill-partners button").count(), 0);
+      assert.doesNotMatch(await page.locator("body").innerText(), /我是那一個接引人/);
+      assert.match(await page.getByRole("heading", { name: "這位有緣人的接引人" }).innerText(), /^這位有緣人的接引人$/);
+      const selectHeight = await page.locator(".recruiter-compact select").evaluate((el) => el.getBoundingClientRect().height);
+      assert.ok(selectHeight >= 44, `recruiter select must be at least 44px, got ${selectHeight}`);
+      await page.getByLabel("選擇接引夥伴").selectOption("柏能");
       await page.getByRole("button", { name: "填寫正式資料" }).click();
       assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
       const href = await page.locator("[data-quickfill=open-form]").getAttribute("href");

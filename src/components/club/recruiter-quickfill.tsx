@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ClipboardPen, ExternalLink, RefreshCw, Send, UserRound } from "lucide-react";
+import { ArrowLeft, ClipboardPen, ExternalLink, RefreshCw, Send } from "lucide-react";
 import { AdminLogin, type AdminGate } from "@/components/admin-login";
 import {
   LIVE_ACTIVITY_CHOICES,
@@ -378,24 +378,19 @@ export function RecruiterQuickfill() {
       ) : null}
       {stale && !error ? <p className="admin-caption">同步異常，顯示上次讀到的名單</p> : null}
 
-      <section className="admin-panel quickfill-partner" aria-label="選擇這位有緣人的接引人">
-        <h1><UserRound size={20} /> 這位有緣人的接引人</h1>
-        <p className="admin-caption">選擇將持續關心、協助並完成這位有緣人招生資料的夥伴。遊戲關主保留原始紀錄，不會被正式接引人覆蓋。</p>
-        <div className="quickfill-partners">
+      <section className="admin-panel recruiter-compact" aria-label="這位有緣人的接引人">
+        <h2>這位有緣人的接引人</h2>
+        <select
+          aria-label="選擇接引夥伴"
+          value={recruiter}
+          onChange={(event) => rememberRecruiter(event.target.value)}
+        >
+          <option value="">尚未選擇</option>
           {OFFICIAL_RECRUITERS.map((name) => (
-            <button
-              key={name}
-              type="button"
-              aria-pressed={recruiter === name}
-              onClick={() => rememberRecruiter(name)}
-            >
-              {name}
-            </button>
+            <option key={name} value={name}>{name}</option>
           ))}
-          <button type="button" aria-pressed={recruiter === "其他"} onClick={() => rememberRecruiter("其他")}>
-            其他
-          </button>
-        </div>
+          <option value="其他">其他</option>
+        </select>
         {recruiter === "其他" ? (
           <label>
             接引人姓名
@@ -410,7 +405,10 @@ export function RecruiterQuickfill() {
             />
           </label>
         ) : null}
-        {officialRecruiter ? <p className="admin-caption">目前負責接引：{officialRecruiter}</p> : null}
+        <p className="admin-caption">
+          {officialRecruiter ? `目前：${officialRecruiter}` : "先選接引夥伴"}
+          。遊戲關主不會變成正式接引人。
+        </p>
       </section>
 
       {!officialRecruiter ? (
