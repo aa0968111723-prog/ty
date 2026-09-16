@@ -308,7 +308,8 @@ function AdminDashboard() {
           </label>
         </div>
       ) : null}
-      <div className="admin-sync-line" role="status">
+      {tab !== "recruitment" ? (
+        <div className="admin-sync-line" role="status">
         <span>
           {data || recruitment
             ? (
@@ -327,6 +328,7 @@ function AdminDashboard() {
         </span>
         <span>最後同步 {recruitment || data ? time((recruitment?.sync.updatedAt || data?.sync.updatedAt) as string) : "—"}</span>
       </div>
+      ) : null}
       {error && (
         <p className="admin-error" role="alert">
           {error} · 保留上次成功資料
