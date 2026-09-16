@@ -181,17 +181,17 @@ function NextUpCard({
   featured?: boolean;
 }) {
   const followUp = row.followUpPath || `/follow-up?personKey=${encodeURIComponent(row.personKey)}`;
+  const dept = [row.department || "科系未填", row.grade].filter(Boolean).join(" · ");
   return (
     <article className={`battle-next-card${featured ? " is-next" : ""}`}>
-      {featured ? <small>下一位</small> : null}
-      <strong>{row.name}</strong>
-      {row.needsConfirmation ? <span className="admin-badge is-confirm">需要確認</span> : null}
-      <p>{row.department || "科系未填"}{row.grade ? ` · ${row.grade}` : ""}</p>
-      <p>{row.phone || "電話未填"}</p>
-      <p className="admin-badge">{statusLabel(row)}</p>
-      {row.needsConfirmation ? (
-        <p className="admin-confirm" role="status">{row.confirmationReason || "同名或同電話，請先核對是不是同一人"}</p>
-      ) : null}
+      <header>
+        <small>{featured ? "下一位" : row.needsConfirmation ? "請核對" : "接著找"}</small>
+        {row.needsConfirmation ? <span className="admin-badge is-confirm">需要確認</span> : null}
+      </header>
+      <div className="battle-next-identity">
+        <strong>{row.name}</strong>
+        <p>{dept} · {row.phone || "電話未填"}{featured ? ` · ${statusLabel(row)}` : ""}</p>
+      </div>
       <a className="admin-primary" href={followUp}>填寫正式資料</a>
     </article>
   );
@@ -379,11 +379,20 @@ export function RecruitmentDashboard({
               目前沒有與「{selfRecruiter}」相關、尚未填正式資料的同學。遊戲關主不會自動變成正式接引人。
             </p>
           ) : (
-            <div className="battle-next-list">
-              {nextUp.map((row, index) => (
-                <NextUpCard key={row.personKey} row={row} featured={index === 0} />
-              ))}
-            </div>
+            <>
+              <div className="battle-next-list">
+                {nextUp.map((row, index) => (
+                  <NextUpCard key={row.personKey} row={row} featured={index === 0} />
+                ))}
+              </div>
+              {relatedPending.length > 1 ? (
+                <p className="admin-caption" role="status">
+                  {relatedPending.filter((row) => row.needsConfirmation).length > 1
+                    ? `還有 ${relatedPending.length - 1} 位同名待確認`
+                    : `還有 ${relatedPending.length - 1} 位待處理`}
+                </p>
+              ) : null}
+            </>
           )}
         </section>
         <BattleCommand
