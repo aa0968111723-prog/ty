@@ -499,6 +499,7 @@ export function buildRecruitmentDashboard(input = {}) {
     return {
       personKey: person.personKey,
       status: person.status,
+      pending: true,
       name: latest.name,
       phone: latest.phone,
       normalizedPhone: person.normalizedPhone,

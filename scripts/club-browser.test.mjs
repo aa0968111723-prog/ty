@@ -373,8 +373,8 @@ test(
       const nextCard = page.locator(".battle-next-card").filter({ hasText: "關主的同學" });
       await nextCard.waitFor();
       assert.equal(await nextCard.locator("text=下一位").count(), 1);
-      assert.ok((await nextCard.innerText()).includes("歷史學系"));
-      assert.ok((await nextCard.innerText()).includes("尚未填正式資料"));
+      await nextCard.getByText("歷史學系", { exact: false }).waitFor();
+      await nextCard.getByText("尚未填正式資料").waitFor();
       assert.equal(await page.getByRole("link", { name: "填寫正式資料" }).count(), 1);
       assert.equal(await page.getByText("別人的同學").count(), 0);
       assert.equal(await page.locator("text=submissionId").count(), 0);

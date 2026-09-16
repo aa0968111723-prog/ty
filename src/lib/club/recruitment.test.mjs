@@ -60,6 +60,7 @@ test("two plays by one student become one pending candidate under the game gatek
     masterRows: [],
   });
   assert.equal(data.pending.length, 2);
+  assert.equal(data.pending.every((row) => row.pending === true), true);
   const peng = data.pending.find((row) => row.name === "王小明");
   assert.equal(peng.attemptCount, 2);
   assert.equal(peng.gameGatekeeper, "柏能");
