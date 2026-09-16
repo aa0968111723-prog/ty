@@ -346,36 +346,36 @@ export function RecruitmentDashboard({
           </button>
         </div>
         <input aria-label="搜尋姓名或電話" placeholder="搜尋姓名、電話" value={query} onChange={(event) => setQuery(event.target.value)} />
-        <div className="battle-date-chips" role="group" aria-label="名單日期">
-          {([
-            ["today", "今天"],
-            ["yesterday", "昨天"],
-            ["all", "全部"],
-          ] as const).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={rosterRange === id}
-              onClick={() => setRosterRange(id)}
-            >
-              {label}
-            </button>
-          ))}
-          <label>
-            自訂日期
-            <input
-              aria-label="名單自訂日期"
-              type="date"
-              value={rosterDate}
-              onChange={(event) => {
-                if (!event.target.value) return;
-                setRosterDate(event.target.value);
-                setRosterRange("custom");
-              }}
-            />
-          </label>
-        </div>
         <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
+          <div className="battle-date-chips" role="group" aria-label="名單日期">
+            {([
+              ["today", "今天"],
+              ["yesterday", "昨天"],
+              ["all", "全部"],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={rosterRange === id}
+                onClick={() => setRosterRange(id)}
+              >
+                {label}
+              </button>
+            ))}
+            <label>
+              自訂日期
+              <input
+                aria-label="名單自訂日期"
+                type="date"
+                value={rosterDate}
+                onChange={(event) => {
+                  if (!event.target.value) return;
+                  setRosterDate(event.target.value);
+                  setRosterRange("custom");
+                }}
+              />
+            </label>
+          </div>
           <select aria-label="篩選遊戲關主" value={gameGatekeeper} onChange={(event) => setGameGatekeeper(event.target.value)}>
             <option value="">所有遊戲關主</option>
             {data.gameGatekeepers.map((row) => <option key={row.name}>{row.name}</option>)}
@@ -409,7 +409,12 @@ export function RecruitmentDashboard({
             <option value="no">尚未填正式表單</option>
           </select>
         </div>
-        <p className="admin-caption">{people.length} 位 · 僅工作人員可見</p>
+        <p className="admin-caption">
+          {people.length} 位 · {rosterRange === "today" ? "今天" : rosterRange === "yesterday" ? "昨天" : rosterRange === "custom" ? rosterDate : "全部"}
+          {gameGatekeeper ? ` · 關主 ${gameGatekeeper}` : ""}
+          {recruiter ? ` · 接引 ${recruiter}` : ""}
+          {" · 僅工作人員可見"}
+        </p>
         {!people.length ? (
           <p className="admin-empty">{busy ? "讀取中…" : "沒有符合條件的同學"}</p>
         ) : (

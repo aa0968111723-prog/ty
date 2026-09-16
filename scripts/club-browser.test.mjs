@@ -185,10 +185,13 @@ test(
         );
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
         await page.getByRole("heading", { level: 1, name: "名單" }).waitFor();
-        await page.getByRole("button", { name: "全部", exact: true }).waitFor();
         await page.getByLabel("搜尋姓名或電話").waitFor();
+        assert.equal(await page.getByRole("button", { name: "全部", exact: true }).count(), 0);
+        assert.equal(await page.getByLabel("篩選遊戲關主").count(), 0);
         await page.getByRole("button", { name: "篩選" }).click();
+        await page.getByRole("button", { name: "全部", exact: true }).waitFor();
         await page.getByLabel("篩選遊戲關主").waitFor();
+        await page.getByLabel("正式表單是否已填").waitFor();
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "我的釘選", exact: true }).click();
         await assertScroll("admin");
