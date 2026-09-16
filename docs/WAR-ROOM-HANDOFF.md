@@ -5,33 +5,44 @@
 | 項 | 值 |
 | --- | --- |
 | 日期 | 2026-09-16 |
-| 觀察 | `2026-09-16T19:42:07Z` |
+| 觀察 | 本文件寫入時；live 指紋見第 8 節（上一輪 `2026-09-16T20:41:00Z`） |
 | 分支 | `cursor/admin-war-room-cf4c` |
-| 產品 SHA | `a046eb089850a0544373f942cff7127fdb6e5fe0`（本文件加入前的 HEAD；local = origin） |
-| 對照 `origin/main` | `d839e46e976916bd415d7d8200f466619b3623be`，ahead 44 |
-| 此 head 的 GitHub PR | **無**。`gh pr list --head cursor/admin-war-room-cf4c` → `[]`；GitHub MCP `search_pull_requests` `head:cursor/admin-war-room-cf4c` → `total_count: 0` |
+| 產品 SHA | `26584f4e9f8a7e38e742d9ff7b5103690e978b87`（本文件更新前的 HEAD；failed-empty 活動長條／近七日 暫缺） |
+| 對照 `origin/main` | `d839e46e976916bd415d7d8200f466619b3623be`，ahead 47、behind 0（未 rebase） |
+| 此 head 的 GitHub PR | **無**。一次檢查：`gh pr list --head cursor/admin-war-room-cf4c` → `[]` |
 | 開放 PR（錯誤頭，不算完成） | #31 `cursor/recruitment-battleboard-12d7`、#32 `cursor/admin-command-center-3804`。不要 merge。 |
 | Compare | GitHub repo `ty` 的 `main...cursor/admin-war-room-cf4c` |
 
-未標 Goal complete。未發明無關 UI。未重試 MCP `create_pull_request`（403）/ `create_pull_request_with_copilot`（401）。未 ManagePullRequest。未加 Actions PR workflow。GitHub 訂閱仍為 `sub_a37f7f67-8a1b-4307-a676-1b7a85ba3f77`。
+未標 Goal complete。未發明無關 UI。未跑完整 live 16 項（上一輪已 16/16 @ `26584f4` / `admin-CN5PaDuw.js`）。未 ManagePullRequest。未加 Actions PR workflow。未 `gh pr create`。跳過 Copilot PR（已知 401）。
 
 ---
 
 ## 1. 修改過的檔案
 
-`git diff --stat origin/main...a046eb0`：**35 files, +3318 / −1745**。
+`git diff --stat origin/main...26584f4`：**37 files, +3709 / −1732**。
 
 | 區 | 檔案 |
 | --- | --- |
 | 戰情 UI | `src/components/club/war-room.tsx`, `admin-shell.tsx`, `official-form-shortcuts.tsx`, `admin.css`, `src/routes/admin.tsx`, `admin-presentation.ts`, `admin-ranks.tsx`, `admin-login.tsx` |
 | 夥伴流程 | `partner-picker.tsx`, `partner-state.ts`, `recruiter-quickfill.tsx`, `recruitment-dashboard.tsx`, `recruitment-profile-sheet.tsx` |
 | 統計 / 預填 | `src/lib/club/recruitment.mjs`, `recruitment-prefill.mjs`, `recruitment-staff-form.mjs`, `recruitment-identity.mjs` |
-| 測試 | `recruitment.test.mjs`, `recruitment-prefill.test.mjs`, `recruitment-staff-form.test.mjs`, `recruitment-identity.test.mjs`, `scripts/club-browser.test.mjs`, `frontend-sheets-guard.test.mjs` |
+| 測試 | `recruitment.test.mjs`, `recruitment-prefill.test.mjs`, `recruitment-staff-form.test.mjs`, `recruitment-identity.test.mjs`, `scripts/club-browser.test.mjs`, `frontend-sheets-guard.test.mjs`, `club-admin.test.mjs`, `recruitment-form-sync.test.mjs`, `admin-dashboard-pwa.test.mjs` |
 | 部署 | `Dockerfile`, `zbpack.json`, `.dockerignore`, `vite.config.ts`, `package.json` |
-| 文件 / GAS | `PRODUCT_CONTRACT.md`, `docs/RECRUITMENT-DATA-FLOW.md`, `google-apps-script/recruitment-form-sync/Code.gs` |
+| 文件 / GAS | `PRODUCT_CONTRACT.md`, `docs/RECRUITMENT-DATA-FLOW.md`, `docs/WAR-ROOM-HANDOFF.md`, `google-apps-script/recruitment-form-sync/Code.gs` |
 | PWA | `public/manifest.webmanifest` |
 
-#31 / #32 的頭未改。本文件是唯一新增回報。
+#31 / #32 的頭未改。
+
+產品線上此 head 的關鍵提交：
+
+| SHA | 做了什麼 |
+| --- | --- |
+| `a046eb0` | 正式表單捷徑 390 不在字中間斷行 |
+| `2bda672` | 第一次加入本回報（當時產品頭仍寫 `a046eb0`） |
+| `cee7bfd` | 空資料 / 同步失敗 / 重複提交：KPI／漏斗用 —／資料不足，不是假 0 |
+| `26584f4` | **失敗空表不再把各活動長條、近七日走勢畫成 0**。表單來源不可用時省略 event bars 與 7 日圖；夥伴 JSON 不再把 null count 收成 `0`。文案：「活動人數暫缺，不是沒有人報名」「近七日走勢暫缺」 |
+
+`cee7bfd` 不是終點：該包 live 16 過關，但失敗空表（HTTP 200、三份 sync `ok:false`）仍把已知活動畫成 0、近七日也是 0，與「同步失敗顯示 —／資料不足，不是 0」矛盾。
 
 ---
 
@@ -61,8 +72,8 @@
 六張卡：今日接觸、累積接觸、今日活動報名、入社、已繳保證金、**待填正式招生資料**。同步不是第七張 KPI，而是橫幅 `aria-label="資料同步狀態"`（遊戲 / 招生表 / 總表）。失敗文案「數字暫缺，不是 0 人」，KPI 用 —。
 
 - 漏斗：遊戲接觸 → 活動報名 → 入社 → 保證金。缺欄「資料不足」。
-- 各活動：CSS 長條，點開該場報名姓名。
-- 近七日：接 / 報 / 社。
+- 各活動：CSS 長條，點開該場報名姓名。表單來源不可用（失敗且無 last-known-good 列）→ **不畫長條**，改「活動人數暫缺，不是沒有人報名」。
+- 近七日：接 / 報 / 社。遊戲＋表單皆不可用 → **不畫走勢**，改「近七日走勢暫缺」。
 - 44px：`.admin-page button` min 44×44；底欄 52px；KPI hit 88px。`.admin-page { overflow-x: hidden }`。`@media (max-width: 719px)` 隱藏 roster table。
 - `src/components` 不含「分級」或 S/A/B。`LIVE_TIER_ENTRY` 只在 server `recruitment-staff-form.mjs`。`generatePrefilledFormUrl` 不 `setEntry` 分級；`mergeEntries` 刪 `tier`。
 
@@ -77,13 +88,13 @@
 | 今日接觸人數 | `summary.playedToday` | 今日完成官方遊戲的去重人數 |
 | 累積接觸人數 | `summary.playedAll` | 全部官方遊戲去重人數 |
 | 今日活動報名人數 | `summary.activityToday` | 今日正式表且有**真實活動**的去重人數 |
-| 各活動報名人數 | `events[]` | 每場真實活動去重人數 + 姓名 |
+| 各活動報名人數 | `events[]` | 每場真實活動去重人數 + 姓名；表單不可用時陣列為空 |
 | 入社人數 | `summary.joined` | 正式表「是否入社」= 是（缺欄 → —） |
 | 已繳保證金 | `summary.depositPaid` | 正式表「保證金是否繳費」= 是 |
 | 待填正式招生資料 | `summary.pending` | 玩過官方遊戲、尚未完成招生列 |
 | 資料同步 | `sync.*` | 三份表連線旗標 |
 
-KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內部可有 `submissionId` 給身分比對，畫面不顯示。
+KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內部可有 `submissionId` 給身分比對，畫面不顯示。夥伴 JSON 用 `partnerCount`：`null` 保持 `null`，不收成 `0`。
 
 ---
 
@@ -92,6 +103,8 @@ KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內
 `isCountedActivity`：空、`^無`、`考慮中` / `沒興趣` / `未報` → 不算報名。選項含 `無(考慮中`、`無(沒興趣`；後兩項不進長條。一人多場切開，每場各計一次去重。漏斗「活動報名」與近七日「報」同一謂詞。測試：`considering-none event options do not count as signups`。
 
 重複提交：`parseGameAttempts` 同 `submissionId` 不第二列；`parseRecruitmentResponses` 標 `duplicate` 後 `filter(!row.duplicate)`；staff `recruitmentResponseDuplicate` 用 submissionId 或電話。測試：`same submission processed twice is duplicate and does not create a second student`。
+
+失敗空表：`formUnavailable`（招生表＋總表 `sourceUnavailable` 且無 formal 列）→ `events = []`、近七日整段不輸出。測試：`同步失敗: failed empty sheets are 資料不足, not zeros` 斷言 `events.length === 0` 與 `trend.length === 0`。瀏覽器：`failed empty sheets show 資料不足, not event zeros`。
 
 ---
 
@@ -102,59 +115,47 @@ KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內
 3. `/follow-up` 預填姓名 / 電話 / 系級 / 接引日期；備註只有「遊戲完成」+「遊戲關主」（`buildGameMetadataNote`）。
 4. 夥伴題是「這位同學報名了哪個活動？」，不是分級。
 5. 「開啟正式招生表單」= published `/viewform`。`OfficialFormShortcuts` 在更多、表單資料、待處理詳細資料。`查看招生表單後台` = 同一張表 `/edit`。沒有重建 Form。
-6. `encodeStudentChoice` 只寫 `|#p:`，**不寫** `|#s:`。`submissionId` 不進備註、不進選擇學生、不進 prefill URL。舊 Sheet 若仍有 `submissionId：` / `#s:` 仍可解析並從可見備註剝掉。
+6. `encodeStudentChoice` / GAS `recruitEncodeChoice_` 只寫 `|#p:`，**不寫** `|#s:`。`submissionId` 不進備註、不進選擇學生、不進 prefill URL。舊 Sheet 若仍有 `submissionId：` / `#s:` 仍可解析並從可見備註剝掉。
 
 ---
 
-## 7. 測試 / gates（產品 SHA `a046eb0`；本回合補 Phase-8 測試）
+## 7. 測試 / gates（產品 SHA `26584f4`）
 
-日誌在本回合產物，不進 git。先前寫「沒有發現未修的 spec 洞」已過時：客觀點名的四洞裡，空資料 / 同步失敗 / 重複提交 的 dashboard 斷言太弱或缺失，本回合已補。今日/歷史（Taipei）既有測試已足夠，未再加一筆。
+日誌在產物，不進 git。未重跑完整 live 16 項（上一輪已過）。
 
-本回合新增 / 加強（`src/lib/club/recruitment.test.mjs`）：
-
-| 洞 | 測試名 | 斷言 |
-| --- | --- | --- |
-| 空資料 | `empty sheets…` 加強；`空資料: blank form fields are 資料不足, not 0 people` | 空遊戲表接觸=0（真的沒人）；空白入社/活動/保證金欄 → null / funnel `missing`，不是 0 |
-| 同步失敗 | `同步失敗: failed empty sheets are 資料不足, not zeros`；`同步失敗: stale last-known-good still shows people, not a fake zero` | 失敗且無 last-known-good → played/pending null、漏斗 資料不足；stale 列仍顯示人數 |
-| 重複提交 | `重複提交: same game submissionId does not create a second row`；`重複提交: flagged duplicate recruitment row does not create a second student` | 同 submissionId 只留一列；`_duplicate` 招生列不第二人 |
-| 今日/歷史 | **未新增** | 既有 `today vs history contacts exclude practice…` 與 `war-room today vs history contacts use Asia/Taipei midnight, not UTC` |
-
-`node --test src/lib/club/recruitment.test.mjs scripts/club-admin.test.mjs`：38 pass / 0 fail。`node --test src/lib/club/*.test.mjs`：121 pass / 0 fail。未重跑完整 live 16 項。
-
-未跑全量 `npm test` / typecheck / build（只動測試與同步失敗空表的 missing 計數；KPI 對 null 顯示 —）。
-
-| Gate（上一份回報，產品 `a046eb0`） | 結果 |
+| Gate | 結果 |
 | --- | --- |
 | `npm run typecheck` | pass（`tsc --noEmit`） |
-| `npm test` | 361 pass / 0 fail / 1 skip（`official game completion writes the game sheet immediately`）+ typed 55 pass / 0 fail |
+| `npm test` | 349 pass / 0 fail / 2 skip（club-browser 無 URL 時 skip）+ typed 55 pass / 0 fail |
 | `npm run lint` | 0 errors / 13 warnings |
-| `npm run build` | pass；client `admin-kJvX4yw0.js` |
-| club-browser | 17 pass / 0 fail |
-| prod smoke | desktop+mobile 200，無 console/page error，`horizontalOverflow: false` |
+| `npm run build` | pass；client `admin-CN5PaDuw.js` |
+| recruitment slice | 含失敗空表 event/trend 空陣列斷言 |
+| `CLUB_BROWSER_URL=live` `scripts/club-browser.test.mjs` | **18 pass / 0 fail**（含 `failed empty sheets show 資料不足, not event zeros`） |
+| Live 16 @ `26584f4` / `admin-CN5PaDuw.js` | **16/16 pass**；另 14b／14d 失敗空表無 event bars、文案暫缺 |
 
 ---
 
-## 8. 部署（本回合觀察一次，未 restore）
+## 8. 部署（上一輪觀察，本回合未 restore）
 
 | 項 | 值 |
 | --- | --- |
 | 服務 | `leader-dna-sheet-sync` RUNNING |
-| GitTrigger | **`cursor/admin-war-room-cf4c`**（repoID 1363866270） |
-| RUNNING | `a046eb089850a0544373f942cff7127fdb6e5fe0` `refs/heads/cursor/admin-war-room-cf4c`（created `2026-09-16T19:27:18.983Z`） |
+| GitTrigger | **`cursor/admin-war-room-cf4c`**（repoID 1363866270）。未被偷走。 |
+| RUNNING | `6aaafd7205af289f92f97783` @ **`26584f4e9f8a7e38e742d9ff7b5103690e978b87`** `refs/heads/cursor/admin-war-room-cf4c`（created `2026-09-16T20:34:58.555Z`，finished `20:35:56.923Z`） |
 | Live | `/admin` `/follow-up` `/leaderboard?scope=today` `/` 皆 200 |
-| Live JS | `/assets/admin-kJvX4yw0.js`（與 `a046eb0` build 同檔名） |
-| Fingerprint | `war-kpis=1` `battle-kpis=0` `分級=0` `1322037614=0` `googleapis=0` `forms.create=0` `今日招生戰情=4` `需要確認=3` |
+| Live JS | `/assets/admin-CN5PaDuw.js`（與 `26584f4` production client 同檔名） |
+| Fingerprint | `war-kpis=1` `battle-kpis=0` `分級=0` `googleapis=0` `forms.create=0` `1322037614=0` `待填正式招生資料=1` `活動人數暫缺=1` `資料不足=5` |
 
-未 `deploy(gitRef)` / zip。觀察時 GitTrigger 與 RUNNING 已是本頭，因此未 `deployFromSpecification`。
+未 `deploy(gitRef)` / zip。GitTrigger 仍是本分支、RUNNING 已是產品頭，因此未 `deployFromSpecification`。本文件若再 push，webhook 自動建置即可，不要額外 restore。
 
-Clasp：`google-apps-script/recruitment-form-sync/` **沒有** `.clasp.json`。Apps Script **未**部署。不阻擋 app 內預填與戰情。
+Clasp：`google-apps-script/recruitment-form-sync/` **沒有** `.clasp.json`。樹內 `Code.gs` 已不把 `submissionId` 寫進備註或選擇學生（legacy `#s:` / `submissionId：` 只解碼）。Apps Script **未** clasp 部署。不阻擋 app 內預填與戰情。
 
 ---
 
 ## 9. 還缺什麼（Goal 保持 open）
 
-1. **人類必須開 PR**。請有 repo write 的人用上面的 compare 開 PR，標題「招生戰情後台：手機一眼看懂、夥伴快速填表」，draft 可。不要再開會嘗試 MCP / `gh pr create` / Actions。
+1. **人類必須開 PR**。請有 repo write 的人用上面的 compare 開 PR，標題「招生戰情後台：手機一眼看懂、夥伴快速填表」，draft 可。不要用 `gh pr create` / Actions。MCP `create_pull_request` 若仍是已知 403 PAT 就停；本回合會在 `get_me` 顯示擁有者後最多試一次。
 2. **#31 / #32 不要當這個 goal 的 PR**，也不要 merge。
 3. **Apps Script / clasp 僅擁有者** — 樹內有 GAS，**沒有** `.clasp.json`。Clasp **未**部署。不假裝已同步表單候選。
 
-Live 戰情在觀察當下仍是產品 SHA `a046eb0`（GitTrigger cf4c + RUNNING 該 commit + `admin-kJvX4yw0.js` + `war-kpis`、無分級）。Goal 仍 open，直到這個 head 有一張真實 GitHub PR **且** live 仍吻合。
+Live 戰情在上一輪觀察仍是產品 SHA `26584f4`（GitTrigger cf4c + RUNNING 該 commit + `admin-CN5PaDuw.js` + `war-kpis`、無分級、失敗空表不畫假 0 長條）。Goal 仍 open，直到這個 head 有一張真實 GitHub PR **且** live 仍吻合（`war-kpis`、無「分級」）。
