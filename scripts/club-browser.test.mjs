@@ -1365,6 +1365,76 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("roster 追蹤狀態更新 shows 同步中 then restores the board", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route("**/*", (route) => new URL(route.request().url()).origin !== origin
+        ? route.fulfill({ status: 200, body: "", contentType: "application/javascript" })
+        : route.continue());
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard?*", (route) =>
+        route.fulfill({ json: buildDashboard({ date: "2026-09-14", results: [], forms: [] }) }),
+      );
+      const pending = {
+        姓名: "關主的同學", 電話: "0910000001", 科系: "歷史學系", 年級: "大一", 遊戲關主: "柏能",
+        _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T01:00:00.000Z",
+      };
+      const filled = {
+        姓名: "已填乙", 電話: "0920000002", 科系: "資訊工程學系", 年級: "大二", 遊戲關主: "安倢",
+        _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", _kind: "official", _skipSave: false,
+        遊戲時間: "2026-09-14T02:00:00.000Z",
+      };
+      let holdRefresh = false;
+      let releaseRefresh = () => {};
+      await page.route("**/api/admin/recruitment**", async (route) => {
+        if (holdRefresh) await new Promise((resolve) => { releaseRefresh = resolve; });
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date: "2026-09-14",
+            gameRows: [pending, filled],
+            recruitmentRows: [{
+              時間戳記: "2026/9/14 下午 3:00:00",
+              同學的姓名: filled.姓名,
+              "同學電話/LINE": filled.電話,
+              "接引人(可複選)": "小哲",
+              備註: "遊戲完成：2026/09/14 10:00\n遊戲關主：安倢\nsubmissionId：bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\n喜歡茶會",
+              _gameSubmissionId: filled._submissionId,
+            }],
+            masterRows: [],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin?view=contacts`);
+      await page.getByRole("heading", { name: "招生名單" }).waitFor();
+      await page.locator(".admin-sync-line").getByText("已連線").waitFor();
+      const refresh = page.getByRole("button", { name: "追蹤狀態更新" });
+      const refreshBox = await refresh.boundingBox();
+      const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
+      assert.ok(refreshBox && refreshBox.height >= 43.5 && refreshBox.width >= 43.5, JSON.stringify(refreshBox));
+      assert.ok(refreshBox && navBox && refreshBox.y + refreshBox.height <= navBox.y + 1);
+      holdRefresh = true;
+      const clicked = refresh.click();
+      await page.locator(".admin-sync-line").getByText("同步中…").waitFor();
+      await capture(page, "roster-track-syncing-390");
+      releaseRefresh();
+      await clicked;
+      await page.locator(".admin-sync-line").getByText("已連線").waitFor();
+      const openFilters = page.getByRole("button", { name: "展開篩選" });
+      if (await openFilters.count()) await openFilters.click();
+      await page.getByLabel("是否已填正式資料").selectOption("yes");
+      assert.equal(await page.getByRole("article").filter({ hasText: "已填乙" }).count(), 1);
+      assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 0);
+      assert.match(await page.getByText("1 位 · 僅工作人員可見").innerText(), /1 位/);
+      await capture(page, "roster-track-filled-390");
+      assert.equal(await page.locator("text=submissionId").count(), 0);
+      assert.equal(await page.locator('[aria-label="submissionId"]').count(), 0);
+      assert.equal(await page.locator("[title*='submissionId' i]").count(), 0);
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("queue 標記已處理 hides the card without changing the game gatekeeper", async () => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const page = await context.newPage();

@@ -301,10 +301,11 @@ function AdminDashboard() {
             className="admin-refresh"
             disabled={busy}
             onClick={() => void refresh(true)}
-            aria-label="更新資料"
+            aria-label={tab === "roster" || tab === "contacts" ? "追蹤狀態更新" : "更新資料"}
+            aria-busy={busy}
           >
             <RefreshCw size={20} className={busy ? "admin-spinning" : ""} />
-            <span>更新</span>
+            <span>{tab === "roster" || tab === "contacts" ? "追蹤狀態更新" : "更新"}</span>
           </button>
         </div>
       </header>
@@ -329,8 +330,8 @@ function AdminDashboard() {
           </label>
         </div>
       )}
-      <div className="admin-sync-line" role="status">
-        <SyncPill data={recruitment} error={error} />
+      <div className="admin-sync-line" role="status" aria-live="polite">
+        {busy && recruitment ? <span>同步中…</span> : <SyncPill data={recruitment} error={error} />}
         <span>最後同步 {recruitment || data ? time((recruitment?.sync.updatedAt || data?.sync.updatedAt) as string) : "—"}</span>
       </div>
       {error && (
