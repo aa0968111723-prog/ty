@@ -392,28 +392,44 @@ export function WarRoom({
 
       <section className="admin-panel war-trend" aria-label="近七日接觸、報名、入社">
         <h2>近七日走勢</h2>
-        <p className="admin-caption">接＝接觸 · 報＝活動報名 · 社＝入社</p>
+        <ul className="war-trend-legend">
+          <li>接 接觸</li>
+          <li className="is-signup">報 活動報名</li>
+          <li className="is-joined">社 入社</li>
+        </ul>
         {!trend.length ? (
           <p className="admin-empty">{error ? "近七日走勢暫缺" : "尚無走勢"}</p>
         ) : (
-        <div className="war-trend-chart">
+        <ol className="war-trend-chart">
           {trend.map((row) => (
-            <div key={row.date} className="war-trend-day">
-              <div className="war-trend-cols">
-                <span style={{ height: `${(row.contacts / maxTrend) * 100}%` }} title={`接觸 ${row.contacts}`}>
-                  <b>接</b>
-                </span>
-                <span className="is-signup" style={{ height: `${(row.signups / maxTrend) * 100}%` }} title={`報名 ${row.signups}`}>
-                  <b>報</b>
-                </span>
-                <span className="is-joined" style={{ height: `${(row.joined / maxTrend) * 100}%` }} title={`入社 ${row.joined}`}>
-                  <b>社</b>
-                </span>
+            <li
+              key={row.date}
+              className="war-trend-day"
+              aria-label={`${row.date} 接觸 ${row.contacts}、活動報名 ${row.signups}、入社 ${row.joined}`}
+            >
+              <div className="war-trend-cols" aria-hidden="true">
+                <span style={{ height: `${(row.contacts / maxTrend) * 100}%` }} />
+                <span className="is-signup" style={{ height: `${(row.signups / maxTrend) * 100}%` }} />
+                <span className="is-joined" style={{ height: `${(row.joined / maxTrend) * 100}%` }} />
               </div>
+              <p className="war-trend-readout">
+                <span>
+                  <span className="war-trend-key">接</span>
+                  {row.contacts}
+                </span>
+                <span className="is-signup">
+                  <span className="war-trend-key">報</span>
+                  {row.signups}
+                </span>
+                <span className="is-joined">
+                  <span className="war-trend-key">社</span>
+                  {row.joined}
+                </span>
+              </p>
               <small>{row.date.slice(5)}</small>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
         )}
       </section>
 

@@ -704,6 +704,158 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("war-room 7-day trend shows visible counts on 390", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route((url) => {
+        try { return new URL(url).origin !== origin; } catch { return false; }
+      }, async (route) => {
+        await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+      });
+      const taipeiToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+      const [year, month, day] = taipeiToday.split("-").map(Number);
+      const yesterdayUtc = new Date(Date.UTC(year, month - 1, day - 1));
+      const yesterday = `${yesterdayUtc.getUTCFullYear()}-${String(yesterdayUtc.getUTCMonth() + 1).padStart(2, "0")}-${String(yesterdayUtc.getUTCDate()).padStart(2, "0")}`;
+      const recruitedAt = `${Number(month)}/${Number(day)}`;
+      const todayStudent = {
+        name: "測試同學",
+        phone: "0900000000",
+        department: "歷史學系",
+        grade: "大一",
+        gatekeeper: "柏能",
+        completedAt: `${taipeiToday}T04:00:00.000Z`,
+        kind: "official",
+        skipSave: false,
+        duration: 60,
+        settings: DEFAULT_SETTINGS,
+        score: 600,
+        correct: 5,
+        wrong: 0,
+        maxCombo: 5,
+        accuracy: 100,
+        submissionId: crypto.randomUUID(),
+      };
+      const yesterdayA = { ...todayStudent, name: "昨日甲", phone: "0900000002", completedAt: `${yesterday}T04:00:00.000Z`, submissionId: crypto.randomUUID() };
+      const yesterdayB = { ...todayStudent, name: "昨日乙", phone: "0900000003", completedAt: `${yesterday}T05:00:00.000Z`, submissionId: crypto.randomUUID() };
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({ json: buildDashboard({ date, results: [todayStudent, yesterdayA, yesterdayB], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date,
+            now: new Date(`${taipeiToday}T12:00:00+08:00`),
+            gameRows: [
+              {
+                姓名: todayStudent.name,
+                電話: todayStudent.phone,
+                科系: todayStudent.department,
+                年級: todayStudent.grade,
+                遊戲關主: todayStudent.gatekeeper,
+                遊戲時間: todayStudent.completedAt,
+                _submissionId: todayStudent.submissionId,
+                _kind: "official",
+                _skipSave: false,
+              },
+              {
+                姓名: yesterdayA.name,
+                電話: yesterdayA.phone,
+                科系: yesterdayA.department,
+                年級: yesterdayA.grade,
+                遊戲關主: yesterdayA.gatekeeper,
+                遊戲時間: yesterdayA.completedAt,
+                _submissionId: yesterdayA.submissionId,
+                _kind: "official",
+                _skipSave: false,
+              },
+              {
+                姓名: yesterdayB.name,
+                電話: yesterdayB.phone,
+                科系: yesterdayB.department,
+                年級: yesterdayB.grade,
+                遊戲關主: yesterdayB.gatekeeper,
+                遊戲時間: yesterdayB.completedAt,
+                _submissionId: yesterdayB.submissionId,
+                _kind: "official",
+                _skipSave: false,
+              },
+            ],
+            recruitmentRows: [{
+              時間戳記: `${taipeiToday.replaceAll("-", "/")} 10:00:00`,
+              "接引人(可複選)": "安倢",
+              接引日期: recruitedAt,
+              同學的姓名: todayStudent.name,
+              "同學電話/LINE": todayStudent.phone,
+              系級: "歷史學系大一",
+              報名了那個活動: "9/30茶會",
+              是否入社: "是",
+              _gameSubmissionId: todayStudent.submissionId,
+            }],
+            masterRows: [],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      assert.equal(await page.locator("[data-kpi=today-contacts] .war-card-hit").getAttribute("aria-expanded"), "false");
+      const trend = page.locator(".war-trend");
+      await trend.waitFor();
+      await trend.evaluate((el) => el.scrollIntoView({ block: "center" }));
+      const readout = page.locator(".war-trend-readout");
+      assert.equal(await readout.count(), 7);
+      assert.equal(await readout.first().isVisible(), true);
+      const trendText = await trend.innerText();
+      assert.match(trendText, /接\s*接觸/);
+      assert.match(trendText, /報\s*活動報名/);
+      assert.match(trendText, /社\s*入社/);
+      assert.match(trendText, /接\s*\d/);
+      assert.match(trendText, /報\s*\d/);
+      assert.match(trendText, /社\s*\d/);
+      assert.equal(await page.locator(".war-trend-cols [title]").count(), 0);
+      const labels = await page.locator(".war-trend-day").evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute("aria-label") || ""),
+      );
+      assert.equal(labels.length, 7);
+      assert.ok(labels.every((label) => /接觸 \d/.test(label) && /活動報名 \d/.test(label) && /入社 \d/.test(label)));
+      const todayLabel = labels.find((label) => label.startsWith(taipeiToday));
+      assert.match(todayLabel, new RegExp(`${taipeiToday} 接觸 1、活動報名 1、入社 1`));
+      const yesterdayLabel = labels.find((label) => label.startsWith(yesterday));
+      assert.match(yesterdayLabel, new RegExp(`${yesterday} 接觸 2`));
+      const readoutVisible = await readout.last().evaluate((el) => {
+        const style = getComputedStyle(el);
+        const box = el.getBoundingClientRect();
+        return {
+          visible: style.visibility !== "hidden" && Number(style.opacity) !== 0 && box.height >= 12 && box.width >= 12,
+          top: box.top,
+          bottom: box.bottom,
+          text: el.textContent.replace(/\s+/g, ""),
+        };
+      });
+      assert.equal(readoutVisible.visible, true, JSON.stringify(readoutVisible));
+      assert.match(readoutVisible.text, /接\d/);
+      assert.match(readoutVisible.text, /報\d/);
+      assert.match(readoutVisible.text, /社\d/);
+      assert.ok(readoutVisible.top >= 0 && readoutVisible.bottom <= 844);
+      assert.equal(await page.getByText("submissionId").count(), 0);
+      assert.equal(await page.getByText("分級").count(), 0);
+      assert.equal(await page.getByText("0900000000").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "war-trend-390-viewport.png") });
+      }
+      await capture(page, "war-trend-390");
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

@@ -1628,16 +1628,51 @@
 .war-trend-chart {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--space-2);
+  gap: var(--space-1);
   align-items: end;
   min-height: 160px;
-  margin-top: var(--space-4);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.war-trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+.war-trend-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.war-trend-legend li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--brand);
+  flex-shrink: 0;
+}
+.war-trend-legend li.is-signup::before {
+  background: #8a6d1f;
+}
+.war-trend-legend li.is-joined::before {
+  background: #3d5a3a;
 }
 .war-trend-day {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
   justify-items: center;
   min-width: 0;
+}
+.war-trend-day small {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .war-trend-cols {
   display: flex;
@@ -1651,17 +1686,41 @@
   min-height: 8px;
   border-radius: 4px 4px 0 0;
   background: var(--brand);
-  display: flex;
-  align-items: start;
-  justify-content: center;
-  color: var(--surface-primary);
-  font-size: 10px;
 }
 .war-trend-cols span.is-signup {
   background: #8a6d1f;
 }
 .war-trend-cols span.is-joined {
   background: #3d5a3a;
+}
+.war-trend-readout {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-caption);
+  line-height: 1.25;
+  color: var(--brand);
+  font-weight: 700;
+}
+.war-trend-readout span {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 2px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.war-trend-readout .is-signup {
+  color: #8a6d1f;
+}
+.war-trend-readout .is-joined {
+  color: #3d5a3a;
+}
+.war-trend-key {
+  font-weight: 600;
+  color: inherit;
 }
 .war-conflict {
   display: flex;
