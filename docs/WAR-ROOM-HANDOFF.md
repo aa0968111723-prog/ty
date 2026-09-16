@@ -5,11 +5,11 @@
 | 項 | 值 |
 | --- | --- |
 | 日期 | 2026-09-16 |
-| 觀察 | 本文件寫入時；live 指紋見第 8 節（本回合 GitTrigger `2026-09-16T22:42:15Z`、JS `2026-09-16T22:42:19Z`） |
+| 觀察 | 本文件寫入時；live 指紋見第 8 節（本回合 GitTrigger `2026-09-16T23:22:56Z`、JS `2026-09-16T23:23:04Z`、live badges `2026-09-16T23:25:30Z`） |
 | 分支 | `cursor/admin-war-room-cf4c` |
-| 產品 SHA | `89c24c0125865bc89244f63caeebd31c1de9d2fb`（eslint 0/0；live JS `admin-BV6x7ajA.js`） |
-| 對照 `origin/main` | `d839e46e976916bd415d7d8200f466619b3623be`，ahead 53、behind 0（未 rebase） |
-| 此 head 的 GitHub PR | **無**。一次檢查：`gh pr list --head cursor/admin-war-room-cf4c` → `[]` |
+| 產品 SHA | `b43bb20db696593097f9c0429ebbfeb1f199fcef`（identity status 進夥伴 JSON；eslint 0/0；live JS 仍 `admin-BV6x7ajA.js`，與 `89c24c0` client 同檔） |
+| 對照 `origin/main` | `d839e46e976916bd415d7d8200f466619b3623be`，ahead 55、behind 0（未 rebase） |
+| 此 head 的 GitHub PR | **無**。`gh pr list --head cursor/admin-war-room-cf4c` → `[]`。`GET /commits/b43bb20/pulls` 與 `/commits/89c24c0/pulls` → `[]`。GraphQL `associatedPullRequests` 兩 SHA 皆空。`GET /commits/HEAD/pulls` 是 **main** 的 #30（他頭 `cursor/admin-war-room-ia-8323`），不算這個 head。 |
 | 開放 PR（錯誤頭，不算完成） | #31 `cursor/recruitment-battleboard-12d7`、#32 `cursor/admin-command-center-3804`。不要 merge。 |
 | Compare | GitHub repo `ty` 的 `main...cursor/admin-war-room-cf4c` |
 
@@ -19,7 +19,7 @@
 
 ## 1. 修改過的檔案
 
-`git diff --stat origin/main...89c24c0`：**40 files, +4165 / −1811**。
+`git diff --stat origin/main...b43bb20`：**40 files, +4210 / −1811**。
 
 | 區 | 檔案 |
 | --- | --- |
@@ -45,6 +45,7 @@
 | `fb6034d` | 首頁 compact 接引人用 `<select>`，next-person 測試選關主後人不變 |
 | `4064dfb` | 回報寫到 `fb6034d`（含「現在先填這位」） |
 | `89c24c0` | 戰情相關檔案 eslint **0 errors / 0 warnings** |
+| `b43bb20` | `toPartnerRecruitmentDashboard` 把 `status` 留在 pending/roster，live 才畫得出「需要確認」徽章 |
 
 ---
 
@@ -124,18 +125,18 @@ KPI/events 不帶分數、分級、submissionId、原始電話。待處理列內
 
 ---
 
-## 7. 測試 / gates（產品 SHA `89c24c0`）
+## 7. 測試 / gates（產品 SHA `b43bb20`，本回合重跑）
 
-日誌在產物，不進 git。本回合**未**改產品原始碼、**未**重跑 typecheck / lint / test / build、**未**重跑 16 項 DOM tour。下列為該 SHA 已通過紀錄。
+日誌在產物，不進 git。`b43bb20` 改了 `recruitment.mjs`（status 進夥伴 JSON）與測試，因此本回合重跑 typecheck / lint / test / build 與 preview smoke。未重跑 16 項 DOM tour（沒有新洞）。
 
 | Gate | 結果 |
 | --- | --- |
 | `npm run typecheck` | pass（`tsc --noEmit`，EXIT 0） |
-| `npm test` | 374 pass / 0 fail / 1 skip + typed 55 pass / 0 fail |
-| `npm run lint` | **0 errors / 0 warnings**（EXIT 0） |
-| `npm run build` | pass；client `admin-BV6x7ajA.js`（65 241 B，sha256 `7018a9cd414e`） |
-| `CLUB_BROWSER_URL=live` `scripts/club-browser.test.mjs` | **19 pass / 0 fail**（含 `war-home next person CTA is above the fold and ignores 遊戲關主`） |
-| This-turn live 16 @ `89c24c0` / `admin-BV6x7ajA.js` | **16/16 pass**（`2026-09-16T22:30:09Z`；另 N／R／js／14b／14d／2d／16b 皆 pass，合計 23 pass / 0 fail） |
+| `npm test` | 375 pass / 0 fail / 1 skip + typed 55 pass / 0 fail |
+| `npm run lint` | **0 errors / 0 warnings**（`eslint . --max-warnings 0`，EXIT 0） |
+| `npm run build` | pass；client `admin-BV6x7ajA.js`（65 241 B，sha256 `7018a9cd414e`，與 live 同檔） |
+| preview smoke | dev `8080` 與 built `8081` 皆有內容、console 乾淨；`divergesFromBaseline: false` |
+| This-turn live 16 @ `89c24c0` / `admin-BV6x7ajA.js` | 先前 **16/16 pass**（`2026-09-16T22:30:09Z`）。本回合 client chunk 未變，未重跑。 |
 
 Skip 是 `official game completion writes the game sheet immediately # SKIP`（沙盒不寫 live sheet），不是產品洞。
 
@@ -147,10 +148,11 @@ Skip 是 `official game completion writes the game sheet immediately # SKIP`（�
 | --- | --- |
 | 服務 | `leader-dna-sheet-sync` RUNNING |
 | GitTrigger | **`cursor/admin-war-room-cf4c`**（repoID 1363866270）。未被偷走。 |
-| RUNNING | `6aab0e7905af289f92f979b0` @ **`89c24c0125865bc89244f63caeebd31c1de9d2fb`** `refs/heads/cursor/admin-war-room-cf4c`（created `2026-09-16T21:47:37.286Z`，finished `21:48:47.763Z`） |
-| Live | `/admin` `/follow-up` `/leaderboard?scope=today` `/` 皆 200 |
-| Live JS | `/assets/admin-BV6x7ajA.js`（65 241 B，sha256 `7018a9cd414e`；與本 SHA production client 同檔名） |
-| Fingerprint | `war-kpis=1` `battle-kpis=0` `分級=0` `googleapis=0` `forms.create=0` `1322037614=0` `待填正式招生資料=1` `現在先填這位=4` `data-next-pending=1` |
+| RUNNING | `6aab228805af289f92f97c68` @ **`b43bb20db696593097f9c0429ebbfeb1f199fcef`** `refs/heads/cursor/admin-war-room-cf4c`（created `2026-09-16T23:13:12.1Z`，finished `23:15:11.049Z`） |
+| Live | `/admin` 200；戰情 / 待處理 / 名單可登入 |
+| Live JS | `/assets/admin-BV6x7ajA.js`（65 241 B，sha256 `7018a9cd414e`；與本 SHA production client 同檔） |
+| Fingerprint（admin JS） | `war-kpis=1` `battle-kpis=0` `分級=0` `googleapis=0` `forms.create=0` `1322037614=0` `待填正式招生資料=1` `現在先填這位=4` `data-next-pending=1` **`需要確認=2`** `submissionId=1`（僅備註剝離 regex，畫面 0）`#s:=0` |
+| Live badges | 戰情橫幅 **「7 筆需要確認，不會自動合併。」**；待處理 exact **需要確認=5**（`.admin-badge.is-confirm` 五枚）；陳柏能兩張待處理卡皆 **需要確認**（0986968111 / 0955229050）；名單 exact **需要確認=7**。夥伴 JSON `status` 有值（pending ambiguous 5 / matched 42）。畫面 **無** `submissionId`。 |
 
 未 `deploy(gitRef)` / zip。GitTrigger 仍是本分支、RUNNING 已是產品頭，因此未 `deployFromSpecification`。本文件若只改回報，push 後 GitTrigger 可自動 build 該 docs commit；不要 poll。
 
@@ -164,4 +166,4 @@ Clasp：`google-apps-script/recruitment-form-sync/` **沒有** `.clasp.json`。�
 2. **#31 / #32 不要當這個 goal 的 PR**，也不要 merge。
 3. **Apps Script / clasp 僅擁有者** — 樹內有 GAS，**沒有** `.clasp.json`。Clasp **未**部署。不假裝已同步表單候選。
 
-Live 戰情本回合仍是產品 SHA `89c24c0`（GitTrigger cf4c + RUNNING 該 commit + `admin-BV6x7ajA.js` + `war-kpis` + **現在先填這位**、`分級=0`）。This-turn live 16 在同一 SHA / 同一 JS 已 **16/16**。Goal 仍 open，直到這個 head 有一張真實 GitHub PR **且** live 仍吻合。
+Live 戰情本回合是產品 SHA `b43bb20`（GitTrigger cf4c + RUNNING 該 commit + `admin-BV6x7ajA.js` + `war-kpis` + **現在先填這位** + **需要確認 live badges**、`分級=0`、畫面無 submissionId）。Goal 仍 open，直到這個 head 有一張真實 GitHub PR **且** live 仍吻合。未 UpdateGoal complete。
