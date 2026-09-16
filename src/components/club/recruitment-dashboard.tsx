@@ -414,8 +414,6 @@ export function RecruitmentDashboard({
       if (range === "today" && day && day !== today) return false;
       if (range === "yesterday" && day && day !== yesterday) return false;
       if (range === "date" && date && day && day !== date) return false;
-      if (status === "pending" && !row.pending) return false;
-      if (status === "done" && row.pending) return false;
       if (filled === "yes" && row.pending) return false;
       if (filled === "no" && !row.pending) return false;
       if (gameGatekeeper && row.gameGatekeeper !== gameGatekeeper) return false;
@@ -427,11 +425,10 @@ export function RecruitmentDashboard({
       if (deposit === "no" && row.depositPaid === "是") return false;
       return rowMatchesQuery(row, query);
     });
-  }, [data.profiles, data.date, range, date, status, filled, gameGatekeeper, recruiter, activity, joined, deposit, query]);
+  }, [data.profiles, data.date, range, date, filled, gameGatekeeper, recruiter, activity, joined, deposit, query]);
 
   function rememberRecruiter(name: string) {
     setSelfRecruiter(name);
-    setRecruiter(name);
     setShowAllPending(false);
     try { localStorage.setItem(RECRUITER_STORAGE_KEY, name); } catch { /* ignore */ }
   }

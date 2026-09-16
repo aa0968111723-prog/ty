@@ -157,6 +157,15 @@ function AdminDashboard() {
     else url.searchParams.delete("view");
     window.history.replaceState({}, "", `${url.pathname}${url.search}`);
   }
+  function goToView(view: Tab, shortcut?: string) {
+    setSource(shortcut === "form" ? "Google Form" : "");
+    setLeader("");
+    setDepartment("");
+    setQuery("");
+    setRecruiter("");
+    setTrack(view === "queue" ? "pending" : "");
+    setView(view, shortcut);
+  }
   async function logout() {
     try {
       const response = await fetch("/api/admin/logout", { method: "POST" });
@@ -203,6 +212,9 @@ function AdminDashboard() {
     });
   }
   function selectLeader(name: string) {
+    setQuery("");
+    setRecruiter("");
+    setTrack("");
     setLeader(name);
     setView("roster", "contacts");
   }
@@ -266,15 +278,7 @@ function AdminDashboard() {
       view={tab}
       forms={tab === "forms" || source === "Google Form"}
       onLogout={() => void logout()}
-      onNavigate={(view, shortcut) => {
-        setSource(shortcut === "form" ? "Google Form" : "");
-        setLeader("");
-        setDepartment("");
-        setQuery("");
-        setRecruiter("");
-        setTrack(view === "queue" ? "pending" : "");
-        setView(view, shortcut);
-      }}
+      onNavigate={goToView}
     >
       <header className="admin-heading">
         <div>
@@ -350,8 +354,8 @@ function AdminDashboard() {
             setStatus={setTrack}
             date={date}
             setDate={setDate}
-            onOpenQueue={() => setView("queue", "queue")}
-            onOpenRoster={() => setView("roster", "contacts")}
+            onOpenQueue={() => goToView("queue", "queue")}
+            onOpenRoster={() => goToView("roster", "contacts")}
           />
         ) : !error ? (
           <RecruitmentBoardSkeleton mode={boardMode} />
