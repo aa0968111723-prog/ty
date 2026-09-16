@@ -705,6 +705,91 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("war-room KPI expand shows six name chips and 還有 N 人", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route((url) => {
+        try { return new URL(url).origin !== origin; } catch { return false; }
+      }, async (route) => {
+        await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+      });
+      const taipeiToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+      const contactNames = ["接觸甲", "接觸乙", "接觸丙", "接觸丁", "接觸戊", "接觸己", "接觸庚", "接觸辛"];
+      const gameRows = contactNames.map((name, index) => ({
+        姓名: name,
+        電話: `09120001${String(index + 1).padStart(2, "0")}`,
+        科系: "歷史學系",
+        年級: "大一",
+        遊戲關主: "柏能",
+        遊戲時間: `${taipeiToday}T04:00:00.000Z`,
+        _submissionId: `cccccccc-cccc-4ccc-8ccc-ccccccccc${String(index + 1).padStart(2, "0")}`,
+        _kind: "official",
+        _skipSave: false,
+      }));
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date,
+            now: new Date(`${taipeiToday}T12:00:00+08:00`),
+            gameRows,
+            recruitmentRows: [],
+            masterRows: [],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      assert.equal((await page.locator("[data-kpi=today-contacts] .war-num").innerText()).trim(), "8");
+      const hit = page.locator("[data-kpi=today-contacts] .war-card-hit");
+      const detail = page.locator("#today-contacts-detail");
+      await hit.click();
+      assert.equal(await hit.getAttribute("aria-expanded"), "true");
+      await detail.waitFor({ state: "visible" });
+      const chips = detail.locator(".war-name-chips li");
+      assert.equal(await chips.count(), 7);
+      const chipTexts = (await chips.allInnerTexts()).map((value) => value.replace(/\s+/g, " ").trim());
+      const nameChips = chipTexts.filter((value) => !value.startsWith("還有"));
+      const moreText = chipTexts.find((value) => value.startsWith("還有"));
+      assert.equal(nameChips.length, 6);
+      assert.equal(moreText, "還有 2 人");
+      assert.equal(nameChips.every((name) => contactNames.includes(name)), true);
+      const hidden = contactNames.filter((name) => !nameChips.includes(name));
+      assert.equal(hidden.length, 2);
+      for (const name of hidden) {
+        assert.equal(await detail.getByText(name, { exact: true }).count(), 0);
+      }
+      const more = detail.locator(".war-name-chips li.is-more");
+      const moreBox = await more.boundingBox();
+      const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
+      assert.ok(moreBox && navBox);
+      assert.ok(
+        moreBox.y + moreBox.height <= navBox.y + 1,
+        `還有 2 人 must sit above the bottom nav: more=${JSON.stringify(moreBox)} nav=${JSON.stringify(navBox)}`,
+      );
+      assert.equal(await detail.getByText("0912000101").count(), 0);
+      assert.equal(await detail.getByText("submissionId").count(), 0);
+      assert.equal(await detail.getByText("分級").count(), 0);
+      assert.equal(await detail.getByText("S/A/B").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "war-kpi-more-390-viewport.png") });
+      }
+      await capture(page, "war-kpi-more-390");
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("war-room 7-day trend shows visible counts on 390", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

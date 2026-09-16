@@ -433,6 +433,31 @@ test("today vs history contacts exclude practice and keep name-normalized unique
   assert.equal(data.kpiPeople.todayContacts.some((row) => /09\d/.test(row.name)), false);
 });
 
+test("today contact chips keep eight unique names so the war-room peek can show 還有 N 人", () => {
+  const names = ["接觸甲", "接觸乙", "接觸丙", "接觸丁", "接觸戊", "接觸己", "接觸庚", "接觸辛"];
+  const gameRows = names.map((name, index) => game({
+    姓名: name,
+    電話: `09120001${String(index + 1).padStart(2, "0")}`,
+    _submissionId: `cccccccc-cccc-4ccc-8ccc-ccccccccc${String(index + 1).padStart(2, "0")}`,
+  }));
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T12:00:00+08:00"),
+    gameRows,
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.summary.playedToday, 8);
+  assert.equal(data.kpiPeople.todayContacts.length, 8);
+  assert.deepEqual(data.kpiPeople.todayContacts.map((row) => row.name), names);
+  assert.equal(data.kpiPeople.todayContacts.every((row) => !/09\d/.test(row.name)), true);
+  assert.equal(data.kpiPeople.todayContacts.some((row) => /submissionId/i.test(row.name)), false);
+  const shown = data.kpiPeople.todayContacts.slice(0, 6).map((row) => row.name);
+  const rest = data.kpiPeople.todayContacts.length - shown.length;
+  assert.deepEqual(shown, names.slice(0, 6));
+  assert.equal(rest, 2);
+});
+
 test("event signup counts a person once today and once per event", () => {
   const a = game({ 姓名: "甲", 電話: "0912000101", _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb01" });
   const b = game({ 姓名: "乙", 電話: "0912000102", _submissionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb02" });
