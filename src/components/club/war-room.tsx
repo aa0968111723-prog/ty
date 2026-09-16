@@ -144,14 +144,26 @@ export function WarRoom({
 
   return (
     <div className="war-room">
-      <section className={`war-sync is-${overall}`} aria-label="資料同步狀態">
+      <section
+        className={`war-sync is-${overall}`}
+        aria-label="資料同步狀態"
+        role={overall === "fail" || error ? "alert" : "status"}
+      >
         <span className="war-sync-dot" aria-hidden="true" />
         <div>
           <strong>
             {overall === "success" ? "資料已同步" : overall === "wait" ? "同步等待中" : "同步失敗"}
           </strong>
           <small>
-            {sync ? `最後同步 ${syncClock(sync.updatedAt)}` : busy ? "讀取中" : "尚無資料"}
+            {error && !data
+              ? `${error} · 數字暫缺，不是 0 人`
+              : error
+                ? `${error} · 顯示上次資料`
+                : sync
+                  ? `最後同步 ${syncClock(sync.updatedAt)}`
+                  : busy
+                    ? "讀取中"
+                    : "尚無資料"}
           </small>
         </div>
         <ul>
@@ -160,11 +172,6 @@ export function WarRoom({
           <li>總表 {flagLabel(sync?.recruitmentMaster)}</li>
         </ul>
       </section>
-      {error ? (
-        <p className="admin-error" role="alert">
-          {error} · 戰情仍可操作，數字可能不完整
-        </p>
-      ) : null}
 
       <section className="war-kpis" aria-label="今日招生數字">
         <KpiCard

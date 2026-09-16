@@ -566,6 +566,13 @@ test(
       );
       assert.equal((await page.locator("[data-kpi=all-contacts] .war-num").innerText()).trim(), "—");
       assert.equal((await page.locator("[data-kpi=pending] .war-num").innerText()).trim(), "—");
+      const pendingKpi = await page.locator("[data-kpi=pending]").boundingBox();
+      const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
+      assert.ok(pendingKpi && navBox);
+      assert.ok(
+        pendingKpi.y + pendingKpi.height <= navBox.y + 1,
+        `待填 KPI must sit above the bottom nav: kpi=${JSON.stringify(pendingKpi)} nav=${JSON.stringify(navBox)}`,
+      );
       assert.ok(await page.getByText("漏斗數字暫缺，不是 0 人").count());
       assert.ok(await page.getByText("今日接觸人數").count());
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));

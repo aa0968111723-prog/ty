@@ -372,15 +372,17 @@ function AdminDashboard() {
 
       {(tab === "recruitment" || tab === "overview") && (
         <>
-          <PartnerPicker
-            compact
-            recruiter={partner.recruiter || recruiter}
-            customRecruiter={partner.customRecruiter}
-            onChange={(next, custom) => {
-              partner.setPair(next, custom);
-              setRecruiter(next === "其他" ? custom.trim() : next);
-            }}
-          />
+          {recruitment ? (
+            <PartnerPicker
+              compact
+              recruiter={partner.recruiter || recruiter}
+              customRecruiter={partner.customRecruiter}
+              onChange={(next, custom) => {
+                partner.setPair(next, custom);
+                setRecruiter(next === "其他" ? custom.trim() : next);
+              }}
+            />
+          ) : null}
           <WarRoom
             data={recruitment}
             busy={busy}
