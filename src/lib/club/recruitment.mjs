@@ -11,7 +11,7 @@ import {
   text,
 } from "./recruitment-identity.mjs";
 import { fieldFromAliases, formatTaipeiTimestamp, internalizedGameRow } from "./sheets.mjs";
-import { generatePrefilledFormUrl } from "./recruitment-prefill.mjs";
+import { generatePrefilledFormUrl, LIVE_ACTIVITY_CHOICES } from "./recruitment-prefill.mjs";
 
 const UNCLASSIFIED = "未分類";
 const UNKNOWN_GATEKEEPER = "未知關主";
@@ -333,11 +333,13 @@ function profileFromSources({
     note: source?.note || "",
     studentId: source?.studentId || "",
     interest: source?.interest || "",
+    activityList: signupActivitiesOf(source?.activity),
     timeline: [
-      gameCompletedAt ? { at: gameCompletedAt, kind: "game", title: "遊戲完成", detail: `${gameGatekeeper || UNCLASSIFIED}${score !== "" ? ` · ${score} 分` : ""}` } : null,
+      gameCompletedAt ? { at: gameCompletedAt, kind: "game", title: "遊戲完成", detail: `${gameGatekeeper || UNCLASSIFIED}` } : null,
       (recruited?.submittedAt || source?.submittedAt) ? { at: recruited?.submittedAt || source?.submittedAt, kind: "recruitment", title: "招生表提交", detail: recruited?.recruiters || source?.recruiters || "" } : null,
-      source?.tier ? { at: recruited?.submittedAt || source?.submittedAt || "", kind: "tier", title: source.tier, detail: "分級" } : null,
-      source?.activity && hasActivity(source.activity) ? { at: "", kind: "activity", title: source.activity, detail: "活動報名" } : null,
+      source?.activity && signupActivitiesOf(source.activity).length
+        ? { at: "", kind: "activity", title: signupActivitiesOf(source.activity).join("、"), detail: "活動報名" }
+        : null,
       source?.joined && isYes(source.joined) ? { at: "", kind: "joined", title: "入社", detail: "" } : null,
       source?.depositPaid && isYes(source.depositPaid) ? { at: "", kind: "deposit", title: "保證金", detail: String(source.depositAmount || "") } : null,
     ].filter(Boolean),
@@ -364,23 +366,107 @@ function appendUnmatchedRoster(profiles, rows, { prefix }) {
   });
 }
 
-function tierLetter(value) {
-  const raw = text(value);
-  if (/^S/i.test(raw) || raw.includes("已報名")) return "S";
-  if (/^A/i.test(raw) || raw.includes("有興趣")) return "A";
-  if (/^B/i.test(raw) || raw.includes("沒興趣") || raw.includes("還好")) return "B";
-  return "";
+const SIGNUP_ACTIVITY_CHOICES = LIVE_ACTIVITY_CHOICES.filter((choice) => !choice.startsWith("無"));
+
+/** @param {unknown} value */
+export function parseActivityList(value) {
+  return text(value).split(/[,，、]/).map((part) => part.trim()).filter(Boolean);
 }
 
-function hasActivity(value) {
+/** @param {unknown} value */
+export function isSignupActivity(value) {
   const raw = text(value);
   if (!raw) return false;
-  if (/無|考慮中|未報/.test(raw) && !/[0-9]/.test(raw)) return false;
+  if (/^無/.test(raw)) return false;
+  if (/無|考慮中|未報/.test(raw) && !SIGNUP_ACTIVITY_CHOICES.some((choice) => raw.includes(choice))) {
+    return false;
+  }
   return true;
+}
+
+/** @param {unknown} value */
+export function signupActivitiesOf(value) {
+  return parseActivityList(value).filter(isSignupActivity);
 }
 
 function isYes(value) {
   return text(value) === "是" || text(value).toLowerCase() === "yes" || text(value) === "Y";
+}
+
+/** @param {string} date @param {number} days */
+export function addTaipeiDays(date, days) {
+  const noon = new Date(`${date}T12:00:00+08:00`);
+  if (!Number.isFinite(noon.getTime())) return "";
+  return dateInTaipei(new Date(noon.getTime() + days * 86400000));
+}
+
+function identityKey(row) {
+  if (text(row?.normalizedPhone)) return `phone:${row.normalizedPhone}`;
+  if (text(row?.normalizedName)) return `name:${row.normalizedName}`;
+  if (text(row?.submissionId)) return `id:${String(row.submissionId).toLowerCase()}`;
+  return `row:${text(row?.name)}`;
+}
+
+function uniqueByIdentity(rows) {
+  const seen = new Set();
+  const unique = [];
+  for (const row of rows || []) {
+    const key = identityKey(row);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(row);
+  }
+  return unique;
+}
+
+function rowOnDate(row, date) {
+  if (!date) return true;
+  if (row?.submittedAt && onDate(row.submittedAt, date)) return true;
+  const day = text(row?.recruitedAt);
+  if (!day) return false;
+  const parsed = day.match(/(\d{1,2})[/-](\d{1,2})/);
+  if (!parsed) return false;
+  const [, month, dayOfMonth] = parsed;
+  return date.slice(5) === `${month.padStart(2, "0")}-${dayOfMonth.padStart(2, "0")}`;
+}
+
+function flagDuplicateIdentities(profiles) {
+  /** @type {Map<string, typeof profiles>} */
+  const byName = new Map();
+  /** @type {Map<string, typeof profiles>} */
+  const byPhone = new Map();
+  for (const profile of profiles) {
+    const name = normalizeName(profile.name);
+    if (name) {
+      const list = byName.get(name) || [];
+      list.push(profile);
+      byName.set(name, list);
+    }
+    if (profile.normalizedPhone) {
+      const list = byPhone.get(profile.normalizedPhone) || [];
+      list.push(profile);
+      byPhone.set(profile.normalizedPhone, list);
+    }
+  }
+  for (const profile of profiles) {
+    const name = normalizeName(profile.name);
+    const nameGroup = name ? byName.get(name) || [] : [];
+    const phoneGroup = profile.normalizedPhone ? byPhone.get(profile.normalizedPhone) || [] : [];
+    const namePhones = new Set(nameGroup.map((row) => row.normalizedPhone || row.personKey));
+    const phoneNames = new Set(phoneGroup.map((row) => normalizeName(row.name) || row.personKey));
+    const nameConflict = nameGroup.length > 1 && namePhones.size > 1;
+    const phoneConflict = phoneGroup.length > 1 && phoneNames.size > 1;
+    const ambiguous = profile.status === "ambiguous";
+    profile.needsConfirmation = Boolean(nameConflict || phoneConflict || ambiguous);
+    profile.confirmationReason = nameConflict
+      ? "同名不同電話，需要確認"
+      : phoneConflict
+        ? "同電話不同姓名，需要確認"
+        : ambiguous
+          ? "資料不足，需要確認"
+          : "";
+  }
+  return profiles;
 }
 
 function amount(value) {
@@ -462,39 +548,59 @@ export function buildRecruitmentDashboard(input = {}) {
   });
   appendUnmatchedRoster(profiles, master, { prefix: "master" });
   appendUnmatchedRoster(profiles, recruits, { prefix: "recruit", pending: false });
+  flagDuplicateIdentities(profiles);
+  const confirmationByKey = new Map(profiles.map((row) => [row.personKey, row]));
+  for (const row of pending) {
+    const profile = confirmationByKey.get(row.personKey);
+    row.needsConfirmation = Boolean(profile?.needsConfirmation);
+    row.confirmationReason = profile?.confirmationReason || "";
+    row.followUpPath = `/follow-up?personKey=${encodeURIComponent(row.personKey)}`;
+    row.activityList = [];
+    row.joined = "";
+    row.depositPaid = "";
+    row.recruiters = "";
+    row.recruiterList = [];
+  }
 
-  const completed = master.length ? master : recruits;
+  const completed = uniqueByIdentity(master.length ? master : recruits);
   function presentCount(rows, hasField, predicate) {
     if (!rows.length) return null;
     const known = rows.filter(hasField);
     if (!known.length) return null;
     return rows.filter(predicate).length;
   }
-  const sCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "S");
-  const aCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "A");
-  const bCount = presentCount(completed, (row) => Boolean(text(row.tier)), (row) => tierLetter(row.tier) === "B");
-  const activityCount = presentCount(completed, (row) => Boolean(text(row.activity)), (row) => hasActivity(row.activity));
-  const joinedCount = presentCount(completed, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
-  const depositCount = presentCount(completed, (row) => Boolean(text(row.depositPaid)), (row) => isYes(row.depositPaid));
-  const depositKnown = completed.filter((row) => text(row.depositAmount) !== "" || isYes(row.depositPaid));
-  const depositTotal = !completed.length || !depositKnown.length
+  const uniqueCompleted = completed;
+  const hasActivityField = (row) => Boolean(text(row.activity));
+  const signedUp = (row) => signupActivitiesOf(row.activity).length > 0;
+  const activityCount = presentCount(uniqueCompleted, hasActivityField, signedUp);
+  const activityTodayCount = presentCount(
+    uniqueCompleted,
+    hasActivityField,
+    (row) => signedUp(row) && rowOnDate(row, date),
+  );
+  const joinedCount = presentCount(uniqueCompleted, (row) => Boolean(text(row.joined)), (row) => isYes(row.joined));
+  const depositCount = presentCount(uniqueCompleted, (row) => Boolean(text(row.depositPaid)), (row) => isYes(row.depositPaid));
+  const depositKnown = uniqueCompleted.filter((row) => text(row.depositAmount) !== "" || isYes(row.depositPaid));
+  const depositTotal = !uniqueCompleted.length || !depositKnown.length
     ? null
-    : completed.reduce((sum, row) => sum + amount(row.depositAmount), 0);
+    : uniqueCompleted.reduce((sum, row) => sum + amount(row.depositAmount), 0);
+
+  const activityLabels = [...SIGNUP_ACTIVITY_CHOICES];
+  for (const row of uniqueCompleted) {
+    for (const activity of signupActivitiesOf(row.activity)) {
+      if (!activityLabels.includes(activity)) activityLabels.push(activity);
+    }
+  }
+  const activities = activityLabels.map((name) => ({
+    name,
+    count: uniqueCompleted.filter((row) => signupActivitiesOf(row.activity).includes(name)).length,
+    today: uniqueCompleted.filter((row) =>
+      signupActivitiesOf(row.activity).includes(name) && rowOnDate(row, date)).length,
+  }));
 
   const played = datedPeople.length;
   const pendingToday = datedPending.length;
-  const completedToday = date
-    ? completed.filter((row) => {
-      const at = timestamp(row.submittedAt) || "";
-      const day = row.recruitedAt;
-      if (at && onDate(at, date)) return true;
-      if (!day) return false;
-      const parsed = day.match(/(\d{1,2})[/-](\d{1,2})/);
-      if (!parsed) return false;
-      const [, month, d] = parsed;
-      return date.slice(5) === `${month.padStart(2, "0")}-${d.padStart(2, "0")}`;
-    }).length
-    : completed.length;
+  const completedToday = uniqueCompleted.filter((row) => rowOnDate(row, date)).length;
 
   function rate(part, whole) {
     if (!Number.isFinite(whole) || whole <= 0) return null;
@@ -503,13 +609,11 @@ export function buildRecruitmentDashboard(input = {}) {
   }
 
   const funnelPlayed = people.length;
-  const funnelRecruited = completed.length;
   const funnel = [
-    { id: "played", label: "玩遊戲", count: funnelPlayed, fromPrevious: null, fromStart: funnelPlayed ? 100 : null },
-    { id: "recruited", label: "已完成招生表單", count: funnelRecruited, fromPrevious: rate(funnelRecruited, funnelPlayed), fromStart: rate(funnelRecruited, funnelPlayed) },
-    { id: "s", label: "S／已報名", count: sCount, fromPrevious: rate(sCount, funnelRecruited), fromStart: rate(sCount, funnelPlayed) },
-    { id: "activity", label: "活動報名", count: activityCount, fromPrevious: rate(activityCount, sCount), fromStart: rate(activityCount, funnelPlayed) },
+    { id: "played", label: "遊戲接觸", count: funnelPlayed, fromPrevious: null, fromStart: funnelPlayed ? 100 : null },
+    { id: "activity", label: "活動報名", count: activityCount, fromPrevious: rate(activityCount, funnelPlayed), fromStart: rate(activityCount, funnelPlayed) },
     { id: "joined", label: "入社", count: joinedCount, fromPrevious: rate(joinedCount, activityCount), fromStart: rate(joinedCount, funnelPlayed) },
+    { id: "deposit", label: "保證金", count: depositCount, fromPrevious: rate(depositCount, joinedCount), fromStart: rate(depositCount, funnelPlayed) },
   ].map((layer, index) => {
     if (index === 0) return layer;
     if (layer.count == null) {
@@ -517,6 +621,16 @@ export function buildRecruitmentDashboard(input = {}) {
     }
     return layer;
   });
+
+  const dailyTrend = [];
+  for (let offset = -6; offset <= 0; offset += 1) {
+    const day = addTaipeiDays(date, offset);
+    if (!day) continue;
+    const dayContacts = clusterGamePeople(attempts.filter((row) => onDate(row.completedAt, day))).length;
+    const dayActivity = uniqueCompleted.filter((row) => signedUp(row) && rowOnDate(row, day)).length;
+    const dayJoined = uniqueCompleted.filter((row) => isYes(row.joined) && rowOnDate(row, day)).length;
+    dailyTrend.push({ date: day, contacts: dayContacts, activity: dayActivity, joined: dayJoined });
+  }
 
   const gatekeeperNames = [...new Set([
     ...attempts.map((row) => row.gatekeeper || UNCLASSIFIED),
@@ -529,28 +643,25 @@ export function buildRecruitmentDashboard(input = {}) {
     const groupPending = groupPeople.filter((person) => !personIsRecruited(person, recruits));
     const groupRecruited = groupPeople.filter((person) => personIsRecruited(person, recruits));
     const recruitedProfiles = groupRecruited.map((person) => {
-      const latest = latestAttempt(person.attempts);
       const source = master.find((row) => row.normalizedName === person.normalizedName)
         || recruits.find((row) => personIsRecruited(person, [row]));
-      return { person, latest, source };
+      return { person, source };
     });
     return {
       name,
       played: groupPeople.length,
       pending: groupPending.length,
       recruited: groupRecruited.length,
-      s: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.tier)), (row) => tierLetter(row.source?.tier) === "S"),
-      a: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.tier)), (row) => tierLetter(row.source?.tier) === "A"),
-      b: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.tier)), (row) => tierLetter(row.source?.tier) === "B"),
-      activity: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.activity)), (row) => hasActivity(row.source?.activity)),
+      activity: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.activity)), (row) => signedUp(row.source)),
       joined: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.joined)), (row) => isYes(row.source?.joined)),
+      depositPaid: presentCount(recruitedProfiles, (row) => Boolean(text(row.source?.depositPaid)), (row) => isYes(row.source?.depositPaid)),
     };
   }).sort((a, b) => b.played - a.played || a.name.localeCompare(b.name, "zh-Hant"));
 
-  const recruiterNames = [...new Set(completed.flatMap((row) => row.recruiterList || []))];
+  const recruiterNames = [...new Set(uniqueCompleted.flatMap((row) => row.recruiterList || []))];
   const recruiters = recruiterNames.map((name) => ({
     name,
-    count: completed.filter((row) => row.recruiterList?.includes(name)).length,
+    count: uniqueCompleted.filter((row) => row.recruiterList?.includes(name)).length,
   })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-Hant"));
 
   function distribution(values) {
@@ -573,29 +684,32 @@ export function buildRecruitmentDashboard(input = {}) {
     ok: true,
     date,
     summary: {
+      contactsToday: played,
+      contactsTotal: people.length,
       playedToday: played,
       pending: pending.length,
+      pendingFormal: pending.length,
       pendingToday,
-      recruited: completed.length,
+      recruited: uniqueCompleted.length,
       recruitedToday: completedToday,
-      s: sCount,
-      a: aCount,
-      b: bCount,
+      activityToday: activityTodayCount,
       activity: activityCount,
       joined: joinedCount,
       depositPaid: depositCount,
       depositTotal,
-      roster: master.length || completed.length,
+      roster: uniqueCompleted.length,
     },
+    activities,
+    dailyTrend,
     funnel,
     pending,
     profiles,
     gameGatekeepers,
     recruiters,
     distributions: {
-      departments: distribution(completed.map((row) => row.department)),
-      grades: distribution(completed.map((row) => row.grade)),
-      tiers: distribution(completed.map((row) => tierLetter(row.tier) || row.tier)),
+      departments: distribution(uniqueCompleted.map((row) => row.department)),
+      grades: distribution(uniqueCompleted.map((row) => row.grade)),
+      activities: distribution(uniqueCompleted.flatMap((row) => signupActivitiesOf(row.activity))),
     },
     candidatesByGatekeeper,
     duplicates: allRecruitsIncludingDup.filter((row) => row.duplicate).length,

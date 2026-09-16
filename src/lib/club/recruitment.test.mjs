@@ -247,7 +247,7 @@ test("practice-like rows are ignored by game attempt parser", () => {
   assert.equal(rows.length, 1);
 });
 
-test("missing S/A/B and deposit fields are 資料不足 instead of zero", () => {
+test("missing activity, joined and deposit fields are 資料不足 instead of zero", () => {
   const player = game({ _submissionId: "ffffffff-ffff-4fff-8fff-ffffffffffff" });
   const data = buildRecruitmentDashboard({
     date: "2026-09-14",
@@ -260,11 +260,14 @@ test("missing S/A/B and deposit fields are 資料不足 instead of zero", () => 
     }],
     masterRows: [],
   });
-  assert.equal(data.summary.s, null);
+  assert.equal(data.summary.activity, null);
+  assert.equal(data.summary.activityToday, null);
   assert.equal(data.summary.depositPaid, null);
-  assert.equal(data.funnel.find((layer) => layer.id === "s")?.missing, true);
+  assert.equal(data.summary.joined, null);
+  assert.equal(data.funnel.find((layer) => layer.id === "activity")?.missing, true);
   assert.equal(data.funnel.find((layer) => layer.id === "played")?.count, 1);
-  assert.equal(data.funnel.find((layer) => layer.id === "recruited")?.count, 1);
+  assert.equal(data.funnel.some((layer) => layer.id === "s" || /S|A|B|分級/.test(layer.label)), false);
+  assert.deepEqual(data.funnel.map((layer) => layer.id), ["played", "activity", "joined", "deposit"]);
 });
 
 test("招生狀況表 plus 總表 formula-shaped row keeps game gatekeeper separate from recruiter", () => {
@@ -301,17 +304,22 @@ test("招生狀況表 plus 總表 formula-shaped row keeps game gatekeeper separ
     }],
   });
   assert.equal(data.pending.length, 0);
-  assert.equal(data.summary.s, 1);
+  assert.equal(data.summary.contactsToday, 1);
+  assert.equal(data.summary.contactsTotal, 1);
   assert.equal(data.summary.activity, 1);
+  assert.equal(data.summary.activityToday, 1);
   assert.equal(data.summary.joined, 1);
   assert.equal(data.summary.depositPaid, 1);
   assert.equal(data.summary.depositTotal, 300);
+  assert.equal(data.summary.s, undefined);
+  assert.equal(data.activities.find((row) => row.name === "9/30茶會")?.count, 1);
   const profile = data.profiles[0];
   assert.equal(profile.gameGatekeeper, "柏能");
   assert.ok(profile.recruiterList.includes("安倢"));
   assert.equal(profile.department, "歷史學系");
   assert.equal(profile.grade, "大一");
   assert.equal(data.profiles.length, 1);
+  assert.equal(profile.timeline.some((item) => item.kind === "tier" || /分級|^S|^A|^B/.test(item.title)), false);
 });
 
 test("總表-only roster rows appear even without a game attempt", () => {
@@ -335,10 +343,84 @@ test("總表-only roster rows appear even without a game attempt", () => {
   });
   assert.equal(data.profiles.length, 1);
   assert.equal(data.profiles[0].name, "歷史生");
-  assert.equal(data.summary.s, 1);
+  assert.equal(data.summary.activity, 1);
   assert.equal(data.summary.joined, 1);
   assert.equal(data.summary.depositTotal, 300);
+  assert.equal(data.summary.s, undefined);
   assert.equal(data.pending.length, 0);
   assert.equal(data.profiles[0].gameGatekeeper, "");
   assert.ok(data.profiles[0].timeline.every((item) => item.kind !== "game"));
 });
+
+test("practice games are excluded from contact counts and pending", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T20:00:00+08:00"),
+    gameRows: [
+      game({ _kind: "practice", _skipSave: true, _submissionId: "practice-1" }),
+      game({ 姓名: "正式生", 電話: "0910000099", _submissionId: "official-1" }),
+    ],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.summary.contactsToday, 1);
+  assert.equal(data.summary.contactsTotal, 1);
+  assert.deepEqual(data.pending.map((row) => row.name), ["正式生"]);
+});
+
+test("one person signing two activities counts once today and once per activity", () => {
+  const first = game({ 姓名: "甲", 電話: "0910000101", _submissionId: "act-1" });
+  const second = game({ 姓名: "乙", 電話: "0910000102", _submissionId: "act-2" });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [first, second],
+    recruitmentRows: [{
+      時間戳記: "2026/9/14 下午 3:00:00",
+      同學的姓名: "甲",
+      "同學電話/LINE": "0910000101",
+      報名了那個活動: "9/30茶會, 社課",
+      是否入社: "否",
+      保證金是否繳費: "否",
+      _gameSubmissionId: first._submissionId,
+    }, {
+      時間戳記: "2026/9/13 下午 3:00:00",
+      同學的姓名: "乙",
+      "同學電話/LINE": "0910000102",
+      接引日期: "9/13",
+      報名了那個活動: "10/07演講",
+      是否入社: "是",
+      保證金是否繳費: "是",
+      _gameSubmissionId: second._submissionId,
+    }],
+    masterRows: [],
+  });
+  assert.equal(data.summary.activity, 2);
+  assert.equal(data.summary.activityToday, 1);
+  assert.equal(data.activities.find((row) => row.name === "9/30茶會")?.count, 1);
+  assert.equal(data.activities.find((row) => row.name === "社課")?.count, 1);
+  assert.equal(data.activities.find((row) => row.name === "10/07演講")?.count, 1);
+  assert.equal(data.summary.joined, 1);
+  assert.equal(data.dailyTrend.length, 7);
+  assert.equal(data.dailyTrend.at(-1)?.date, "2026-09-14");
+  assert.equal(data.dailyTrend.at(-1)?.contacts, 2);
+  assert.equal(data.dailyTrend.at(-1)?.activity, 1);
+});
+
+test("same name different phones stay separate and are flagged for confirmation", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    gameRows: [
+      game({ 姓名: "林同學", 電話: "0911111111", _submissionId: "dup-1" }),
+      game({ 姓名: "林同學", 電話: "0922222222", _submissionId: "dup-2" }),
+    ],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.pending.length, 2);
+  assert.equal(data.summary.contactsToday, 2);
+  assert.ok(data.pending.every((row) => row.needsConfirmation));
+  assert.ok(data.profiles.every((row) => row.needsConfirmation));
+  assert.match(data.pending[0].confirmationReason, /確認/);
+  assert.doesNotMatch(JSON.stringify(data.summary), /"s":|"a":|"b":/);
+});
+

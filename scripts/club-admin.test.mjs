@@ -169,7 +169,10 @@ test("admin authentication and private read API contracts with mocked Google onl
     spreadsheets: { values: {
       get: async ({ spreadsheetId, range }) => {
         assert.equal(spreadsheetId, "fixture-sheet");
-        const action = range === "'results'" ? "results" : "formResponses";
+        const tab = String(range);
+        const action = tab.includes("results") || tab.includes(DEFAULT_TAB_TITLES.gameResults)
+          ? "results"
+          : "formResponses";
         calls.push(action);
         if (failForms && action === "formResponses") {
           throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
@@ -207,6 +210,12 @@ test("admin authentication and private read API contracts with mocked Google onl
   assert.ok("pending" in recruitment);
   assert.ok("funnel" in recruitment);
   assert.ok("summary" in recruitment);
+  assert.ok("contactsToday" in recruitment.summary);
+  assert.ok("contactsTotal" in recruitment.summary);
+  assert.equal(recruitment.summary.s, undefined);
+  assert.ok(Array.isArray(recruitment.activities));
+  assert.ok(Array.isArray(recruitment.dailyTrend));
+  assert.deepEqual(recruitment.funnel.map((layer) => layer.id), ["played", "activity", "joined", "deposit"]);
   assert.ok(Array.isArray(recruitment.pending));
   if (recruitment.pending.length) {
     assert.match(String(recruitment.pending[0].prefillUrl), /\/viewform\?/);
@@ -221,7 +230,10 @@ test("admin authentication and private read API contracts with mocked Google onl
         if (String(range).includes("總表")) {
           throw new Error(`firewall blocked ${process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
         }
-        const action = range === "'results'" ? "results" : "formResponses";
+        const tab = String(range);
+        const action = tab.includes("results") || tab.includes(DEFAULT_TAB_TITLES.gameResults)
+          ? "results"
+          : "formResponses";
         const rows = action === "results" ? [result] : [
           { 姓名: "小明", 時間戳記: "2026/9/12 10:00:00" },
         ];
