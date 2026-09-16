@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Filter } from "lucide-react";
 import { BattleCommand } from "./battle-kpis";
 import { RecruitmentProfileSheet, ConfirmMark, type RecruitmentProfile } from "./recruitment-profile-sheet";
-import { generatePrefilledFormUrl, OFFICIAL_RECRUITERS, RECRUITER_STORAGE_KEY, taipeiDate } from "@/lib/club/recruitment-prefill.mjs";
+import { officialFormUrl, OFFICIAL_RECRUITERS, RECRUITER_STORAGE_KEY, taipeiDate } from "@/lib/club/recruitment-prefill.mjs";
 import { filterPendingQueue } from "@/lib/club/recruitment-queue.mjs";
 import { time } from "./admin-presentation";
 
@@ -239,28 +239,6 @@ function NamePhoneSearch({
       />
     </div>
   );
-}
-
-function officialFormUrl(
-  row: {
-    name?: string;
-    phone?: string;
-    department?: string;
-    grade?: string;
-    gameGatekeeper?: string;
-    completedAt?: string;
-    gameCompletedAt?: string;
-    submissionId?: string;
-    latestAttempt?: { submissionId?: string; completedAt?: string };
-  },
-  recruiter: string,
-) {
-  if (!row.name && !row.phone) return "";
-  return generatePrefilledFormUrl({
-    ...row,
-    completedAt: row.completedAt || row.gameCompletedAt,
-    tier: "",
-  }, { recruiter, tier: "" });
 }
 
 function NextUpCard({
@@ -519,7 +497,7 @@ export function RecruitmentDashboard({
           onOpenQueue={() => onOpenQueue?.()}
           onOpenRoster={() => onOpenRoster?.()}
         />
-        <RecruitmentProfileSheet profile={profile} onClose={() => setProfile(null)} />
+        <RecruitmentProfileSheet profile={profile} recruiter={selfRecruiter} onClose={() => setProfile(null)} />
       </div>
     );
   }
@@ -585,7 +563,7 @@ export function RecruitmentDashboard({
             </div>
           )}
         </section>
-        <RecruitmentProfileSheet profile={profile} onClose={() => setProfile(null)} />
+        <RecruitmentProfileSheet profile={profile} recruiter={selfRecruiter} onClose={() => setProfile(null)} />
       </div>
     );
   }
@@ -652,7 +630,7 @@ export function RecruitmentDashboard({
           </div>
         )}
       </section>
-      <RecruitmentProfileSheet profile={profile} onClose={() => setProfile(null)} />
+      <RecruitmentProfileSheet profile={profile} recruiter={selfRecruiter} onClose={() => setProfile(null)} />
     </div>
   );
 }

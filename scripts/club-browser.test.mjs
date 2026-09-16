@@ -513,6 +513,25 @@ test(
       await page.getByRole("button", { name: "看全部尚未填表" }).click();
       assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
       assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 1);
+      await page.getByRole("article").filter({ hasText: "別人的同學" }).getByRole("button", { name: "查看詳細" }).click();
+      const sheet = page.getByRole("dialog");
+      await sheet.getByRole("heading", { name: "別人的同學" }).waitFor();
+      await sheet.getByText("遊戲關主").waitFor();
+      assert.match(await sheet.locator("dd").filter({ hasText: "安倢" }).innerText(), /安倢/);
+      const sheetForm = sheet.getByRole("link", { name: /開啟正式招生表單/ });
+      const sheetHref = decodeURIComponent(String(await sheetForm.getAttribute("href")));
+      assert.match(sheetHref, /\/viewform\?/);
+      assert.doesNotMatch(sheetHref, /forms\.gle/);
+      assert.match(sheetHref, /entry\.1318284482=小哲/);
+      assert.match(sheetHref, /遊戲關主：安倢/);
+      assert.doesNotMatch(sheetHref, /entry\.1318284482=安倢/);
+      assert.doesNotMatch(await sheet.innerText(), /submissionId/);
+      const sheetTap = await sheetForm.boundingBox();
+      assert.ok(
+        sheetTap && sheetTap.height >= 43.5 && sheetTap.width >= 43.5,
+        `sheet open-form tap ${JSON.stringify(sheetTap)}`,
+      );
+      await capture(page, "profile-sheet-prefill-390");
       assert.equal(await page.locator("text=submissionId").count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       assert.deepEqual(errors, []);
@@ -828,7 +847,8 @@ test(
       assert.doesNotMatch(String(href), /forms\.gle/);
       assert.match(decodeURIComponent(String(href)), /同學|王小明|待跟進甲|entry\.887514514/);
       assert.match(decodeURIComponent(String(href)), /遊戲關主：安倢/);
-      assert.match(String(href), /entry\.1318284482=/);
+      assert.match(decodeURIComponent(String(href)), /entry\.1318284482=柏能/);
+      assert.doesNotMatch(decodeURIComponent(String(href)), /entry\.1318284482=安倢/);
       await page.getByRole("button", { name: "這位同學報名了哪個活動？ 9/30茶會" }).click();
       await page.getByRole("button", { name: "是否入社 否" }).click();
       await page.getByRole("button", { name: "保證金是否繳費 否" }).click();
@@ -849,7 +869,13 @@ test(
       assert.equal(await page.getByRole("button", { name: "填寫正式資料" }).count(), 0);
       const formLink = page.locator("[data-quickfill=open-form]");
       assert.equal(await formLink.count(), 1);
-      assert.match(String(await formLink.getAttribute("href")), /\/viewform\?/);
+      const afterHref = decodeURIComponent(String(await formLink.getAttribute("href")));
+      assert.match(afterHref, /\/viewform\?/);
+      assert.doesNotMatch(afterHref, /forms\.gle/);
+      assert.match(afterHref, /entry\.1318284482=柏能/);
+      assert.match(afterHref, /遊戲關主：安倢/);
+      assert.doesNotMatch(afterHref, /entry\.1318284482=安倢/);
+      assert.doesNotMatch(await formLink.innerText(), /submissionId/);
       const backoffice = page.locator("[data-quickfill=open-backoffice]");
       assert.equal(await backoffice.count(), 1);
       assert.equal(await backoffice.getAttribute("href"), "/admin?view=form");

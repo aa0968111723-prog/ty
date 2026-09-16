@@ -7,6 +7,7 @@ import {
   OFFICIAL_VIEWFORM_URL,
   buildGameMetadataNote,
   generatePrefilledFormUrl,
+  officialFormUrl,
   parseGameMetadataNote,
   prefillUsesViewform,
   resolveViewformUrl,
@@ -56,6 +57,18 @@ test("prefill uses the full viewform URL and live entry IDs, never forms.gle", (
   assert.equal(meta.submissionId, candidate.submissionId);
   assert.match(meta.completedAt, /2026/);
   assert.match(note, /遊戲關主：安倢/);
+});
+
+test("official form URL uses the selected recruiter, never the game gatekeeper", () => {
+  const url = officialFormUrl(candidate, "柏能");
+  assert.equal(prefillUsesViewform(url), true);
+  assert.doesNotMatch(url, /forms\.gle/);
+  const parsed = new URL(url);
+  assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.recruiter), "柏能");
+  assert.equal(parsed.searchParams.getAll(LIVE_PREFILL_ENTRIES.recruiter).includes("安倢"), false);
+  const meta = parseGameMetadataNote(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.note));
+  assert.equal(meta.gameGatekeeper, "安倢");
+  assert.equal(officialFormUrl({}, "柏能"), "");
 });
 
 test("custom recruiter uses Other; original game gatekeeper stays in notes", () => {

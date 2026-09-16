@@ -276,6 +276,22 @@ export function generatePrefilledFormUrl(candidate = {}, options = {}) {
   return `${base}?${params.toString()}`;
 }
 
+/**
+ * Pending-card / profile-sheet prefill. Recruiter is the currently selected
+ * partner (`entry.1318284482`); the game gatekeeper stays in 備註.
+ * @param {Record<string, unknown>} [candidate]
+ * @param {unknown} [recruiter]
+ */
+export function officialFormUrl(candidate = {}, recruiter = "") {
+  const row = candidate && typeof candidate === "object" ? candidate : {};
+  if (!text(row.name) && !text(row.phone || row.normalizedPhone)) return "";
+  return generatePrefilledFormUrl({
+    ...row,
+    completedAt: candidateCompletedAt(row),
+    tier: "",
+  }, { recruiter: text(recruiter), tier: "" });
+}
+
 /** @param {unknown} url */
 export function prefillUsesViewform(url) {
   const raw = text(url);

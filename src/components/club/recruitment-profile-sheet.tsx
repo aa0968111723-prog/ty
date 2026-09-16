@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ExternalLink, X } from "lucide-react";
+import { officialFormUrl } from "@/lib/club/recruitment-prefill.mjs";
 
 export type RecruitmentProfile = {
   personKey: string;
@@ -65,11 +66,19 @@ export function ConfirmMark({
 
 export function RecruitmentProfileSheet({
   profile,
+  recruiter = "",
   onClose,
 }: {
   profile: RecruitmentProfile | null;
+  recruiter?: string;
   onClose: () => void;
 }) {
+  const formUrl = profile && (profile.pending || profile.prefillUrl)
+    ? officialFormUrl({
+      ...profile,
+      completedAt: profile.gameCompletedAt,
+    }, recruiter)
+    : "";
   return (
     <Dialog.Root open={Boolean(profile)} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -117,8 +126,14 @@ export function RecruitmentProfileSheet({
               填寫正式資料
             </a>
           ) : null}
-          {profile?.prefillUrl ? (
-            <a className="admin-primary" href={profile.prefillUrl} target="_blank" rel="noreferrer">
+          {formUrl ? (
+            <a
+              className="admin-primary"
+              href={formUrl}
+              target="_blank"
+              rel="noreferrer"
+              data-prefill="open-form"
+            >
               開啟正式招生表單 <ExternalLink size={16} />
             </a>
           ) : null}
