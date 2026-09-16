@@ -5,21 +5,23 @@
 | 項 | 值 |
 | --- | --- |
 | 日期 | 2026-09-16 |
-| 觀察 | 本文件寫入時；live 指紋見第 8 節（本回合 GitTrigger `2026-09-16T23:22:56Z`、JS `2026-09-16T23:23:04Z`、live badges `2026-09-16T23:25:30Z`） |
+| 觀察 | wrap-up NOW；live 指紋見第 8 節（GitTrigger `2026-09-16T23:43:40Z`、JS `2026-09-16T23:43:44Z`） |
 | 分支 | `cursor/admin-war-room-cf4c` |
+| 觀察時樹尖 | `c91a139ce6b967e5e0b9e79f9a1d30b84aa7649a`（當時 local = origin；本檔再 push 會再進一筆 docs commit） |
 | 產品 SHA | `b43bb20db696593097f9c0429ebbfeb1f199fcef`（identity status 進夥伴 JSON；eslint 0/0；live JS 仍 `admin-BV6x7ajA.js`，與 `89c24c0` client 同檔） |
-| 對照 `origin/main` | `d839e46e976916bd415d7d8200f466619b3623be`，ahead 55、behind 0（未 rebase） |
-| 此 head 的 GitHub PR | **無**。`gh pr list --head cursor/admin-war-room-cf4c` → `[]`。`GET /commits/b43bb20/pulls` 與 `/commits/89c24c0/pulls` → `[]`。GraphQL `associatedPullRequests` 兩 SHA 皆空。`GET /commits/HEAD/pulls` 是 **main** 的 #30（他頭 `cursor/admin-war-room-ia-8323`），不算這個 head。 |
-| 開放 PR（錯誤頭，不算完成） | #31 `cursor/recruitment-battleboard-12d7`、#32 `cursor/admin-command-center-3804`。不要 merge。 |
+| 對照 `origin/main` | `d839e46e976916bd415d7d8200f466619b3623be`，ahead 56、behind 0（未 rebase） |
+| 此 head 的 GitHub PR | **無**。`gh pr list --head cursor/admin-war-room-cf4c --state all` → `[]`。`GET /commits/c91a139/pulls`、`/commits/b43bb20/pulls`、`/commits/89c24c0/pulls` → `[]`。GraphQL `associatedPullRequests` 三 SHA 皆空。`GET /commits/HEAD/pulls` 是 **main** 的 #30（他頭 `cursor/admin-war-room-ia-8323`），不算這個 head。 |
+| `GET /repos/.../pulls?per_page=1` | HTTP 200，`X-Accepted-Github-Permissions: pull_requests=read`。**沒有** `pull_requests=write` → 未 POST `/pulls`、未 MCP `create_pull_request`。 |
+| 開放 PR（錯誤頭，不算完成） | #31 `cursor/recruitment-battleboard-12d7`、#32 `cursor/admin-command-center-3804`。兩頭都不含 `c91a139` / `b43bb20` / `89c24c0`。不要 merge。 |
 | Compare | GitHub repo `ty` 的 `main...cursor/admin-war-room-cf4c` |
 
-未標 Goal complete。未發明無關 UI。未 ManagePullRequest。未加 Actions PR workflow。未 `gh pr create`。未 POST `/pulls`。未重試 MCP `create_pull_request`（已知 403）。跳過 Copilot PR。未 poll。未 clasp 部署。未 `deploy(gitRef)` / zip。本回合未重跑 16 項 DOM tour。
+未標 Goal complete。未發明無關 UI。未 ManagePullRequest。未加 Actions PR workflow。未 `gh pr create`。未 POST `/pulls`。未 MCP `create_pull_request`（header 仍是 read）。跳過 Copilot PR。未 poll。未 clasp 部署。未 `deploy(gitRef)` / zip。未 `deployFromSpecification`（GitTrigger 未被偷走）。本回合未重跑 16 項 DOM tour。
 
 ---
 
 ## 1. 修改過的檔案
 
-`git diff --stat origin/main...b43bb20`：**40 files, +4210 / −1811**。
+`git diff --stat origin/main...b43bb20`：**40 files, +4210 / −1811**。樹尖 `c91a139` 只多這份回報。
 
 | 區 | 檔案 |
 | --- | --- |
@@ -142,19 +144,19 @@ Skip 是 `official game completion writes the game sheet immediately # SKIP`（�
 
 ---
 
-## 8. 部署（本回合觀察，未 restore）
+## 8. 部署（wrap-up NOW 觀察，未 restore）
 
 | 項 | 值 |
 | --- | --- |
 | 服務 | `leader-dna-sheet-sync` RUNNING |
 | GitTrigger | **`cursor/admin-war-room-cf4c`**（repoID 1363866270）。未被偷走。 |
-| RUNNING | `6aab228805af289f92f97c68` @ **`b43bb20db696593097f9c0429ebbfeb1f199fcef`** `refs/heads/cursor/admin-war-room-cf4c`（created `2026-09-16T23:13:12.1Z`，finished `23:15:11.049Z`） |
-| Live | `/admin` 200；戰情 / 待處理 / 名單可登入 |
-| Live JS | `/assets/admin-BV6x7ajA.js`（65 241 B，sha256 `7018a9cd414e`；與本 SHA production client 同檔） |
-| Fingerprint（admin JS） | `war-kpis=1` `battle-kpis=0` `分級=0` `googleapis=0` `forms.create=0` `1322037614=0` `待填正式招生資料=1` `現在先填這位=4` `data-next-pending=1` **`需要確認=2`** `submissionId=1`（僅備註剝離 regex，畫面 0）`#s:=0` |
-| Live badges | 戰情橫幅 **「7 筆需要確認，不會自動合併。」**；待處理 exact **需要確認=5**（`.admin-badge.is-confirm` 五枚）；陳柏能兩張待處理卡皆 **需要確認**（0986968111 / 0955229050）；名單 exact **需要確認=7**。夥伴 JSON `status` 有值（pending ambiguous 5 / matched 42）。畫面 **無** `submissionId`。 |
+| RUNNING | `6aab25fb05af289f92f97d1f` @ **`c91a139ce6b967e5e0b9e79f9a1d30b84aa7649a`** `refs/heads/cursor/admin-war-room-cf4c`（created `2026-09-16T23:27:55.788Z`，finished `23:30:09.141Z`）。這是樹尖（回報 commit）。產品祖先 `b43bb20` 的 RUNNING 已 REMOVED。 |
+| Live | `/admin` 200 |
+| Live JS | `/assets/admin-BV6x7ajA.js`（65 241 B，sha256 `7018a9cd414e`；與產品 SHA production client 同檔） |
+| Fingerprint（admin JS） | `war-kpis=1` `battle-kpis=0` `分級=0` `googleapis=0` `forms.create=0` `1322037614=0` `待填正式招生資料=1` `現在先填這位=4` `data-next-pending=1` **`需要確認=2`** `submissionId=1`（僅備註剝離 regex）`#s:=0` |
+| Live badges（先前 DOM，client 未變） | 戰情橫幅 **「7 筆需要確認，不會自動合併。」**；待處理 exact **需要確認=5**；名單 exact **需要確認=7**。畫面 **無** `submissionId`。 |
 
-未 `deploy(gitRef)` / zip。GitTrigger 仍是本分支、RUNNING 已是產品頭，因此未 `deployFromSpecification`。本文件若只改回報，push 後 GitTrigger 可自動 build 該 docs commit；不要 poll。
+未 `deploy(gitRef)` / zip。GitTrigger 仍是本分支、RUNNING 已是樹尖，因此未 `deployFromSpecification`。本文件若只改回報，push 後 GitTrigger 可自動 build 該 docs commit；不要 poll。
 
 Clasp：`google-apps-script/recruitment-form-sync/` **沒有** `.clasp.json`。樹內 `Code.gs` 已不把 `submissionId` 寫進備註或選擇學生（legacy `#s:` / `submissionId：` 只解碼）。Apps Script **未** clasp 部署。不阻擋 app 內預填與戰情。不假裝 clasp 已部署。
 
@@ -162,8 +164,8 @@ Clasp：`google-apps-script/recruitment-form-sync/` **沒有** `.clasp.json`。�
 
 ## 9. 還缺什麼（Goal 保持 open）— remaining：PR + clasp
 
-1. **人類必須開 PR**。請有 repo write 的人用上面的 compare 開 PR，標題「招生戰情後台：手機一眼看懂、夥伴快速填表」，draft 可。不要用 `gh pr create` / Actions。不要再試 MCP `create_pull_request`（PAT 403）。
+1. **還差一次人類點擊才能有真實 GitHub PR**（三選一即可）：在 GitHub 用 compare `main...cursor/admin-war-room-cf4c` 開 draft；或把 PAT 加上 `pull_requests=write` 再叫 agent POST；或在 Cursor 核准 draft PR。標題「招生戰情後台：手機一眼看懂、夥伴快速填表」。**不要** `gh pr create` / Actions / 再試 MCP（header 仍是 `pull_requests=read`）。
 2. **#31 / #32 不要當這個 goal 的 PR**，也不要 merge。
 3. **Apps Script / clasp 僅擁有者** — 樹內有 GAS，**沒有** `.clasp.json`。Clasp **未**部署。不假裝已同步表單候選。
 
-Live 戰情本回合是產品 SHA `b43bb20`（GitTrigger cf4c + RUNNING 該 commit + `admin-BV6x7ajA.js` + `war-kpis` + **現在先填這位** + **需要確認 live badges**、`分級=0`、畫面無 submissionId）。Goal 仍 open，直到這個 head 有一張真實 GitHub PR **且** live 仍吻合。未 UpdateGoal complete。
+Live 戰情 wrap-up NOW：GitTrigger cf4c + RUNNING 樹尖 `c91a139` + 產品 JS `admin-BV6x7ajA.js` + `war-kpis` + **現在先填這位** + **需要確認**、`分級=0`、`googleapis=0`。Goal 仍 open，直到這個 head 有一張真實 GitHub PR **且** live 仍吻合。未 UpdateGoal complete。
