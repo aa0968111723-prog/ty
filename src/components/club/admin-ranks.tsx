@@ -21,7 +21,6 @@ export function AdminRankBoard({ scope }: { scope: "today" | "history" }) {
   const rows: PublicLeaderboardRow[] = data?.rows || [];
   return (
     <section className="admin-panel" aria-label={scope === "today" ? "今日排行榜" : "歷史排行榜"}>
-      <h2>{scope === "today" ? "今日排行榜" : "歷史排行榜"}</h2>
       <p className="admin-caption">只顯示遊戲名次與分數，不含電話與招生資料</p>
       {error ? <p className="admin-error" role="alert">{error}</p> : null}
       {!rows.length ? (

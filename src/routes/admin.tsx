@@ -478,7 +478,6 @@ function AdminDashboard() {
       {(tab === "contacts" || tab === "results") && (
         <section className="admin-panel">
           <div className="admin-section-heading">
-          <h2>{tab === "contacts" ? "表單資料" : "比賽成績"}</h2>
             {tab === "results" && (
               <button onClick={() => setView("podium", "ranking")}>查看今日排行榜</button>
             )}

@@ -366,7 +366,7 @@ test(
         await capture(page, `admin-${width}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "我的釘選", exact: true }).click();
-        await page.getByRole("heading", { name: "我的釘選" }).waitFor();
+        await page.getByRole("heading", { name: "我的釘選" }).first().waitFor();
         await page.getByRole("button", { name: "自訂", exact: true }).click();
         assert.equal(await page.locator(".admin-widget-grid.is-editing [data-widget]").count(), 14);
         await page
@@ -409,9 +409,9 @@ test(
           "hidden form-source filter must not hide results",
         );
         await page.getByRole("button", { name: "查看今日排行榜" }).click();
-        await page.getByRole("heading", { name: "今日排行榜" }).waitFor();
+        await page.getByRole("heading", { name: "今日排行榜" }).first().waitFor();
         await page.goto(`${origin}/admin?view=pinned`);
-        await page.getByRole("heading", { name: "我的釘選" }).waitFor();
+        await page.getByRole("heading", { name: "我的釘選" }).first().waitFor();
         await page.locator(".admin-pinned-grid [data-widget]").first().waitFor();
         assert.equal(new URL(page.url()).searchParams.get("view"), "pinned");
         assert.ok((await page.locator(".admin-pinned-grid [data-widget]").count()) > 0);
@@ -485,7 +485,7 @@ test(
       await page.getByRole("navigation", { name: "更多後台導覽", exact: true }).getByRole("button", { name: "表單資料" }).click();
       assert.equal(await page.getByLabel("篩選來源").inputValue(), "Google Form");
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "名單" }).click();
-      await page.getByRole("heading", { name: "名單" }).waitFor();
+      await page.getByRole("heading", { name: "名單" }).first().waitFor();
       assert.deepEqual(errors, []);
       await context.close();
     });

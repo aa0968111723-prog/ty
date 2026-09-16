@@ -350,7 +350,7 @@ export function RosterList({
     <div className="recruitment-board">
       <section className="admin-panel">
         <div className="admin-section-heading">
-          <h2>名單</h2>
+          <p className="admin-caption">搜尋、篩選、查看詳細資料</p>
           <button
             type="button"
             className="admin-more-toggle"
