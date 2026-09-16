@@ -379,8 +379,10 @@ test(
       assert.equal(await page.getByText("別人的同學").count(), 0);
       assert.equal(await page.locator("text=submissionId").count(), 0);
       assert.equal(await page.getByText("分級", { exact: true }).count(), 0);
+      await page.getByRole("button", { name: "更換", exact: true }).click();
       await page.getByRole("button", { name: "小哲", exact: true }).click();
       await page.getByRole("status").getByText(/目前沒有與「小哲」相關/).waitFor();
+      await page.getByRole("button", { name: "更換", exact: true }).click();
       await page.getByRole("button", { name: "柏能", exact: true }).click();
       await page.getByRole("link", { name: "填寫正式資料" }).click();
       await page.getByRole("heading", { name: /這位有緣人的接引人/ }).waitFor();

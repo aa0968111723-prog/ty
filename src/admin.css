@@ -1260,6 +1260,19 @@
 }
 .battle-next-picker .quickfill-partners {
   margin-top: var(--space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.battle-next-self {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.battle-next-self strong {
+  font-size: var(--text-h2);
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
 }
 .battle-next-list {
   display: grid;

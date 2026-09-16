@@ -124,6 +124,13 @@ function RecruiterPicker({
   onChange: (name: string) => void;
   compact?: boolean;
 }) {
+  const [choosing, setChoosing] = useState(!value);
+  const showGrid = !compact || !value || choosing;
+  function pick(name: string) {
+    const next = value === name ? "" : name;
+    onChange(next);
+    setChoosing(!next);
+  }
   const buttons = (
     <div className="quickfill-partners">
       {OFFICIAL_RECRUITERS.map((name) => (
@@ -131,13 +138,24 @@ function RecruiterPicker({
           key={name}
           type="button"
           aria-pressed={value === name}
-          onClick={() => onChange(value === name ? "" : name)}
+          onClick={() => pick(name)}
         >
           {name}
         </button>
       ))}
     </div>
   );
+  if (compact && value && !showGrid) {
+    return (
+      <div className="battle-next-picker is-selected">
+        <p className="admin-caption">這位有緣人的接引人</p>
+        <div className="battle-next-self">
+          <strong>{value}</strong>
+          <button type="button" onClick={() => setChoosing(true)}>更換</button>
+        </div>
+      </div>
+    );
+  }
   if (compact) {
     return (
       <div className="battle-next-picker">
