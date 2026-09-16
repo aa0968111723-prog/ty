@@ -3,6 +3,7 @@ import { ChevronDown, ExternalLink, Filter } from "lucide-react";
 import { RecruitmentProfileSheet, type RecruitmentProfile } from "./recruitment-profile-sheet";
 import { LIVE_ACTIVITY_CHOICES } from "@/lib/club/recruitment-prefill.mjs";
 import { IDENTITY_CONFIRM_LABEL, needsIdentityConfirm } from "@/lib/club/recruitment-identity.mjs";
+import { QUEUE_HANDLED_STORAGE_KEY } from "@/lib/club/next-pending.mjs";
 
 export type SyncFlag = { ok: boolean; stale?: boolean; error?: string };
 export type RecruitmentTrendPoint = {
@@ -85,12 +86,11 @@ export type RecruitmentData = {
   };
 };
 
-const HANDLED_KEY = "club-handled-people";
 const REAL_EVENTS = LIVE_ACTIVITY_CHOICES.filter((name) => !/無|考慮中|沒興趣/.test(name));
 
 function readHandled() {
   try {
-    const raw = JSON.parse(localStorage.getItem(HANDLED_KEY) || "[]");
+    const raw = JSON.parse(localStorage.getItem(QUEUE_HANDLED_STORAGE_KEY) || "[]");
     return new Set(Array.isArray(raw) ? raw.filter((item) => typeof item === "string") : []);
   } catch {
     return new Set<string>();
@@ -99,7 +99,7 @@ function readHandled() {
 
 function writeHandled(keys: Set<string>) {
   try {
-    localStorage.setItem(HANDLED_KEY, JSON.stringify([...keys]));
+    localStorage.setItem(QUEUE_HANDLED_STORAGE_KEY, JSON.stringify([...keys]));
   } catch {
     /* ignore */
   }

@@ -751,6 +751,95 @@ test(
       assert.deepEqual(errors, []);
       await context.close();
     });
+    await t.test("war-home next person CTA is above the fold and ignores 遊戲關主", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route((url) => {
+        try { return new URL(url).origin !== origin; } catch { return false; }
+      }, async (route) => {
+        await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+      });
+      const taipeiToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+      const student = {
+        name: "測試同學",
+        phone: "0900000000",
+        department: "歷史學系",
+        grade: "大一",
+        gatekeeper: "柏能",
+        completedAt: `${taipeiToday}T04:00:00.000Z`,
+        kind: "official",
+        skipSave: false,
+        duration: 60,
+        settings: DEFAULT_SETTINGS,
+        score: 600,
+        correct: 5,
+        wrong: 0,
+        maxCombo: 5,
+        accuracy: 100,
+        submissionId: crypto.randomUUID(),
+      };
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({ json: buildDashboard({ date, results: [student], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({
+          json: toPartnerRecruitmentDashboard(buildRecruitmentDashboard({
+            date,
+            now: new Date(`${taipeiToday}T12:00:00+08:00`),
+            gameRows: [{
+              姓名: student.name,
+              電話: student.phone,
+              科系: student.department,
+              年級: student.grade,
+              遊戲關主: student.gatekeeper,
+              遊戲時間: student.completedAt,
+              _submissionId: student.submissionId,
+              _kind: "official",
+              _skipSave: false,
+            }],
+            recruitmentRows: [],
+            masterRows: [],
+          })),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      const nextCard = page.locator("[data-next-pending]");
+      await nextCard.waitFor();
+      assert.equal((await nextCard.locator(".war-next-name").innerText()).trim(), "測試同學");
+      assert.equal(await nextCard.getAttribute("data-next-reason"), "unassigned");
+      const cta = nextCard.getByRole("link", { name: "填寫正式資料", exact: true });
+      assert.equal(await cta.count(), 1);
+      const ctaBox = await cta.boundingBox();
+      const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
+      assert.ok(ctaBox && navBox && ctaBox.height >= 44);
+      assert.ok(
+        ctaBox.y + ctaBox.height <= navBox.y + 1,
+        `填寫正式資料 must sit above the bottom nav: action=${JSON.stringify(ctaBox)} nav=${JSON.stringify(navBox)}`,
+      );
+      assert.ok(ctaBox.y + ctaBox.height <= 844, "next-person CTA must be in the first 390 viewport");
+      assert.match(await cta.getAttribute("href") || "", /personKey=/);
+      assert.equal(await nextCard.getByText("分級").count(), 0);
+      await page.getByLabel("這位有緣人的接引人").selectOption("柏能");
+      assert.equal(await nextCard.getAttribute("data-next-reason"), "unassigned");
+      assert.equal((await nextCard.locator(".war-next-name").innerText()).trim(), "測試同學");
+      assert.ok(await nextCard.getByText("尚未指定接引人").count());
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "war-next-person-390-viewport.png") });
+      }
+      await capture(page, "war-next-person-390");
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("war-room KPI expand shows six name chips and 還有 N 人", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

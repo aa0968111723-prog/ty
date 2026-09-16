@@ -11,6 +11,11 @@ import {
   ClipboardList,
 } from "lucide-react";
 import type { KpiPersonChip, RecruitmentData, SyncFlag } from "./recruitment-dashboard";
+import {
+  QUEUE_HANDLED_STORAGE_KEY,
+  nextPendingPerson,
+  nextPendingReason,
+} from "@/lib/club/next-pending.mjs";
 
 function metric(value: number | null | undefined) {
   if (value == null) return "—";
@@ -146,16 +151,94 @@ function syncTone(ok: boolean | undefined, stale?: boolean) {
   return "失敗";
 }
 
+function followUpHref(personKey: string) {
+  return `/follow-up?${new URLSearchParams({ personKey }).toString()}`;
+}
+
+function waitLabel(minutes: number | null | undefined) {
+  if (minutes == null) return "時間未填";
+  if (minutes < 60) return `已等 ${minutes} 分`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `已等 ${hours} 時 ${rest} 分` : `已等 ${hours} 時`;
+}
+
+function readHandledKeys() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(QUEUE_HANDLED_STORAGE_KEY) || "[]");
+    return Array.isArray(raw) ? raw.filter((item) => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function NextPendingCard({
+  data,
+  recruiter,
+  onOpenPending,
+}: {
+  data: RecruitmentData;
+  recruiter: string;
+  onOpenPending: () => void;
+}) {
+  const [handledKeys, setHandledKeys] = useState<string[]>([]);
+  useEffect(() => {
+    setHandledKeys(readHandledKeys());
+  }, [data]);
+  const next = useMemo(
+    () => nextPendingPerson(data.pending, { partner: recruiter, handledKeys }),
+    [data.pending, recruiter, handledKeys],
+  );
+  const reason = nextPendingReason(next, recruiter);
+  if (!next) {
+    if (!data.pending.length) return null;
+    return (
+      <section className="admin-panel war-next is-empty" aria-label="現在先填這位">
+        <h2>現在先填這位</h2>
+        <p className="admin-caption">目前沒有要你先填的人。</p>
+        <button type="button" className="admin-primary" onClick={onOpenPending}>
+          去待處理
+        </button>
+      </section>
+    );
+  }
+  return (
+    <section
+      className="admin-panel war-next"
+      aria-label="現在先填這位"
+      data-next-pending={next.personKey}
+      data-next-reason={reason}
+    >
+      <h2>現在先填這位</h2>
+      <p className="war-next-name">{next.name || "未填姓名"}</p>
+      <p>
+        {next.department || "科系未填"}
+        {next.grade ? ` · ${next.grade}` : ""}
+        {` · ${waitLabel(next.waitMinutes)}`}
+      </p>
+      <p className="admin-caption">
+        {reason === "assigned" ? `接引人是你${recruiter ? `（${recruiter}）` : ""}` : "尚未指定接引人"}
+        {next.gameGatekeeper ? ` · 遊戲關主 ${next.gameGatekeeper}` : ""}
+      </p>
+      <a className="admin-primary" href={followUpHref(next.personKey)}>
+        填寫正式資料
+      </a>
+    </section>
+  );
+}
+
 export function WarRoom({
   data,
   busy,
   error,
+  recruiter = "",
   onOpenPending,
   onOpenRoster,
 }: {
   data: RecruitmentData | null;
   busy: boolean;
   error: string;
+  recruiter?: string;
   onOpenPending: () => void;
   onOpenRoster: (activity?: string) => void;
 }) {
@@ -222,6 +305,10 @@ export function WarRoom({
           <li>總表 {flagLabel(sync?.recruitmentMaster)}</li>
         </ul>
       </section>
+
+      {data ? (
+        <NextPendingCard data={data} recruiter={recruiter} onOpenPending={onOpenPending} />
+      ) : null}
 
       <section className="war-kpis" aria-label="今日招生數字">
         <KpiCard

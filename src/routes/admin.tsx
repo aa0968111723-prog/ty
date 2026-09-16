@@ -374,6 +374,7 @@ function AdminDashboard() {
             data={recruitment}
             busy={busy}
             error={error}
+            recruiter={partner.officialRecruiter || recruiter}
             onOpenPending={() => setView("pending", "pending")}
             onOpenRoster={(activity) => {
               setRosterActivity(activity || "");
