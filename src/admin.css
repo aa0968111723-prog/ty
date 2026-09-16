@@ -1316,8 +1316,19 @@
   gap: var(--space-2);
   font-size: var(--text-body);
 }
-.partner-picker.is-compact .quickfill-partners button {
+.partner-picker.is-compact {
+  padding: var(--space-4);
+}
+.partner-picker.is-compact label {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+.partner-picker.is-compact select,
+.partner-picker.is-compact input {
   min-height: 44px;
+  width: 100%;
 }
 .war-room {
   display: grid;

@@ -16,8 +16,47 @@ export function PartnerPicker({
   compact?: boolean;
 }) {
   const official = recruiter === "其他" ? customRecruiter.trim() : recruiter;
+  if (compact) {
+    return (
+      <section className="admin-panel partner-picker is-compact" aria-label="這位有緣人的接引人">
+        <label>
+          這位有緣人的接引人
+          <select
+            aria-label="這位有緣人的接引人"
+            value={recruiter}
+            onChange={(event) => {
+              const next = event.target.value;
+              onChange(next, next === "其他" ? customRecruiter : "");
+              if (next && next !== "其他") rememberStoredRecruiter(next);
+            }}
+          >
+            <option value="">先選接引人</option>
+            {OFFICIAL_RECRUITERS.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+            <option value="其他">其他</option>
+          </select>
+        </label>
+        {recruiter === "其他" ? (
+          <label>
+            接引人姓名
+            <input
+              aria-label="其他接引人姓名"
+              value={customRecruiter}
+              maxLength={20}
+              onChange={(event) => {
+                onChange("其他", event.target.value);
+                rememberStoredRecruiter(event.target.value.trim());
+              }}
+            />
+          </label>
+        ) : null}
+        {official ? <p className="admin-caption">目前負責接引：{official} · 遊戲關主另計</p> : null}
+      </section>
+    );
+  }
   return (
-    <section className={`admin-panel partner-picker${compact ? " is-compact" : ""}`} aria-label="這位有緣人的接引人">
+    <section className="admin-panel partner-picker" aria-label="這位有緣人的接引人">
       <h2>
         <UserRound size={18} aria-hidden="true" />
         這位有緣人的接引人
