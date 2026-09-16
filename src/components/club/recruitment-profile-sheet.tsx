@@ -118,6 +118,7 @@ export function RecruitmentProfileSheet({
               </li>
             )}
           </ol>
+          {profile?.pending || formUrl ? (
           <div className="recruitment-sheet-actions">
             {profile?.pending ? (
               <a
@@ -139,6 +140,7 @@ export function RecruitmentProfileSheet({
               </a>
             ) : null}
           </div>
+          ) : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
