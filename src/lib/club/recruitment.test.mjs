@@ -514,3 +514,19 @@ test("considering-none event options do not count as signups", () => {
   assert.equal(data.summary.activityToday, 0);
   assert.equal(data.summary.joined, 0);
 });
+
+test("empty sheets report zero unique people, not missing counts", () => {
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T12:00:00+08:00"),
+    gameRows: [],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.summary.playedToday, 0);
+  assert.equal(data.summary.playedAll, 0);
+  assert.equal(data.summary.pending, 0);
+  assert.equal(data.summary.activityToday, null);
+  assert.equal(data.trend.length, 7);
+  assert.equal(data.trend.every((row) => row.contacts === 0 && row.signups === 0 && row.joined === 0), true);
+});

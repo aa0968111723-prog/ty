@@ -499,6 +499,12 @@ test(
       await page.getByRole("button", { name: "登入後台" }).click();
       await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
       await page.locator(".war-kpis").waitFor();
+      assert.equal(
+        (await page.locator("[data-kpi=today-contacts] .war-num").innerText()).trim(),
+        "0",
+        "empty successful sync must show 0, not a missing mark",
+      );
+      assert.equal((await page.locator("[data-kpi=pending] .war-num").innerText()).trim(), "0");
       assert.equal(await page.locator(".admin-widget-tools").count(), 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await capture(page, "admin-desktop");
@@ -522,7 +528,28 @@ test(
       await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
       await page.route("**/api/admin/dashboard**", (route) => {
         const date = new URL(route.request().url()).searchParams.get("date") || "2026-09-16";
-        return route.fulfill({ json: buildDashboard({ date, results: [], forms: [] }) });
+        return route.fulfill({ json: buildDashboard({
+          date,
+          results: [{
+            name: "部分資料",
+            phone: "0900000001",
+            department: "歷史學系",
+            grade: "大一",
+            gatekeeper: "柏能",
+            completedAt: `${date}T04:00:00.000Z`,
+            kind: "official",
+            skipSave: false,
+            duration: 60,
+            settings: DEFAULT_SETTINGS,
+            score: 600,
+            correct: 5,
+            wrong: 0,
+            maxCombo: 5,
+            accuracy: 100,
+            submissionId: crypto.randomUUID(),
+          }],
+          forms: [],
+        }) });
       });
       await page.route("**/api/admin/recruitment**", (route) =>
         route.fulfill({ status: 503, json: { error: "同步失敗" } }),
@@ -532,6 +559,14 @@ test(
       await page.locator(".war-kpis").waitFor();
       await page.getByRole("alert").waitFor();
       assert.match(await page.getByRole("alert").innerText(), /同步失敗/);
+      assert.equal(
+        (await page.locator("[data-kpi=today-contacts] .war-num").innerText()).trim(),
+        "—",
+        "sync failure must not look like zero contacts",
+      );
+      assert.equal((await page.locator("[data-kpi=all-contacts] .war-num").innerText()).trim(), "—");
+      assert.equal((await page.locator("[data-kpi=pending] .war-num").innerText()).trim(), "—");
+      assert.ok(await page.getByText("漏斗數字暫缺，不是 0 人").count());
       assert.ok(await page.getByText("今日接觸人數").count());
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await capture(page, "admin-sync-failure-390");
