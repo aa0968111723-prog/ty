@@ -16,6 +16,7 @@ import {
   Medal,
   X,
 } from "lucide-react";
+import { OfficialFormShortcuts } from "./official-form-shortcuts";
 
 export type AdminView =
   | "recruitment"
@@ -148,6 +149,7 @@ export function AdminShell({
             <Dialog.Close className="admin-close" aria-label="關閉更多">
               <X size={20} />
             </Dialog.Close>
+            <OfficialFormShortcuts />
             <nav aria-label="更多後台導覽">
               {moreNav.map((item) => itemButton(item.id, item.label, item.shortcut, item.icon))}
             </nav>

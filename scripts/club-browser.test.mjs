@@ -368,12 +368,18 @@ test(
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "待處理", exact: true }).click();
         await page.getByRole("heading", { name: "待處理有緣人" }).waitFor();
         await page.getByRole("button", { name: "柏能", exact: true }).click();
+        const pendingForm = page.locator(".recruitment-board [data-official-form=open-form]");
+        const pendingBackoffice = page.locator(".recruitment-board [data-official-form=open-backoffice]");
+        assert.equal(await pendingForm.getAttribute("href"), OFFICIAL_VIEWFORM_URL);
+        assert.equal(await pendingBackoffice.getAttribute("href"), OFFICIAL_FORM_EDIT_URL);
+        assert.equal(await pendingForm.getAttribute("target"), "_blank");
+        assert.equal(await pendingBackoffice.getAttribute("target"), "_blank");
         const fill = page.getByRole("link", { name: "填寫正式資料" }).first();
         await fill.waitFor();
         const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
         const actions = [
           fill,
-          page.getByRole("link", { name: /開啟表單/ }).first(),
+          page.locator(".recruitment-actions a").filter({ hasText: "開啟表單" }).first(),
           page.getByRole("button", { name: "標記已處理", exact: true }),
           page.getByRole("button", { name: "查看詳細資料", exact: true }),
         ];
@@ -391,7 +397,11 @@ test(
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await capture(page, `admin-${width}`);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
-        await page.getByRole("dialog").getByRole("button", { name: "我的釘選", exact: true }).click();
+        const more = page.getByRole("dialog");
+        await more.waitFor();
+        assert.equal(await more.locator("[data-official-form=open-form]").getAttribute("href"), OFFICIAL_VIEWFORM_URL);
+        assert.equal(await more.locator("[data-official-form=open-backoffice]").getAttribute("href"), OFFICIAL_FORM_EDIT_URL);
+        await more.getByRole("button", { name: "我的釘選", exact: true }).click();
         await page.getByRole("heading", { name: "我的釘選" }).first().waitFor();
         await page.getByRole("button", { name: "自訂", exact: true }).click();
         assert.equal(await page.locator(".admin-widget-grid.is-editing [data-widget]").count(), 14);
@@ -501,6 +511,8 @@ test(
       await capture(page, "admin-desktop");
       await page.getByRole("navigation", { name: "更多後台導覽", exact: true }).getByRole("button", { name: "表單資料" }).click();
       assert.equal(await page.getByLabel("篩選來源").inputValue(), "Google Form");
+      assert.equal(await page.locator(".admin-panel [data-official-form=open-form]").getAttribute("href"), OFFICIAL_VIEWFORM_URL);
+      assert.equal(await page.locator(".admin-panel [data-official-form=open-backoffice]").getAttribute("href"), OFFICIAL_FORM_EDIT_URL);
       await page.getByRole("navigation", { name: "後台導覽", exact: true }).getByRole("button", { name: "名單" }).click();
       await page.getByRole("heading", { name: "名單" }).first().waitFor();
       assert.deepEqual(errors, []);

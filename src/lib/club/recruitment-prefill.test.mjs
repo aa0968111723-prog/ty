@@ -151,3 +151,19 @@ test("client prefill source does not embed the live 分級 entry id", async () =
   assert.equal(src.includes("1322037614"), false);
   assert.equal(src.includes("LIVE_TIER_CHOICES"), false);
 });
+
+test("pending and more surfaces mount official form + backoffice shortcuts", async () => {
+  const { readFileSync } = await import("node:fs");
+  const pending = readFileSync(new URL("../../components/club/recruitment-dashboard.tsx", import.meta.url), "utf8");
+  const more = readFileSync(new URL("../../components/club/admin-shell.tsx", import.meta.url), "utf8");
+  const forms = readFileSync(new URL("../../routes/admin.tsx", import.meta.url), "utf8");
+  const shortcuts = readFileSync(new URL("../../components/club/official-form-shortcuts.tsx", import.meta.url), "utf8");
+  assert.match(shortcuts, /OFFICIAL_VIEWFORM_URL/);
+  assert.match(shortcuts, /OFFICIAL_FORM_EDIT_URL/);
+  assert.match(shortcuts, /data-official-form="open-form"/);
+  assert.match(shortcuts, /data-official-form="open-backoffice"/);
+  assert.doesNotMatch(shortcuts, /1322037614|#s:|submissionId/);
+  assert.match(pending, /<OfficialFormShortcuts/);
+  assert.match(more, /<OfficialFormShortcuts/);
+  assert.match(forms, /<OfficialFormShortcuts/);
+});

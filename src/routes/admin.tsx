@@ -9,6 +9,7 @@ import { DashboardWidget } from "@/components/club/dashboard-widget";
 import { DEFAULT_LAYOUT, STORAGE_KEY, readLayout, initialView, taipeiDate, time, type Dashboard, type Tab, type LayoutPreference, type WidgetId, type Result } from "@/components/club/admin-presentation";
 import { Bars } from "@/components/club/admin-metrics";
 import { PendingQueue, RosterList, RecruitmentSync, type RecruitmentData } from "@/components/club/recruitment-dashboard";
+import { OfficialFormShortcuts } from "@/components/club/official-form-shortcuts";
 import { WarRoom } from "@/components/club/war-room";
 import { PartnerPicker } from "@/components/club/partner-picker";
 import { useStoredRecruiter } from "@/components/club/partner-state";
@@ -471,6 +472,7 @@ function AdminDashboard() {
               <button onClick={() => setView("podium", "ranking")}>查看今日排行榜</button>
             )}
           </div>
+          {tab === "contacts" ? <OfficialFormShortcuts /> : null}
           <div className="admin-filters">
             <input
               aria-label="搜尋姓名、電話、科系"

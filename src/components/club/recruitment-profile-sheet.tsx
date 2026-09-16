@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { ExternalLink, X } from "lucide-react";
+import { X } from "lucide-react";
+import { OfficialFormShortcuts } from "./official-form-shortcuts";
 import { IDENTITY_CONFIRM_LABEL, needsIdentityConfirm } from "@/lib/club/recruitment-identity.mjs";
 
 export type RecruitmentProfile = {
@@ -123,11 +124,7 @@ export function RecruitmentProfileSheet({
               填寫正式資料
             </a>
           ) : null}
-          {profile?.prefillUrl ? (
-            <a className="admin-primary" href={profile.prefillUrl} target="_blank" rel="noreferrer">
-              開啟表單 <ExternalLink size={16} />
-            </a>
-          ) : null}
+          <OfficialFormShortcuts prefillUrl={profile?.prefillUrl} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
