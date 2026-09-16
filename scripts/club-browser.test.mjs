@@ -8,6 +8,32 @@ import { buildRecruitmentDashboard } from "../src/lib/club/recruitment.mjs";
 import { DEFAULT_SETTINGS } from "../src/lib/club/runtime.mjs";
 
 const base = process.env.CLUB_BROWSER_URL;
+function paidDepositMasterRows() {
+  return [
+    {
+      接引日期: "9/12",
+      "接引人(可複選)": "安倢",
+      同學的姓名: "已繳保證金甲",
+      科系: "歷史學系",
+      年級: "大一",
+      是否入社: "否",
+      保證金是否繳費: "是",
+      繳了多少: "300",
+      "同學電話/LINE": "0912000601",
+    },
+    {
+      接引日期: "9/12",
+      "接引人(可複選)": "安倢",
+      同學的姓名: "已繳保證金乙",
+      科系: "資訊工程學系",
+      年級: "大二",
+      是否入社: "否",
+      保證金是否繳費: "是",
+      繳了多少: "300",
+      "同學電話/LINE": "0912000602",
+    },
+  ];
+}
 async function capture(page, name) {
   if (!process.env.CLUB_QA_DIR) return;
   mkdirSync(process.env.CLUB_QA_DIR, { recursive: true });
@@ -70,16 +96,19 @@ async function assertWarCardLabels(page) {
         text: el.textContent?.trim() || "",
         height: box.height,
         nowrap: style.whiteSpace === "nowrap",
+        clipped: el.scrollWidth > el.clientWidth + 1,
       };
     }),
   );
   assert.equal(hints[1]?.text, "報名");
   assert.equal(hints[2]?.text, "招生表");
+  assert.equal(hints[3]?.text, "$600");
   assert.equal(hints[3]?.nowrap, true);
-  assert.ok((hints[3]?.text || "").startsWith("$") || hints[3]?.text === "無金額", `deposit hint ${hints[3]?.text}`);
+  assert.equal(hints[3]?.clipped, false);
   for (const row of [hints[1], hints[2], hints[3]]) {
     assert.ok(row.height <= 20, `${row.text} hint wrapped at ${row.height}px`);
     assert.equal(row.nowrap, true);
+    assert.equal(row.clipped, false, `${row.text} clipped`);
   }
   assert.ok(await page.getByText("保證金以正式表單勾選為準").count());
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
@@ -224,7 +253,7 @@ test(
                 _submissionId: result.submissionId,
               }],
               recruitmentRows: [],
-              masterRows: [],
+              masterRows: paidDepositMasterRows(),
             }),
           });
         });
@@ -340,7 +369,7 @@ test(
             _skipSave: false,
           }],
           recruitmentRows: [],
-          masterRows: [],
+          masterRows: paidDepositMasterRows(),
         }) });
       });
       await page.getByRole("button", { name: "登入後台" }).click();
