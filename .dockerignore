@@ -1,0 +1,11 @@
+node_modules
+.git
+.output
+.vercel
+screenshots
+artifacts
+attachments
+*.log
+.grok/preview.log
+.grok/preview.pid
+.grok/og-pending
