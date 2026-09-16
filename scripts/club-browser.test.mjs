@@ -1478,13 +1478,13 @@ test(
       await page.route("**/api/admin/recruitment**", (route) => {
         const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
         return route.fulfill({
-          json: buildRecruitmentDashboard({
+          json: toPartnerRecruitmentDashboard(buildRecruitmentDashboard({
             date,
             now: new Date(`${taipeiToday}T12:00:00+08:00`),
             gameRows,
             recruitmentRows: [],
             masterRows: [],
-          }),
+          })),
         });
       });
       await page.goto(`${origin}/admin`);

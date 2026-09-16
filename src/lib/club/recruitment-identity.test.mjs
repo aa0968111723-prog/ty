@@ -80,6 +80,8 @@ test("same phone with two names stays one person and is flagged, not silently re
   assert.equal(people[0].personKey, "phone:0912345678");
   assert.equal(people[0].status, "ambiguous");
   assert.equal(people[0].reason, "ambiguous-phone-names");
+  assert.equal(needsIdentityConfirm(people[0].status), true);
+  assert.equal(IDENTITY_CONFIRM_LABEL, "需要確認");
   assert.equal(people[0].attempts.length, 2);
 });
 
@@ -90,6 +92,8 @@ test("phoneless same-name rows stay two flagged people, not one merged card", ()
   ]);
   assert.equal(people.length, 2);
   assert.equal(people.every((person) => person.status === "ambiguous"), true);
+  assert.equal(people.every((person) => needsIdentityConfirm(person.status)), true);
+  assert.equal(IDENTITY_CONFIRM_LABEL, "需要確認");
   assert.notEqual(people[0].personKey, people[1].personKey);
 });
 

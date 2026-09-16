@@ -969,6 +969,7 @@ function partnerTrend(trend = []) {
 function partnerPerson(row = {}) {
   return {
     personKey: row.personKey,
+    status: row.status,
     needsReview: Boolean(row.needsReview),
     name: row.name,
     phone: row.phone,

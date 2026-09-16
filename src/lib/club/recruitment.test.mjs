@@ -106,6 +106,42 @@ test("name or phone collisions stay separate or flagged, never a silent merge", 
   assert.equal(phoneShare[0].status, "ambiguous");
   assert.equal(data.summary.conflicts >= 3, true);
   assert.equal(data.pending.some((row) => row.status !== "ambiguous"), false);
+  const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal(partner.pending.filter((row) => row.name === "林同學").length, 2);
+  assert.equal(partner.pending.filter((row) => row.name === "林同學").every((row) => row.status === "ambiguous"), true);
+  assert.equal(partner.pending.filter((row) => row.phone === "0933333333").length, 1);
+  assert.equal(partner.pending.find((row) => row.phone === "0933333333").status, "ambiguous");
+  assert.equal(partner.profiles.filter((row) => row.status === "ambiguous").length >= 3, true);
+});
+
+test("phoneless same-name rows stay two partner cards flagged 需要確認", () => {
+  const left = game({
+    姓名: "同名",
+    電話: "",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa15",
+  });
+  const right = game({
+    姓名: "同名",
+    電話: "",
+    科系: "會計學系",
+    年級: "大二",
+    _submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa16",
+  });
+  const data = buildRecruitmentDashboard({
+    date: "2026-09-14",
+    now: new Date("2026-09-14T08:00:00+08:00"),
+    gameRows: [left, right],
+    recruitmentRows: [],
+    masterRows: [],
+  });
+  assert.equal(data.pending.length, 2);
+  assert.equal(data.pending.every((row) => row.status === "ambiguous"), true);
+  assert.notEqual(data.pending[0].personKey, data.pending[1].personKey);
+  const partner = toPartnerRecruitmentDashboard(data);
+  assert.equal(partner.pending.length, 2);
+  assert.equal(partner.pending.every((row) => row.status === "ambiguous"), true);
+  assert.notEqual(partner.pending[0].personKey, partner.pending[1].personKey);
+  assert.equal(partner.summary.conflicts, 2);
 });
 
 test("filled recruitment form removes the candidate and keeps another student", () => {
