@@ -419,3 +419,121 @@ test("staff form appends onto 招生狀況表 and never writes 總表 or the gam
   assert.equal(again.duplicate, true);
   assert.equal(values.length, 2);
 });
+
+test("appendOfficialResult follows gid 896311128 even when env names 總表 or 招生狀況表", async (t) => {
+  configure(t, "poison-game-env", {
+    GOOGLE_SHEET_TAB: "總表",
+    GOOGLE_GAME_SHEET_TAB: "招生狀況表",
+    GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB: "招生狀況表",
+    GOOGLE_RECRUITMENT_MASTER_SHEET_TAB: "總表",
+  });
+  invalidateSheetCache();
+  const writes = [];
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: {
+      get: async () => ({
+        data: {
+          sheets: [
+            { properties: { title: "總表", sheetId: EXPECTED_SHEET_IDS.recruitmentMaster } },
+            { properties: { title: "招生狀況表", sheetId: EXPECTED_SHEET_IDS.recruitmentResponses } },
+            { properties: { title: DEFAULT_TAB_TITLES.gameResults, sheetId: EXPECTED_SHEET_IDS.gameResults } },
+          ],
+        },
+      }),
+      batchUpdate: async (params) => {
+        writes.push({
+          kind: "spreadsheets.batchUpdate",
+          sheetId: params.requestBody.requests?.[0]?.updateDimensionProperties?.range?.sheetId,
+        });
+        return { data: {} };
+      },
+      values: {
+        get: async (params) => {
+          writes.push({ kind: "get", range: params.range });
+          return { data: { values: [["_submissionId"]] } };
+        },
+        update: async (params) => {
+          writes.push({ kind: "values.update", range: params.range, option: params.valueInputOption });
+          return { data: {} };
+        },
+        batchUpdate: async (params) => {
+          writes.push({
+            kind: "values.batchUpdate",
+            range: params.requestBody.data[0].range,
+            option: params.requestBody.valueInputOption,
+          });
+          return { data: {} };
+        },
+      },
+    },
+  }));
+  assert.equal(EXPECTED_SHEET_IDS.gameResults, 896311128);
+  const saved = await appendOfficialResult(result());
+  assert.equal(saved.saved, true);
+  const mutating = writes.filter((call) => call.kind !== "get");
+  assert.ok(mutating.some((call) => call.kind === "values.batchUpdate"));
+  for (const call of writes) {
+    if (call.range) {
+      assert.ok(String(call.range).includes(DEFAULT_TAB_TITLES.gameResults));
+      assert.equal(String(call.range).includes("總表"), false);
+      assert.equal(String(call.range).includes("招生狀況表"), false);
+    }
+    if (call.option) assert.equal(call.option, "RAW");
+    if (call.sheetId != null) assert.equal(call.sheetId, 896311128);
+  }
+});
+
+test("appendRecruitmentResponse refuses a 總表 destination and does not write", async (t) => {
+  configure(t, "poison-staff-master", {
+    GOOGLE_GAME_SHEET_TAB: DEFAULT_TAB_TITLES.gameResults,
+    GOOGLE_RECRUITMENT_RESPONSE_SHEET_TAB: "總表",
+    GOOGLE_RECRUITMENT_MASTER_SHEET_TAB: "總表",
+  });
+  invalidateSheetCache();
+  const writes = [];
+  t.mock.method(google.auth, "GoogleAuth", function GoogleAuth() { return {}; });
+  t.mock.method(google, "sheets", () => ({
+    spreadsheets: {
+      get: async () => ({
+        data: {
+          sheets: [
+            { properties: { title: "總表", sheetId: EXPECTED_SHEET_IDS.recruitmentMaster } },
+            { properties: { title: "招生狀況表", sheetId: EXPECTED_SHEET_IDS.recruitmentResponses } },
+            { properties: { title: DEFAULT_TAB_TITLES.gameResults, sheetId: EXPECTED_SHEET_IDS.gameResults } },
+          ],
+        },
+      }),
+      batchUpdate: async (params) => {
+        writes.push(params);
+        return { data: {} };
+      },
+      values: {
+        get: async () => ({ data: { values: [["同學的姓名"]] } }),
+        update: async (params) => {
+          writes.push(params);
+          return { data: {} };
+        },
+        batchUpdate: async (params) => {
+          writes.push(params);
+          return { data: {} };
+        },
+      },
+    },
+  }));
+  const parsed = normalizeStaffRecruitmentPayload({
+    recruiter: "柏能",
+    name: "王小明",
+    phone: "0912345678",
+    department: "歷史學系",
+    grade: "大一",
+    gameGatekeeper: "安倢",
+    completedAt: "2026-09-14T06:32:00.000Z",
+    submissionId: "11111111-1111-4111-8111-111111111111",
+    activities: ["9/30茶會"],
+    joined: "否",
+    depositPaid: "否",
+  }, { now: new Date("2026-09-14T08:00:00+08:00") });
+  await assert.rejects(() => appendRecruitmentResponse(parsed.payload), /總表/);
+  assert.equal(writes.length, 0);
+});

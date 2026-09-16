@@ -414,6 +414,8 @@ async function saveOfficialResult(row) {
   const { spreadsheetId } = sheetConfig("gameResults");
   const sheets = sheetsClient();
   const tab = await resolveTab(sheets, spreadsheetId, "gameResults");
+  const meta = await listSheetProperties(sheets, spreadsheetId);
+  assertGameResultsTab(tab, meta);
   const values = await getValues(sheets, spreadsheetId, tab);
   const normalized = normalizedResult(row);
   Object.assign(normalized, {
@@ -509,6 +511,25 @@ export function appendOfficialResult(row) {
   );
   writeQueue = task.then(() => undefined, () => undefined);
   return task;
+}
+
+function assertGameResultsTab(tab, meta) {
+  if (tab === DEFAULT_TAB_TITLES.recruitmentMaster || tab === "總表") {
+    throw new Error("Game results must not write 總表");
+  }
+  if (tab === DEFAULT_TAB_TITLES.recruitmentResponses || tab === "招生狀況表") {
+    throw new Error("Game results must not write 招生狀況表");
+  }
+  const sheet = (meta || []).find((item) => item.title === tab);
+  if (sheet?.sheetId === EXPECTED_SHEET_IDS.recruitmentMaster) {
+    throw new Error("Game results must not write 總表");
+  }
+  if (sheet?.sheetId === EXPECTED_SHEET_IDS.recruitmentResponses) {
+    throw new Error("Game results must not write 招生狀況表");
+  }
+  if (sheet && sheet.sheetId !== EXPECTED_SHEET_IDS.gameResults) {
+    throw new Error("Game results must not write a non-game tab");
+  }
 }
 
 function assertRecruitmentResponseTab(tab, meta) {
