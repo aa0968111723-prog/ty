@@ -105,11 +105,30 @@ export function PendingQueue({
   useLayoutEffect(() => {
     if (!priorityKey || typeof document === "undefined") return;
     if (!window.matchMedia("(max-width: 759px)").matches) return;
-    const actions = document.querySelector(
-      ".recruitment-pending article.is-priority .recruitment-actions",
-    );
-    if (!(actions instanceof HTMLElement)) return;
-    actions.scrollIntoView({ block: "end", inline: "nearest" });
+
+    const revealPendingActions = () => {
+      const form = document.querySelector(
+        ".recruitment-pending article.is-priority [data-pending-action=form]",
+      );
+      const quickfill = document.querySelector(
+        ".recruitment-pending article.is-priority [data-pending-action=quickfill]",
+      );
+      const nav = document.querySelector(".admin-bottom-nav");
+      if (!(form instanceof HTMLElement) || !(quickfill instanceof HTMLElement)) return;
+      if (!(nav instanceof HTMLElement) || getComputedStyle(nav).display === "none") return;
+      form.scrollIntoView({ block: "end", inline: "nearest" });
+      const navTop = nav.getBoundingClientRect().top;
+      const lowest = Math.max(
+        form.getBoundingClientRect().bottom,
+        quickfill.getBoundingClientRect().bottom,
+      );
+      const overlap = lowest - navTop;
+      if (overlap > 0) window.scrollBy({ top: overlap + 2, left: 0, behavior: "auto" });
+    };
+
+    revealPendingActions();
+    const frame = window.requestAnimationFrame(revealPendingActions);
+    return () => window.cancelAnimationFrame(frame);
   }, [priorityKey]);
 
   return (

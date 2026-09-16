@@ -43,6 +43,17 @@ async function capture(page, name) {
 async function assertPendingActionButtons(page) {
   const pendingActions = page.locator("[data-pending-action]");
   assert.equal(await pendingActions.count(), 2);
+  await page.waitForFunction(() => {
+    const nav = document.querySelector(".admin-bottom-nav");
+    const buttons = [...document.querySelectorAll("[data-pending-action]")];
+    if (buttons.length < 2) return false;
+    if (!nav || getComputedStyle(nav).display === "none") return true;
+    const navTop = nav.getBoundingClientRect().top;
+    return buttons.every((el) => {
+      const box = el.getBoundingClientRect();
+      return box.height >= 44 && box.top >= 0 && box.bottom <= navTop + 1;
+    });
+  });
   const actionMetrics = await page.evaluate(() => {
     const nav = document.querySelector(".admin-bottom-nav");
     const navHidden = !nav || getComputedStyle(nav).display === "none";

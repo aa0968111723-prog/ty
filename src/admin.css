@@ -1078,7 +1078,10 @@
   .admin-page .recruitment-pending {
     padding-bottom: var(--admin-tabbar-clear);
   }
-  .admin-page .recruitment-pending .recruitment-actions {
+  .admin-page .recruitment-pending article.is-priority {
+    padding-bottom: var(--admin-tabbar-clear);
+  }
+  .admin-page .recruitment-pending [data-pending-action] {
     scroll-margin-bottom: var(--admin-tabbar-clear);
   }
 }
