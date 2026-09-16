@@ -525,7 +525,7 @@
 .admin-person-list article:last-child {
   border: 0;
 }
-.admin-person-list article > div {
+.admin-person-list article > div:not(.recruitment-meta):not(.recruitment-actions) {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1358,6 +1358,8 @@
 .recruitment-meta {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-auto-flow: row;
+  align-items: start;
   column-gap: var(--space-3);
   row-gap: var(--space-1);
   margin: var(--space-2) 0 0;

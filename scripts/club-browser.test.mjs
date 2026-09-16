@@ -487,9 +487,18 @@ test(
       assert.equal(await page.getByRole("article").filter({ hasText: "關主的同學" }).count(), 1);
       assert.equal(await page.getByRole("article").filter({ hasText: "別人的同學" }).count(), 0);
       const phoneBox = await page.getByText("0910000001").boundingBox();
+      const deptBox = await page.getByText(/歷史學系/).boundingBox();
       assert.ok(
         phoneBox.width >= 70 && phoneBox.height <= 28,
         `phone wrapped ${JSON.stringify(phoneBox)}`,
+      );
+      assert.ok(
+        deptBox.width >= 70 && deptBox.height <= 28,
+        `dept wrapped ${JSON.stringify(deptBox)}`,
+      );
+      assert.ok(
+        Math.abs(phoneBox.y - deptBox.y) < 8 && phoneBox.x > deptBox.x,
+        `facts not two columns phone=${JSON.stringify(phoneBox)} dept=${JSON.stringify(deptBox)}`,
       );
       await capture(page, "queue-card-twocol-390");
       await page.getByLabel("這位有緣人的接引人").selectOption("小哲");
