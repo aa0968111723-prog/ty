@@ -16,7 +16,8 @@ export function isRelatedToPartner(row, self) {
 }
 
 /**
- * @param {Array<Record<string, unknown>>} rows
+ * @template T
+ * @param {T[]} rows
  * @param {{
  *   self?: string,
  *   showAll?: boolean,
@@ -25,6 +26,7 @@ export function isRelatedToPartner(row, self) {
  *   gameGatekeeper?: string,
  *   query?: string,
  * }} [options]
+ * @returns {T[]}
  */
 export function filterPendingQueue(rows, options = {}) {
   const self = String(options.self || "").trim();
