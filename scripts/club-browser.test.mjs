@@ -923,6 +923,169 @@ test(
         "admin-login-expired-desktop",
       );
     });
+    await t.test("名單 filters stay collapsed on 390 then search updates cards", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.route((url) => {
+        try { return new URL(url).origin !== origin; } catch { return false; }
+      }, async (route) => {
+        await route.fulfill({ status: 200, body: "", contentType: "application/javascript" });
+      });
+      const taipeiToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+      const pendingPlayer = {
+        name: "名單甲",
+        phone: "0910000001",
+        department: "歷史學系",
+        grade: "大一",
+        gatekeeper: "柏能",
+        completedAt: `${taipeiToday}T04:00:00.000Z`,
+        kind: "official",
+        skipSave: false,
+        duration: 60,
+        settings: DEFAULT_SETTINGS,
+        score: 600,
+        correct: 5,
+        wrong: 0,
+        maxCombo: 5,
+        accuracy: 100,
+        submissionId: crypto.randomUUID(),
+      };
+      const joinedPlayer = {
+        ...pendingPlayer,
+        name: "名單乙",
+        phone: "0920000002",
+        gatekeeper: "安倢",
+        completedAt: `${taipeiToday}T05:00:00.000Z`,
+        submissionId: crypto.randomUUID(),
+      };
+      await page.route("**/api/admin/session", (route) => route.fulfill({ json: { authenticated: true } }));
+      await page.route("**/api/admin/dashboard**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({ json: buildDashboard({ date, results: [pendingPlayer, joinedPlayer], forms: [] }) });
+      });
+      await page.route("**/api/admin/recruitment**", (route) => {
+        const date = new URL(route.request().url()).searchParams.get("date") || taipeiToday;
+        return route.fulfill({
+          json: buildRecruitmentDashboard({
+            date,
+            now: new Date(`${taipeiToday}T12:00:00+08:00`),
+            gameRows: [
+              {
+                姓名: pendingPlayer.name,
+                電話: pendingPlayer.phone,
+                科系: pendingPlayer.department,
+                年級: pendingPlayer.grade,
+                遊戲關主: pendingPlayer.gatekeeper,
+                遊戲時間: pendingPlayer.completedAt,
+                _submissionId: pendingPlayer.submissionId,
+                _kind: "official",
+                _skipSave: false,
+              },
+              {
+                姓名: joinedPlayer.name,
+                電話: joinedPlayer.phone,
+                科系: joinedPlayer.department,
+                年級: joinedPlayer.grade,
+                遊戲關主: joinedPlayer.gatekeeper,
+                遊戲時間: joinedPlayer.completedAt,
+                _submissionId: joinedPlayer.submissionId,
+                _kind: "official",
+                _skipSave: false,
+              },
+            ],
+            recruitmentRows: [{
+              時間戳記: `${taipeiToday.replaceAll("-", "/")} 10:00:00`,
+              "接引人(可複選)": "安倢",
+              接引日期: `${Number(taipeiToday.slice(5, 7))}/${Number(taipeiToday.slice(8))}`,
+              同學的姓名: joinedPlayer.name,
+              "同學電話/LINE": joinedPlayer.phone,
+              系級: "歷史學系大一",
+              報名了那個活動: "9/30茶會",
+              是否入社: "是",
+              "保證金是否繳費": "是",
+              _gameSubmissionId: joinedPlayer.submissionId,
+            }],
+            masterRows: [],
+          }),
+        });
+      });
+      await page.goto(`${origin}/admin`);
+      await page.getByRole("heading", { name: "今日招生戰情" }).waitFor();
+      await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "名單", exact: true }).click();
+      await page.getByRole("heading", { name: "名單" }).first().waitFor();
+      const filterToggle = page.getByRole("button", { name: "篩選", exact: true });
+      await filterToggle.waitFor();
+      assert.equal(await filterToggle.getAttribute("aria-expanded"), "false");
+      const filters = page.locator("#roster-filters");
+      assert.equal(await filters.isVisible(), false);
+      const cards = page.locator(".admin-person-list article");
+      assert.equal(await cards.count(), 2);
+      const firstCard = await cards.first().boundingBox();
+      const navBox = await page.getByRole("navigation", { name: "手機後台導覽" }).boundingBox();
+      assert.ok(firstCard && navBox && firstCard.y < 520, `collapsed filters must not fill the screen: ${JSON.stringify(firstCard)}`);
+      const toggleBox = await filterToggle.boundingBox();
+      assert.ok(toggleBox && toggleBox.height >= 44);
+      assert.equal(await page.locator("table").count(), 0);
+      assert.equal(await page.getByText("分級").count(), 0);
+      assert.equal(await page.getByText("submissionId").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "roster-filters-collapsed-390-viewport.png") });
+      }
+      await capture(page, "roster-filters-collapsed-390");
+      await filterToggle.click();
+      assert.equal(await filterToggle.getAttribute("aria-expanded"), "true");
+      await filters.waitFor({ state: "visible" });
+      const range = page.getByRole("group", { name: "日期範圍" });
+      assert.equal(await range.getByRole("button", { name: "今日", exact: true }).count(), 1);
+      assert.equal(await range.getByRole("button", { name: "昨日", exact: true }).count(), 1);
+      assert.equal(await range.getByRole("button", { name: "指定日期", exact: true }).count(), 1);
+      assert.equal(await range.getByRole("button", { name: "歷史全部", exact: true }).count(), 1);
+      for (const label of ["今日", "昨日", "指定日期", "歷史全部"]) {
+        const box = await range.getByRole("button", { name: label, exact: true }).boundingBox();
+        assert.ok(box && box.height >= 44, `${label} height ${box && box.height}`);
+      }
+      assert.equal(await page.getByLabel("搜尋姓名或電話").count(), 1);
+      assert.equal(await page.getByLabel("篩選遊戲關主").count(), 1);
+      assert.equal(await page.getByLabel("篩選正式招生接引人").count(), 1);
+      assert.equal(await page.getByLabel("篩選活動").count(), 1);
+      assert.equal(await page.getByLabel("是否入社").count(), 1);
+      assert.equal(await page.getByLabel("是否繳保證金").count(), 1);
+      assert.equal(await page.getByLabel("是否已填正式資料").count(), 1);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      if (process.env.CLUB_QA_DIR) {
+        await page.screenshot({ path: join(process.env.CLUB_QA_DIR, "roster-filters-expanded-390-viewport.png") });
+      }
+      await capture(page, "roster-filters-expanded-390");
+      await page.getByLabel("搜尋姓名或電話").fill("名單甲");
+      await page.waitForFunction(() => document.querySelectorAll(".admin-person-list article").length === 1);
+      assert.equal(await cards.count(), 1);
+      assert.equal(await cards.getByText("名單甲", { exact: true }).count(), 1);
+      assert.equal(await page.getByText("名單乙", { exact: true }).count(), 0);
+      await page.getByLabel("搜尋姓名或電話").fill("");
+      await page.getByLabel("是否入社").selectOption("yes");
+      await page.waitForFunction(() => document.querySelectorAll(".admin-person-list article").length === 1);
+      assert.equal(await cards.getByText("名單乙", { exact: true }).count(), 1);
+      assert.equal(await page.getByText("名單甲", { exact: true }).count(), 0);
+      await page.getByLabel("是否入社").selectOption("");
+      await page.getByLabel("搜尋姓名或電話").fill("0910000001");
+      await page.waitForFunction(() => document.querySelectorAll(".admin-person-list article").length === 1);
+      assert.equal(await cards.getByText("名單甲", { exact: true }).count(), 1);
+      await page.getByLabel("搜尋姓名或電話").fill("沒有這位同學");
+      await page.getByText("沒有符合條件的同學").waitFor();
+      assert.equal(await cards.count(), 0);
+      assert.equal(await page.getByText("分級").count(), 0);
+      assert.equal(await page.getByText("submissionId").count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
     await t.test("mobile recruiter quick-fill uses viewform prefill and drops recruited students", async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },

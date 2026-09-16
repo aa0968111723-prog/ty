@@ -428,10 +428,6 @@ function AdminDashboard() {
             data={recruitment}
             query={query}
             setQuery={setQuery}
-            gameGatekeeper={leader}
-            setGameGatekeeper={setLeader}
-            recruiter={recruiter}
-            setRecruiter={setRecruiter}
             date={date}
             setDate={setDate}
           />

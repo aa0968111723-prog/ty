@@ -290,25 +290,19 @@ export function RosterList({
   data,
   query,
   setQuery,
-  gameGatekeeper,
-  setGameGatekeeper,
-  recruiter,
-  setRecruiter,
   date,
   setDate,
 }: {
   data: RecruitmentData;
   query: string;
   setQuery: (value: string) => void;
-  gameGatekeeper: string;
-  setGameGatekeeper: (value: string) => void;
-  recruiter: string;
-  setRecruiter: (value: string) => void;
   date: string;
   setDate: (value: string) => void;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [profile, setProfile] = useState<RecruitmentProfile | null>(null);
+  const [gameGatekeeper, setGameGatekeeper] = useState("");
+  const [recruiter, setRecruiter] = useState("");
   const [activity, setActivity] = useState("");
   const [joined, setJoined] = useState("");
   const [deposit, setDeposit] = useState("");
@@ -364,13 +358,14 @@ export function RosterList({
             type="button"
             className="admin-more-toggle"
             aria-expanded={filtersOpen}
+            aria-controls="roster-filters"
             onClick={() => setFiltersOpen((value) => !value)}
           >
             <span><Filter size={18} /> 篩選</span>
             <ChevronDown size={18} className={filtersOpen ? "is-open" : ""} />
           </button>
         </div>
-        <div className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
+        <div id="roster-filters" className={`admin-filters recruitment-filters${filtersOpen ? " is-open" : ""}`}>
           <input
             aria-label="搜尋姓名或電話"
             placeholder="搜尋姓名、電話"
