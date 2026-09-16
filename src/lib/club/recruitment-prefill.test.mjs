@@ -133,13 +133,21 @@ test("unknown extra entry keys are ignored so invented IDs cannot ship", () => {
 test("prefill never fills 分級 / S/A/B even when candidate.tier is set", () => {
   const url = generatePrefilledFormUrl(
     { ...candidate, tier: "S(已報名)" },
-    { recruiter: "柏能", tier: "A(有興趣再考慮)" },
+    { recruiter: "柏能", tier: "A(有興趣再考慮)", entries: { tier: "entry.1322037614" } },
   );
   const parsed = new URL(url);
   const decoded = decodeURIComponent(url);
-  assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.tier), null);
+  assert.equal(Object.hasOwn(LIVE_PREFILL_ENTRIES, "tier"), false);
+  assert.equal(parsed.searchParams.get("entry.1322037614"), null);
   assert.doesNotMatch(decoded, /S\(已報名\)/);
   assert.doesNotMatch(decoded, /A\(有興趣再考慮\)/);
   assert.doesNotMatch(decoded, /B\(還好沒興趣\)/);
   assert.doesNotMatch(decoded, /分級/);
+});
+
+test("client prefill source does not embed the live 分級 entry id", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("./recruitment-prefill.mjs", import.meta.url), "utf8");
+  assert.equal(src.includes("1322037614"), false);
+  assert.equal(src.includes("LIVE_TIER_CHOICES"), false);
 });

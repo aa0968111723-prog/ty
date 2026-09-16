@@ -132,7 +132,7 @@ test("Google Form secondary prefill still uses /viewform and carries in-app answ
   assert.match(url, /\/viewform\?/);
   assert.doesNotMatch(url, /forms\.gle/);
   const parsed = new URL(url);
-  assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.tier), null);
+  assert.equal(parsed.searchParams.get("entry.1322037614"), null);
   assert.doesNotMatch(decodeURIComponent(url), /S\(已報名\)|分級/);
   assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.activity), "9/30茶會");
   assert.equal(parsed.searchParams.get(LIVE_PREFILL_ENTRIES.joined), "是");

@@ -31,8 +31,6 @@ export const LIVE_PREFILL_ENTRIES = Object.freeze({
   phone: "entry.1668669667",
   departmentGrade: "entry.628075911",
   note: "entry.88032894",
-  /** Live Form still has 分級; never prefill this entry. */
-  tier: "entry.1322037614",
   activity: "entry.1403707043",
   joined: "entry.425502120",
   depositPaid: "entry.1491508611",
@@ -45,7 +43,6 @@ export const LIVE_PREFILL_ENTRIES = Object.freeze({
 
 /** Live 2026招生狀況表單-上 titles and choices (published /viewform, 2026-09-13). */
 export const LIVE_NOTE_TITLE = "備註(興趣壓~愛好~喜歡那個活動~或是我們介紹的那個特質";
-export const LIVE_TIER_CHOICES = Object.freeze(["S(已報名)", "A(有興趣再考慮)", "B(還好沒興趣)"]);
 export const LIVE_ACTIVITY_CHOICES = Object.freeze([
   "9/30茶會", "10/07演講", "社課", "體驗禪", "無(考慮中", "無(沒興趣",
 ]);
@@ -168,8 +165,10 @@ export function parseGameMetadataNote(value) {
 /** @param {unknown} overrides @returns {Record<string, string>} */
 function mergeEntries(overrides) {
   const extra = overrides && typeof overrides === "object" && !Array.isArray(overrides)
-    ? /** @type {Record<string, string>} */ (overrides)
+    ? { .../** @type {Record<string, string>} */ (overrides) }
     : {};
+  // Never keep a 分級 key in the client prefill map (id lives server-side only).
+  delete extra.tier;
   return { ...LIVE_PREFILL_ENTRIES, ...extra };
 }
 

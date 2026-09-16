@@ -7,7 +7,6 @@ import {
   LIVE_ACTIVITY_CHOICES,
   LIVE_INTEREST_TOPICS,
   LIVE_NOTE_TITLE,
-  LIVE_TIER_CHOICES,
   LIVE_YES_NO,
   buildGameMetadataNote,
   departmentGradeOf,
@@ -16,6 +15,11 @@ import {
   joinSheetChoices,
   taipeiDate,
 } from "./recruitment-prefill.mjs";
+
+/** Sheet / Form decode only. Never exported to the partner prefill URL. */
+export const LIVE_TIER_CHOICES = Object.freeze(["S(已報名)", "A(有興趣再考慮)", "B(還好沒興趣)"]);
+/** Live Google Form 分級 entry. Decode/legacy only — never prefill from the client. */
+export const LIVE_TIER_ENTRY = "entry.1322037614";
 
 const taipeiTimestamp = new Intl.DateTimeFormat("zh-TW", {
   timeZone: "Asia/Taipei",
@@ -286,6 +290,5 @@ export {
   LIVE_ACTIVITY_CHOICES,
   LIVE_INTEREST_TOPICS,
   LIVE_NOTE_TITLE,
-  LIVE_TIER_CHOICES,
   LIVE_YES_NO,
 };
