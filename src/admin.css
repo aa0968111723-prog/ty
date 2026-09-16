@@ -1240,15 +1240,18 @@
 }
 .official-form-shortcuts {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-2);
   min-width: 0;
-  margin: var(--space-3) 0;
+  margin: var(--space-2) 0;
 }
 .official-form-shortcuts a {
   min-width: 0;
   width: 100%;
   justify-content: center;
   text-align: center;
+  font-size: var(--text-small);
+  padding-inline: var(--space-2);
 }
 .admin-more-dialog .official-form-shortcuts {
   margin-top: var(--space-4);
