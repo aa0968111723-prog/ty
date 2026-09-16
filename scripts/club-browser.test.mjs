@@ -204,7 +204,9 @@ test(
         await page.getByRole("button", { name: "完成", exact: true }).click();
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "表單資料", exact: true }).click();
+        await page.getByLabel("查詢日期").fill("2026-09-12");
         await page.getByLabel("篩選來源").selectOption("Google Form");
+        await page.locator(".admin-person-list article").waitFor();
         assert.equal(await page.locator(".admin-person-list article").count(), 1);
         await page.getByRole("navigation", { name: "手機後台導覽" }).getByRole("button", { name: "更多", exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "比賽成績", exact: true }).click();
