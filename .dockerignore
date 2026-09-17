@@ -1,0 +1,14 @@
+.git
+.github
+.grok/preview.log
+.grok/preview.pid
+.vercel
+.output
+.zeabur
+node_modules
+screenshots
+artifacts
+attachments
+.env
+.env.*
+*.log
