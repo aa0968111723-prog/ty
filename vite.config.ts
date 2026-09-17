@@ -170,7 +170,9 @@ export default defineConfig(({ command, isPreview }) => ({
     ...(command === "build" || isPreview
       ? [
           nitro({
-            preset: "vercel",
+            // Default stays Vercel for Grok/Vercel. Zeabur's Dockerfile sets
+            // NITRO_PRESET=node-server so the image can `node .output/server`.
+            preset: process.env.NITRO_PRESET || process.env.SERVER_PRESET || "vercel",
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
